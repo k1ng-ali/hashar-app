@@ -1,0 +1,190 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import ProgressBar from '@/shared/components/ProgressBar.vue'
+import { formatDate } from '@/shared/lib/format.ts'
+import type { Plan, PlanInfo, PlanOption } from '../types.ts'
+
+const props = defineProps<{
+  info: PlanInfo
+  options: PlanOption[]
+  canRequest: boolean
+  hasPendingRequest: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'request', plan: Plan): void
+}>()
+
+const usage = computed(() =>
+  props.info.member_limit ? Math.round((props.info.members_count / props.info.member_limit) * 100) : 0,
+)
+
+// Апгрейд — только на тарифы выше текущего
+const ORDER: Plan[] = ['free', 'pro', 'max', 'individual']
+const upgrades = computed(() =>
+  props.options.filter((o) => ORDER.indexOf(o.plan) > ORDER.indexOf(props.info.effective_plan)),
+)
+</script>
+
+<template>
+  <div class="plan-card">
+    <div class="top">
+      <div>
+        <span class="label">{{ $t('plans.current') }}</span>
+        <div class="plan-name">{{ $t(`plans.${info.effective_plan}`) }}</div>
+      </div>
+      <span v-if="info.expires_at && info.effective_plan !== 'free'" class="expires">
+        {{ $t('plans.until', { date: formatDate(info.expires_at) }) }}
+      </span>
+    </div>
+
+    <div class="usage">
+      <span>{{ $t('plans.members') }}</span>
+      <b>
+        {{ info.members_count }} / {{ info.member_limit ?? '∞' }}
+      </b>
+    </div>
+    <ProgressBar v-if="info.member_limit" :percent="usage" tone="brand" />
+
+    <p v-if="info.plan !== info.effective_plan" class="warning">⚠️ {{ $t('plans.expired') }}</p>
+
+    <!-- Тарифы для повышения -->
+    <div v-if="upgrades.length" class="options">
+      <div v-for="option in upgrades" :key="option.plan" class="option">
+        <div>
+          <b>{{ $t(`plans.${option.plan}`) }}</b>
+          <span>
+            {{ option.member_limit ? $t('plans.upTo', { n: option.member_limit }) : $t('plans.unlimited') }}
+          </span>
+        </div>
+        <div class="option-right">
+          <span class="price">
+            {{ option.price_tjs ? $t('plans.price', { price: option.price_tjs }) : $t('plans.byAgreement') }}
+          </span>
+          <button
+            v-if="canRequest"
+            class="request-btn"
+            :disabled="hasPendingRequest"
+            @click="emit('request', option.plan)"
+          >
+            {{ $t('plans.request') }}
+          </button>
+        </div>
+      </div>
+    </div>
+    <p v-if="hasPendingRequest" class="hint">⏱ {{ $t('plans.pending') }}</p>
+  </div>
+</template>
+
+<style scoped lang="scss">
+@use '@/shared/styles/mixins' as *;
+
+.plan-card {
+  @include glass-card;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.label {
+  font-size: 12px;
+  color: $text-muted;
+}
+
+.plan-name {
+  font-size: 22px;
+  font-weight: 800;
+  background: $gradient;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.expires {
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(78, 190, 194, 0.14);
+  color: #0E7C80;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.usage {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: $text-secondary;
+
+  b {
+    color: $navy;
+  }
+}
+
+.warning {
+  margin: 0;
+  font-size: 12px;
+  color: #B45309;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+
+  > div:first-child {
+    display: flex;
+    flex-direction: column;
+
+    b {
+      color: $navy;
+    }
+
+    span {
+      font-size: 12px;
+      color: $text-muted;
+    }
+  }
+}
+
+.option-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.price {
+  font-size: 13px;
+  font-weight: 700;
+  color: $navy;
+}
+
+.request-btn {
+  @include cta-button;
+  padding: 7px 12px;
+  font-size: 12px;
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+  color: #B45309;
+}
+</style>

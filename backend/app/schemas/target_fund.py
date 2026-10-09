@@ -1,30 +1,48 @@
 from datetime import datetime
-from pydantic import Field
-from backend.app.schemas.base import BaseSchema
+
+from pydantic import BaseModel, Field
+
+from app.enums import CurrencyEnum, TargetFundCategoryEnum
+from app.schemas.contribution import ContributionOut
 
 
-class TargetFundBase(BaseSchema):
-    title: str = Field(..., min_length=3, max_length=200, example="Автоматический шлагбаум и видеонаблюдение въезда")
-    description: str = Field(..., example="Установка GSM-модуля, стрелы шлагбаума и 2 камер...")
-    target_amount: int = Field(..., ge=1000, example=280000)
-    category: str = Field("Благоустройство", example="Безопасность")
-    is_active: bool = True
+class TargetFundCreateIn(BaseModel):
+    title: str = Field(min_length=3, max_length=200)
+    description: str = Field(min_length=3)
+    target_amount: int = Field(ge=1, le=100_000_000)
+    currency: CurrencyEnum
+    category: TargetFundCategoryEnum = TargetFundCategoryEnum.landscaping
 
 
-class TargetFundCreate(TargetFundBase):
-    pass
-
-
-class TargetFundUpdate(BaseSchema):
-    title: str | None = None
-    description: str | None = None
-    target_amount: int | None = None
-    category: str | None = None
+class TargetFundUpdateIn(BaseModel):
+    title: str | None = Field(None, min_length=3, max_length=200)
+    description: str | None = Field(None, min_length=3)
+    target_amount: int | None = Field(None, ge=1, le=100_000_000)
+    category: TargetFundCategoryEnum | None = None
     is_active: bool | None = None
 
 
-class TargetFundResponse(TargetFundBase):
+class TargetFundOut(BaseModel):
     id: int
-    collected_amount: int = 0
-    created_by_admin_id: str | None = None
+    title: str
+    description: str
+    target_amount: int
+    currency: CurrencyEnum
+    category: TargetFundCategoryEnum
+    is_active: bool
+    collected_amount: int
+    remaining_amount: int
+    percent: int
+    contributors_count: int
     created_at: datetime
+
+
+class MonthAmountOut(BaseModel):
+    period: str  # YYYY-MM
+    amount: int
+
+
+class TargetFundDetailOut(TargetFundOut):
+    average_contribution: int
+    monthly: list[MonthAmountOut]
+    contributions: list[ContributionOut]

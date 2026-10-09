@@ -1,31 +1,46 @@
-import enum
-from datetime import datetime, timezone
-from sqlalchemy import Column, String, DateTime, Enum
-from backend.app.core.database import Base
+"""
+Пользователь платформы.
 
+Роль и квартира хранятся в членстве фонда (fund_members), а не здесь:
+один человек может состоять в нескольких фондах.
 
-class UserRole(str, enum.Enum):
-    SUPERADMIN = "SUPERADMIN"
-    ADMIN = "ADMIN"
-    RESIDENT = "RESIDENT"
+- phone / email: логин для входа по паролю (хотя бы одно из двух)
+- hashed_password: null, если вход только через провайдера (Google / Telegram)
+- is_platform_admin: администратор платформы (подтверждает тарифы)
+"""
 
+from sqlalchemy import TIMESTAMP, BigInteger, Boolean, Column, ForeignKey, String, UniqueConstraint, func
 
-class UserStatus(str, enum.Enum):
-    ACTIVE = "ACTIVE"
-    PENDING_APPROVAL = "PENDING_APPROVAL"
-    BLOCKED = "BLOCKED"
+from app.core.database import Base
 
 
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(String(50), primary_key=True, index=True)
-    phone = Column(String(30), unique=True, index=True, nullable=False)
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
     full_name = Column(String(120), nullable=False)
-    address_unit = Column(String(50), nullable=False, index=True)  # e.g. "кв. 12"
-    role = Column(Enum(UserRole), default=UserRole.RESIDENT, nullable=False)
-    status = Column(Enum(UserStatus), default=UserStatus.ACTIVE, nullable=False)
-    email = Column(String(120), nullable=True)
+    phone = Column(String(30), nullable=True, unique=True, index=True)
+    email = Column(String(120), nullable=True, unique=True, index=True)
     avatar_url = Column(String(255), nullable=True)
     hashed_password = Column(String(255), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    is_platform_admin = Column(Boolean, nullable=False, default=False, server_default="false")
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+
+class UserAuthProvider(Base):
+    """
+    Внешний способ входа (google / telegram).
+
+    Заготовка под OAuth: одна запись на связку провайдер + id пользователя у провайдера.
+    """
+
+    __tablename__ = "user_auth_providers"
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_user_id", name="uq_user_auth_providers_provider_provider_user_id"),
+    )
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    provider = Column(String(20), nullable=False)
+    provider_user_id = Column(String(120), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)

@@ -1,44 +1,39 @@
 from datetime import datetime
-from pydantic import Field
-from backend.app.schemas.base import BaseSchema
-from backend.app.models.user import UserRole, UserStatus
+
+from pydantic import BaseModel, ConfigDict
+
+from app.enums import FundRoleEnum
 
 
-class UserBase(BaseSchema):
-    phone: str = Field(..., example="+7 (916) 123-45-67")
-    full_name: str = Field(..., example="Алексей Николаев")
-    address_unit: str = Field(..., example="кв. 15")
-    role: UserRole = UserRole.RESIDENT
-    status: UserStatus = UserStatus.ACTIVE
-    email: str | None = None
-    avatar_url: str | None = None
+class CurrentUser(BaseModel):
+    """Пользователь из access-токена (без похода в БД). Роль в фонде — в FundContext."""
+
+    id: int
+    is_platform_admin: bool = False
 
 
-class UserCreate(UserBase):
-    id: str | None = None
-    password: str | None = None
-
-
-class UserUpdate(BaseSchema):
-    full_name: str | None = None
+class UserOut(BaseModel):
+    id: int
+    full_name: str
     phone: str | None = None
-    address_unit: str | None = None
-    role: UserRole | None = None
-    status: UserStatus | None = None
     email: str | None = None
     avatar_url: str | None = None
-
-
-class UserResponse(UserBase):
-    id: str
+    is_platform_admin: bool
     created_at: datetime
 
-
-class Token(BaseSchema):
-    access_token: str
-    token_type: str = "bearer"
-    user: UserResponse
+    model_config = ConfigDict(from_attributes=True)
 
 
-class TokenPayload(BaseSchema):
-    sub: str | None = None
+class DemoMembershipOut(BaseModel):
+    fund_name: str
+    role: FundRoleEnum
+
+
+class DemoUserOut(BaseModel):
+    """Карточка для быстрого входа в DEV_MODE."""
+
+    id: int
+    full_name: str
+    avatar_url: str | None = None
+    is_platform_admin: bool
+    memberships: list[DemoMembershipOut]

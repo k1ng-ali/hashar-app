@@ -1,140 +1,99 @@
-# Бэкенд фонда дома (FastAPI + PostgreSQL + SQLAlchemy + Alembic + Docker)
+# Fund System — backend
 
-Полнофункциональный бэкенд для системы прозрачного управления локальным общественным фондом многоквартирного дома (ТСЖ / ЖК).
+Платформа фондов домов (ТСЖ / ЖК / посёлков): пользователь регистрируется, создаёт свой фонд или вступает в существующий по коду / ссылке / названию. Внутри фонда — взносы с чеками и их проверка советом, расходы, целевые сборы, мультивалютные счета с переводами, доска объявлений и отчётность. Тарифы платформы подтверждает её администратор.
 
-## Стек технологий
+**Стек:** Python 3.12 · FastAPI · SQLAlchemy 2 (async, asyncpg) · PostgreSQL 16 · Alembic · Pydantic v2 · JWT (access + httpOnly refresh-cookie) · pytest
 
-- **Язык**: Python 3.10+
-- **Фреймворк**: [FastAPI](https://fastapi.tiangolo.com/) (асинхронный REST API, автогенерация Swagger/OpenAPI)
-- **База данных**: PostgreSQL 16
-- **ORM**: [SQLAlchemy 2.0](https://www.sqlalchemy.org/)
-- **Миграции**: [Alembic](https://alembic.sqlalchemy.org/)
-- **Валидация и сериализация данных**: [Pydantic v2](https://docs.pydantic.dev/) + `pydantic-settings`
-- **Контейнеризация**: Docker и Docker Compose
-
----
-
-## Архитектура проекта
+## Структура
 
 ```
 backend/
-├── alembic/                         # Миграции базы данных
-│   ├── versions/                    # Файлы ревизий
-│   │   └── 001_initial_schema.py    # Базовая схема таблиц
-│   ├── env.py                       # Окружение мигратора Alembic
-│   └── script.py.mako               # Шаблон новых миграций
-├── alembic.ini                      # Конфигурация Alembic
 ├── app/
-│   ├── api/                         # Маршруты и контроллеры
-│   │   ├── deps.py                  # Внедрение зависимостей (Auth, DB, RBAC)
-│   │   └── v1/
-│   │       ├── api.py               # Роутер API v1
-│   │       └── endpoints/           # Эндпоинты по доменам
-│   │           ├── auth.py          # Логин, выдача JWT токенов, /me
-│   │           ├── users.py         # Список собственников, статусы оплат
-│   │           ├── contributions.py # Взносы, прикрепление чеков, верификация
-│   │           ├── expenses.py      # Расходы фонда, чеки и акты
-│   │           ├── target_funds.py  # Целевые сборы, прогресс накоплений
-│   │           ├── announcements.py # Доска объявлений, комментарии, лайки
-│   │           ├── settings.py      # Тарифы и банковские реквизиты
-│   │           └── reports.py       # Финансовые отчеты и экспорт CSV
-│   ├── core/                        # Ядро приложения
-│   │   ├── config.py                # Настройки (pydantic-settings, .env)
-│   │   ├── database.py              # Сессии SQLAlchemy, engine
-│   │   └── security.py              # Хеширование паролей, генерация JWT
-│   ├── models/                      # SQLAlchemy ORM модели
-│   │   ├── user.py                  # Пользователи и роли (SUPERADMIN, ADMIN, RESIDENT)
-│   │   ├── rate.py                  # Тариф ежемесячного взноса
-│   │   ├── target_fund.py           # Целевые сборы
-│   │   ├── contribution.py          # Взносы и чеки
-│   │   ├── expense.py               # Расходы
-│   │   ├── requisite.py             # Реквизиты для перевода
-│   │   └── announcement.py          # Объявления и комментарии
-│   ├── schemas/                     # Pydantic DTO схемы
-│   └── services/                    # Бизнес-логика (расчет задолженностей и сальдо)
-├── Dockerfile                       # Сборка контейнера бэкенда
-├── requirements.txt                 # Зависимости Python
-├── seed.py                          # Скрипт наполнения тестовыми данными
-└── README.md
+│   ├── main.py              # FastAPI(), CORS, api_router, /health
+│   ├── api/                 # auth, platform/, council/, admin/        → api/README.md
+│   ├── core/                # config, database, security, finance (сальдо), plans (лимиты), codes
+│   ├── deps/                # auth.py, fund.py (FundContext, require_fund_*), services.py
+│   ├── enums/               # роли и статусы членства, валюты, тарифы, категории
+│   ├── models/              # SQLAlchemy-модели
+│   ├── schemas/             # Pydantic *In / *Out                     → schemas/README.md
+│   ├── repositories/        # доступ к данным                         → repositories/README.md
+│   ├── services/            # бизнес-логика                           → services/README.md
+│   └── migrations/          # Alembic
+├── scripts/seed.py          # демо-данные
+├── tests/unit/              # тесты сервисов, расчёта сальдо и тарифов
+├── Dockerfile
+└── docker-compose.yml       # db + backend
 ```
 
----
+Слои: `api → services → repositories → models`. Роутер тонкий, вся логика и `HTTPException` — в сервисе, `commit` — в сервисе.
 
-## Локальная разработка (рекомендуемый способ)
+## Модель данных
 
-В текущем режиме Docker запускает только PostgreSQL, а FastAPI запускается локально с hot reload:
+```
+users ─┬─< fund_members >─ funds ─┬─< fund_accounts (валюта)
+       │   (роль, статус,         ├─< payment_requisites (валюта)
+       │    помещение)            ├─< contributions (валюта, реквизит)
+       └─< user_auth_providers    ├─< expenses (валюта)
+           (google / telegram,    ├─< target_funds (валюта цели)
+            заготовка)            ├─< account_transfers ─< announcements (finance)
+                                  ├─< announcements ─< comments / likes
+                                  └─< plan_requests
+```
+
+## Роли в фонде
+
+| Возможность | Житель | Ревизор | Председатель |
+|---|:-:|:-:|:-:|
+| Взносы, сальдо, отчёты, объявления | ✅ | ✅ | ✅ |
+| Заявки на вступление, блокировка, проверка чеков | ❌ | ✅ | ✅ |
+| Расходы, целевые сборы, переводы между счетами, закреп объявлений | ❌ | ✅ | ✅ |
+| Базовая валюта, тариф взноса, валютные счета, реквизиты | ❌ | ❌ | ✅ |
+| Роли, передача председательства, удаление записей, заявка на тариф | ❌ | ❌ | ✅ |
+
+Председатель у фонда ровно один; выйти он может только после передачи прав.
+
+## Тарифы платформы
+
+| Тариф | Участников | Цена |
+|---|---|---|
+| Free | до 10 | бесплатно |
+| Pro | до 100 | 199 смн / мес |
+| Max | до 500 | 399 смн / мес |
+| Individual | по договору | по договору |
+
+Председатель отправляет заявку → админ платформы подтверждает после оплаты → тариф действует N месяцев, затем фонд возвращается на Free (участники остаются, новых принять нельзя сверх лимита).
+
+## Запуск локально
 
 ```bash
+cp .env.example .env
 docker compose up -d db
-..\.venv\Scripts\python.exe -m alembic -c backend\alembic.ini upgrade head
-..\.venv\Scripts\python.exe backend\seed.py
-..\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-Сервисы будут доступны по адресам:
-- **FastAPI Backend**: [http://localhost:8000](http://localhost:8000)
-- **Интерактивная документация Swagger UI**: [http://localhost:8000/api/v1/docs](http://localhost:8000/api/v1/docs)
-- **Альтернативная документация ReDoc**: [http://localhost:8000/api/v1/redoc](http://localhost:8000/api/v1/redoc)
-- **PostgreSQL**: `localhost:15432` (логин: `postgres`, пароль: `postgres_password`, БД: `fund_db`)
-
-Frontend запускается из корня проекта отдельной командой `npm run dev`.
-
----
-
-## Локальный запуск без Docker
-
-### 1. Установка зависимостей
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # На Windows: venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-### 2. Применение миграций Alembic
-```bash
 alembic upgrade head
+python -m scripts.seed
+uvicorn app.main:app --reload
 ```
 
-### 3. Заполнение тестовыми данными
+- API: http://localhost:8000/api/v1, Swagger (при `DEV_MODE=true`): http://localhost:8000/docs
+- Демо-пароль у всех — `password123`: админ платформы `+79990000000`, председатель `+79161234567`, житель `+79037890123`
+- Демо-фонды: `STAR2026` (Pro, TJS/RUB/USD) и `VARZOB77` (Free, заявка на Pro ждёт админа)
+
+## Тесты и линтеры
+
 ```bash
-python seed.py
+pytest
+black app tests scripts
+ruff check app tests scripts
 ```
 
-### 4. Запуск сервера разработки Uvicorn
-```bash
-uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
-```
+## Новая фича — чек-лист
 
----
-
-## Ролевая модель доступа (RBAC)
-
-API строго разграничивает права на основе роли:
-- **RESIDENT (Жилец)**: подача взносов с чеками, просмотр истории своих оплат, чтение и комментирование объявлений, просмотр отчетов.
-- **ADMIN (Член совета дома)**: верификация и отклонение чеков, добавление расходов фонда, открытие целевых сборов, публикация закрепленных объявлений.
-- **SUPERADMIN (Председатель дома)**: изменение тарифа взносов, добавление реквизитов карт/счетов, назначение ролей жильцов.
-
----
-
-## Основные эндпоинты API
-
-| Метод | Путь | Описание | Доступ |
-|---|---|---|---|
-| `POST` | `/api/v1/auth/login` | Получение JWT токена | Публичный |
-| `GET` | `/api/v1/auth/me` | Данные текущего пользователя | Авторизованный |
-| `GET` | `/api/v1/users/` | Список собственников помещений | Авторизованный |
-| `GET` | `/api/v1/users/{id}/status` | Расчет задолженности жильца | Авторизованный |
-| `GET` | `/api/v1/contributions/` | Реестр платежей (с фильтрами) | Авторизованный |
-| `POST` | `/api/v1/contributions/` | Внесение взноса с прикреплением чека | Собственник |
-| `POST` | `/api/v1/contributions/{id}/verify` | Одобрение или отклонение чека | Совет / Председатель |
-| `GET` | `/api/v1/expenses/` | Перечень произведенных расходов | Авторизованный |
-| `POST` | `/api/v1/expenses/` | Добавление расхода с чеком | Совет / Председатель |
-| `GET` | `/api/v1/target-funds/` | Целевые сборы с прогресс-баром | Все |
-| `POST` | `/api/v1/target-funds/` | Создание нового целевого сбора | Совет / Председатель |
-| `GET` | `/api/v1/announcements/` | Доска объявлений дома | Все |
-| `POST` | `/api/v1/announcements/` | Публикация объявления | Авторизованный |
-| `GET` | `/api/v1/reports/summary` | Сводная статистика для карточек | Все |
-| `GET` | `/api/v1/reports/financial` | Помесячная ведомость (2026 г.) | Все |
-| `GET` | `/api/v1/reports/export/contributions` | Скачать выгрузку взносов в CSV | Авторизованный |
-| `GET` | `/api/v1/reports/export/expenses` | Скачать реестр расходов в CSV | Авторизованный |
+1. `models/<feature>.py` (+ `fund_id`, если данные фонда) + экспорт в `models/__init__.py`
+2. миграция в `migrations/versions/`
+3. `schemas/<feature>.py` (`*In` / `*Out`)
+4. `repositories/<feature>_repo.py` (фильтр по `fund_id`)
+5. `services/<feature>_service.py`
+6. фабрика в `deps/services.py`
+7. `api/<domain>/<feature>.py` (`get_fund_context` / `require_fund_*`) + подключение в `api/router.py`
+8. тесты в `tests/unit/`
+9. обновить README слоёв

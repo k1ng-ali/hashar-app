@@ -1,24 +1,29 @@
 from datetime import datetime
-from pydantic import Field
-from backend.app.schemas.base import BaseSchema
+
+from pydantic import BaseModel, Field
+
+from app.enums import CurrencyEnum, ExpenseCategoryEnum
 
 
-class ExpenseBase(BaseSchema):
-    title: str = Field(..., min_length=3, max_length=200, example="Замена прожекторов освещения во дворе")
-    category: str = Field(..., example="Электрика")
-    amount: int = Field(..., ge=100, example=14200)
-    description: str = Field(..., example="Куплены светодиодные уличные прожекторы Jazzway 50W...")
-    receipt_image_paths: list[str] = Field(default_factory=list)
+class ExpenseCreateIn(BaseModel):
+    title: str = Field(min_length=3, max_length=200)
+    category: ExpenseCategoryEnum
+    amount: int = Field(ge=1, le=100_000_000)
+    currency: CurrencyEnum  # счёт фонда, с которого списываем
+    description: str = Field(min_length=3)
+    receipt_images: list[str] = Field(default_factory=list, max_length=10)
+    target_fund_id: int | None = None
+
+
+class ExpenseOut(BaseModel):
+    id: int
+    title: str
+    category: ExpenseCategoryEnum
+    amount: int
+    currency: CurrencyEnum
+    description: str
+    receipt_images: list[str]
     target_fund_id: int | None = None
     target_fund_title: str | None = None
-
-
-class ExpenseCreate(ExpenseBase):
-    pass
-
-
-class ExpenseResponse(ExpenseBase):
-    id: str
-    created_by_admin_id: str
-    created_by_admin_name: str
+    created_by_name: str | None = None
     created_at: datetime

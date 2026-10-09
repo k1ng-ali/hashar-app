@@ -1,0 +1,108 @@
+// Общие миксины. Подключение: @use '@/shared/styles/mixins' as *;
+
+$navy: #234970;
+$teal: #4EBEC2;
+$gradient: linear-gradient(135deg, #4EBEC2, #234970);
+$text-secondary: #6B7280;
+$text-muted: #9CA3AF;
+$danger: #EF4444;
+$success: #10B981;
+$warning: #F59E0B;
+
+/* ── Glass-карточка ─────────────────────────────────────────────────────── */
+@mixin glass-card($radius: 20px) {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: $radius;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.07);
+}
+
+/* ── Тактильный отклик ──────────────────────────────────────────────────── */
+@mixin pressable {
+  transition: all 0.2s ease;
+  user-select: none;
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+/* ── CTA-кнопка (pill + градиент) ───────────────────────────────────────── */
+@mixin cta-button {
+  @include pressable;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 22px;
+  border: none;
+  border-radius: 30px;
+  background: $gradient;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(78, 190, 194, 0.35);
+
+  &:disabled {
+    opacity: 0.5;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+/* ── Вторичная кнопка ───────────────────────────────────────────────────── */
+@mixin ghost-button {
+  @include pressable;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: 1px solid rgba(35, 73, 112, 0.12);
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.9);
+  color: $navy;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ── Поля формы ─────────────────────────────────────────────────────────── */
+@mixin field-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(35, 73, 112, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #1F2937;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:focus {
+    border-color: $teal;
+    box-shadow: 0 0 0 3px rgba(78, 190, 194, 0.18);
+  }
+
+  &::placeholder {
+    color: $text-muted;
+  }
+}
+
+@mixin field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: $navy;
+}
+
+/* ── Заголовок секции ───────────────────────────────────────────────────── */
+@mixin section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: $navy;
+}

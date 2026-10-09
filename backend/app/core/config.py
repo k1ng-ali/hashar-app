@@ -1,52 +1,32 @@
-from typing import List, Union
-from pydantic import AnyHttpUrl, field_validator
+from datetime import timedelta
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+ACCESS_TOKEN_EXPIRE = timedelta(minutes=15)
+REFRESH_TOKEN_EXPIRE = timedelta(days=30)
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Фонд Дома (FastAPI Backend)"
-    VERSION: str = "1.0.0"
-    API_V1_STR: str = "/api/v1"
+    model_config = SettingsConfigDict(extra="ignore", env_file=".env")
 
-    # Security & JWT
-    SECRET_KEY: str = "super-secret-jwt-token-key-for-fund-app-2026"
+    # Подпись JWT
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
-    # Database connection
-    POSTGRES_SERVER: str = "localhost"
-    POSTGRES_PORT: int = 15432
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "postgres_password"
-    POSTGRES_DB: str = "fund_db"
-    SQLALCHEMY_DATABASE_URI: str | None = None
+    # Cookie с refresh-токеном (в проде только по https)
+    COOKIE_SECURE: bool = True
+    # Включает /docs, /auth/dev-login и список демо-пользователей
+    DEV_MODE: bool = False
 
-    @field_validator("SQLALCHEMY_DATABASE_URI", mode="before")
-    def assemble_db_connection(cls, v: str | None, values) -> str:
-        if isinstance(v, str) and v.strip():
-            return v
-        data = values.data
-        user = data.get("POSTGRES_USER", "postgres")
-        password = data.data.get("POSTGRES_PASSWORD", "postgres") if hasattr(data, "data") else data.get("POSTGRES_PASSWORD", "postgres")
-        server = data.get("POSTGRES_SERVER", "localhost")
-        port = data.get("POSTGRES_PORT", 5432)
-        db = data.get("POSTGRES_DB", "fund_db")
-        return f"postgresql://{user}:{password}@{server}:{port}/{db}"
+    DB_HOST: str
+    DB_PORT: int
+    DB_USER: str
+    DB_PASSWORD: str
+    DB_NAME: str
 
-    # CORS
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "*",
-    ]
-
-    model_config = SettingsConfigDict(
-        case_sensitive=True,
-        env_file=".env",
-        extra="ignore"
-    )
+    @property
+    def get_db_url(self) -> str:
+        return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
 
 settings = Settings()

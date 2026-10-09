@@ -1,0 +1,171 @@
+<script setup lang="ts">
+import { ref } from 'vue'
+import { formatDateTime } from '@/shared/lib/format.ts'
+import type { PlanApprove, PlanRequest } from '../types.ts'
+
+const props = defineProps<{
+  request: PlanRequest
+  isSubmitting: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'approve', request: PlanRequest, payload: PlanApprove): void
+  (e: 'reject', request: PlanRequest, comment: string): void
+}>()
+
+const months = ref(props.request.months)
+const memberLimit = ref<number | null>(null)
+const comment = ref('')
+</script>
+
+<template>
+  <div class="request" :class="`request--${request.status}`">
+    <div class="top">
+      <div>
+        <b>{{ request.fund_name }}</b>
+        <span class="meta">{{ request.requested_by_name }} · {{ formatDateTime(request.created_at) }}</span>
+      </div>
+      <span class="plan">{{ $t(`plans.${request.plan}`) }} · {{ $t('plans.monthsShort', { n: request.months }) }}</span>
+    </div>
+    <p v-if="request.comment" class="comment">«{{ request.comment }}»</p>
+
+    <!-- Решение админа -->
+    <template v-if="request.status === 'pending'">
+      <div class="fields">
+        <label>
+          <span>{{ $t('platform.months') }}</span>
+          <input v-model.number="months" type="number" min="1" max="36" />
+        </label>
+        <label v-if="request.plan === 'individual'">
+          <span>{{ $t('platform.memberLimit') }}</span>
+          <input v-model.number="memberLimit" type="number" min="1" :placeholder="$t('plans.unlimited')" />
+        </label>
+      </div>
+      <input v-model="comment" class="comment-input" :placeholder="$t('platform.commentPlaceholder')" />
+
+      <div class="actions">
+        <button
+          class="ghost-btn ghost-btn--danger"
+          :disabled="isSubmitting || comment.trim().length < 3"
+          @click="emit('reject', request, comment.trim())"
+        >
+          {{ $t('platform.reject') }}
+        </button>
+        <button
+          class="cta-btn"
+          :disabled="isSubmitting"
+          @click="emit('approve', request, { months, member_limit: memberLimit || null, admin_comment: comment.trim() || null })"
+        >
+          {{ $t('platform.approve') }}
+        </button>
+      </div>
+    </template>
+
+    <p v-else class="result">
+      {{ $t(`platform.status.${request.status}`) }}
+      <template v-if="request.admin_comment"> · {{ request.admin_comment }}</template>
+    </p>
+  </div>
+</template>
+
+<style scoped lang="scss">
+@use '@/shared/styles/mixins' as *;
+
+.request {
+  @include glass-card(18px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+
+  &--pending {
+    border-color: rgba(245, 158, 11, 0.4);
+  }
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+
+  b {
+    display: block;
+    color: $navy;
+  }
+}
+
+.meta {
+  font-size: 12px;
+  color: $text-muted;
+}
+
+.plan {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: $gradient;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.comment {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: $text-secondary;
+}
+
+.fields {
+  display: flex;
+  gap: 10px;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    font-size: 12px;
+    color: $text-secondary;
+  }
+
+  input {
+    @include field-input;
+    padding: 9px 12px;
+  }
+}
+
+.comment-input {
+  @include field-input;
+  padding: 9px 12px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+
+  > * {
+    flex: 1;
+  }
+}
+
+.ghost-btn {
+  @include ghost-button;
+
+  &--danger {
+    color: $danger;
+  }
+}
+
+.cta-btn {
+  @include cta-button;
+  padding: 10px;
+}
+
+.result {
+  margin: 0;
+  font-size: 13px;
+  color: $text-secondary;
+}
+</style>

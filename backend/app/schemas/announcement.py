@@ -1,43 +1,48 @@
 from datetime import datetime
-from pydantic import Field
-from backend.app.schemas.base import BaseSchema
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+from app.enums import AnnouncementCategoryEnum, FundRoleEnum
+from app.schemas.account import TransferOut
 
 
-class CommentBase(BaseSchema):
-    text: str = Field(..., min_length=1, example="Спасибо совету дома за оперативное решение!")
+class AnnouncementCreateIn(BaseModel):
+    title: str = Field(min_length=3, max_length=200)
+    content: str = Field(min_length=5)
+    category: Literal[
+        AnnouncementCategoryEnum.news,
+        AnnouncementCategoryEnum.meeting,
+        AnnouncementCategoryEnum.emergency,
+        AnnouncementCategoryEnum.cleanup,
+    ] = AnnouncementCategoryEnum.news
+    is_pinned: bool = False
 
 
-class CommentCreate(CommentBase):
-    pass
+class CommentCreateIn(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
 
 
-class CommentResponse(CommentBase):
-    id: str
-    announcement_id: str
-    user_id: str
+class CommentOut(BaseModel):
+    id: int
+    user_id: int
     user_name: str
-    user_unit: str
+    user_unit: str | None = None
+    text: str
     created_at: datetime
 
 
-class AnnouncementBase(BaseSchema):
-    title: str = Field(..., min_length=3, max_length=200, example="Ежемесячный финансовый отчет за Август 2026")
-    content: str = Field(..., min_length=5, example="Уважаемые соседи! Публикуем краткие итоги...")
-    category: str = Field("Новости", example="Новости")
-    is_pinned: bool = False
-    image_urls: list[str] = Field(default_factory=list)
-
-
-class AnnouncementCreate(AnnouncementBase):
-    pass
-
-
-class AnnouncementResponse(AnnouncementBase):
-    id: str
-    author_id: str
+class AnnouncementOut(BaseModel):
+    id: int
+    title: str
+    content: str
+    category: AnnouncementCategoryEnum
+    is_pinned: bool
+    author_id: int
     author_name: str
-    author_role: str
-    likes_count: int = 0
-    liked_by_user_ids: list[str] = Field(default_factory=list)
-    comments: list[CommentResponse] = Field(default_factory=list)
+    author_role: FundRoleEnum | None = None  # None — автор уже не в фонде
+    likes_count: int
+    is_liked: bool
+    comments: list[CommentOut]
+    transfer: TransferOut | None = None
     created_at: datetime

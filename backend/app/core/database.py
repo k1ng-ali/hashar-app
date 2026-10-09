@@ -1,30 +1,16 @@
-import os
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
-from backend.app.core.config import settings
 
-# In local demo/testing without live PostgreSQL running, support SQLite fallback if desired
-database_url = os.environ.get("DATABASE_URL") or settings.SQLALCHEMY_DATABASE_URI or "sqlite:///./fund_app.db"
+from app.core.config import settings
 
-# Connect args needed for SQLite only
-connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
+# pool_pre_ping — переживаем рестарт Postgres без 500 на первом запросе
+engine = create_async_engine(settings.get_db_url, echo=False, pool_pre_ping=True)
 
-engine = create_engine(
-    database_url,
-    echo=False,
-    connect_args=connect_args,
-    pool_pre_ping=True if not database_url.startswith("sqlite") else False,
-)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 Base = declarative_base()
 
 
-def get_db():
-    """FastAPI Dependency yielding database session."""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        yield session

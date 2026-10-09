@@ -1,61 +1,38 @@
-from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.core.config import settings
-from backend.app.core.database import engine, Base
-from backend.app.api.v1.api import api_router
+from app.api.router import api_router
+from app.core.config import settings
+from app.core.database import get_db
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Ensure database schema is initialized on startup
-    Base.metadata.create_all(bind=engine)
-    yield
-
+DEV_MODE = settings.DEV_MODE
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    description="""
-API системы прозрачного управления локальным общественным фондом (ТСЖ / ЖК).
-
-### Функционал:
-- 🏢 **Жильцы и совет дома**: ролевой доступ (SUPERADMIN, ADMIN, RESIDENT).
-- 💳 **Взносы и верификация чеков**: отправка чеков жильцами, модерация советом дома.
-- 📉 **Расходы фонда**: детальная отчетность, чеки и акты выполненных работ.
-- 🎯 **Целевые сборы**: краудфандинг на благоустройство, шлагбаумы, видеонаблюдение.
-- 📢 **Доска объявлений**: оповещения совета дома, закрепленные сообщения, комментарии и лайки.
-- 📊 **Финансовые отчеты**: помесячная ведомость, контроль задолженностей и экспорт в CSV.
-    """,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    docs_url=f"{settings.API_V1_STR}/docs",
-    redoc_url=f"{settings.API_V1_STR}/redoc",
-    lifespan=lifespan,
+    title="Fund System API",
+    version="0.2.0",
+    docs_url="/docs" if DEV_MODE else None,
+    redoc_url="/redoc" if DEV_MODE else None,
+    openapi_url="/openapi.json" if DEV_MODE else None,
 )
 
-# CORS middleware
+# CORS (чтобы фронт на Vue мог ходить к API с cookie)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount API v1 router
-app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(api_router)
 
 
-@app.get("/health", tags=["Служебные"])
-def health_check():
-    return {"status": "ok", "app": settings.PROJECT_NAME, "version": settings.VERSION}
-
-
-@app.get("/", tags=["Служебные"])
-def root():
-    return {
-        "message": "API Фонда дома работает",
-        "docs_url": f"{settings.API_V1_STR}/docs",
-        "redoc_url": f"{settings.API_V1_STR}/redoc",
-    }
+@app.get("/health")
+async def health_check(db: AsyncSession = Depends(get_db)):
+    res = await db.execute(text("SELECT 1"))
+    return {"db": res.scalar()}
