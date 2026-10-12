@@ -8,7 +8,8 @@ class ResidentBalanceOut(BaseModel):
 
     status: BalanceStatusEnum
     currency: CurrencyEnum
-    rate: int
+    rate: int  # тариф текущего месяца
+    next_rate: int  # тариф следующего месяца (с учётом запланированного изменения)
     balance: int  # оплачено - начислено (< 0 — долг, > 0 — аванс)
     total_due: int
     total_paid: int

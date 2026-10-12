@@ -89,7 +89,7 @@ const unpaidLabel = computed(() => props.balance.unpaid_periods.map((p) => forma
 
 .banner-title {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 
   .banner--debt & {
@@ -113,7 +113,7 @@ const unpaidLabel = computed(() => props.balance.unpaid_periods.map((p) => forma
   padding: 9px 16px;
   font-size: 13px;
   background: linear-gradient(135deg, #F87171, #EF4444);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  box-shadow: none;
 }
 
 .pending-note {

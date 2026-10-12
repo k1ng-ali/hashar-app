@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { formatPhone } from '@/shared/lib/formatters.ts'
 import { computed } from 'vue'
 import type { FundRole, MemberStatus } from '@/features/funds/types.ts'
-import { formatMoney } from '@/shared/lib/format.ts'
+import { formatDate, formatMoney } from '@/shared/lib/format.ts'
 import type { Member } from '../types.ts'
 
 const props = defineProps<{
@@ -41,13 +42,17 @@ const isEditable = computed(() => !props.isMe && props.member.role !== 'chairman
       {{ member.full_name }}
       <span v-if="isMe" class="me">{{ $t('admin.members.you') }}</span>
     </div>
-    <span class="contact">{{ member.phone ?? member.email }}</span>
+    <span class="contact">{{ member.phone ? formatPhone(member.phone) : member.email }}</span>
 
     <div v-if="balanceLabel && member.balance" class="row">
       <span>{{ $t('admin.members.totalPaid') }}: {{ formatMoney(member.balance.total_paid, member.balance.currency) }}</span>
       <b :class="`balance--${member.balance.status}`">{{ $t(balanceLabel.key, { amount: balanceLabel.amount }) }}</b>
     </div>
-    <span v-if="member.status === 'blocked'" class="status">{{ $t('memberStatus.blocked') }}</span>
+    <span v-if="member.status === 'blocked'" class="status">
+      {{ member.blocked_at ? $t('absence.blockedAt', { date: formatDate(member.blocked_at) }) : $t('memberStatus.blocked') }}
+      <template v-if="member.left_at"> · {{ $t('absence.leftWhileBlocked') }}</template>
+    </span>
+    <span v-if="member.status === 'blocked' && member.balance" class="frozen">{{ $t('absence.balanceFrozen') }}</span>
 
     <div v-if="isEditable" class="actions">
       <button v-if="member.status === 'active'" class="ghost-btn ghost-btn--danger" @click="emit('status', member, 'blocked')">
@@ -92,10 +97,10 @@ const isEditable = computed(() => !props.isMe && props.member.role !== 'chairman
 .unit {
   padding: 3px 10px;
   border-radius: 20px;
-  background: rgba(78, 190, 194, 0.14);
-  color: #0E7C80;
+  background: rgba(17, 24, 39, 0.14);
+  color: #111827;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .role {
@@ -122,7 +127,7 @@ const isEditable = computed(() => !props.isMe && props.member.role !== 'chairman
   margin-left: 6px;
   padding: 1px 8px;
   border-radius: 10px;
-  background: rgba(35, 73, 112, 0.08);
+  background: rgba(17, 24, 39, 0.08);
   font-size: 11px;
 }
 
@@ -176,5 +181,10 @@ const isEditable = computed(() => !props.isMe && props.member.role !== 'chairman
   &--danger {
     color: $danger;
   }
+}
+
+.frozen {
+  font-size: 11px;
+  color: $text-muted;
 }
 </style>

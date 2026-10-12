@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.enums import CurrencyEnum, ExpenseCategoryEnum
 from app.models.expense import Expense
 from app.repositories.expense_repo import ExpenseRepository
 from app.repositories.target_fund_repo import TargetFundRepository
@@ -31,9 +32,28 @@ class ExpenseService:
         self.target_fund_repo = TargetFundRepository(db=db)
         self.accounts = AccountService(db=db)
 
-    async def list(self, fund_id: int, skip: int = 0, limit: int = 50) -> list[ExpenseOut]:
-        items = await self.repo.list(fund_id, skip=skip, limit=limit)
+    async def list(
+        self,
+        fund_id: int,
+        category: ExpenseCategoryEnum | None = None,
+        currency: CurrencyEnum | None = None,
+        skip: int = 0,
+        limit: int = 50,
+    ) -> list[ExpenseOut]:
+        items = await self.repo.list(
+            fund_id,
+            category=category.value if category else None,
+            currency=currency.value if currency else None,
+            skip=skip,
+            limit=limit,
+        )
         return [expense_out(item) for item in items]
+
+    async def get(self, fund_id: int, expense_id: int) -> ExpenseOut:
+        expense = await self.repo.get(fund_id, expense_id)
+        if not expense:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expense not found")
+        return expense_out(expense)
 
     async def create(self, fund_id: int, user_id: int, payload: ExpenseCreateIn) -> ExpenseOut:
         await self.accounts.ensure_active_currency(fund_id, payload.currency.value)
@@ -44,6 +64,8 @@ class ExpenseService:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target fund not found")
             if target_fund.currency != payload.currency.value:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Currency must match the target fund")
+
+        await self.accounts.ensure_sufficient(fund_id, payload.currency.value, payload.amount, payload.allow_overdraft)
 
         expense = await self.repo.create(
             fund_id=fund_id,

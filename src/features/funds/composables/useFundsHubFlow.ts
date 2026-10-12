@@ -57,6 +57,22 @@ export function useFundsHubFlow() {
     headerStore.showNotification(t('funds.requestCancelled'))
   }
 
+  // Бывший участник подаёт заявку снова — через экран вступления по коду
+  function rejoin(fund: MyFund) {
+    void router.push(`/join/${fund.code}`)
+  }
+
+  // Заблокированный может выйти из фонда сам
+  async function leaveBlocked(fund: MyFund) {
+    if (!window.confirm(t('funds.leaveConfirm', { name: fund.name }))) return
+    try {
+      await store.leave(fund.id)
+      headerStore.showNotification(t('absence.youLeft'))
+    } catch (error) {
+      headerStore.showNotification(errorDetail(error) ?? t('errors.generic'), 'error')
+    }
+  }
+
   function onQueryInput(value: string) {
     query.value = value
     if (searchTimer) clearTimeout(searchTimer)
@@ -96,6 +112,8 @@ export function useFundsHubFlow() {
     dispose,
     openFund,
     cancelRequest,
+    rejoin,
+    leaveBlocked,
     onQueryInput,
     createFund,
     submitJoin,

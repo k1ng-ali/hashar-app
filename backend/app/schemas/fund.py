@@ -27,6 +27,7 @@ class FundUpdateIn(BaseModel):
     description: str | None = Field(None, max_length=2000)
     address: str | None = Field(None, max_length=255)
     base_currency: CurrencyEnum | None = None
+    # Новый тариф вступает в силу с 1-го числа следующего месяца
     monthly_rate: int | None = Field(None, ge=0, le=10_000_000)
     start_period: str | None = Field(None, pattern=PERIOD_PATTERN)
 
@@ -38,6 +39,11 @@ class AccountOut(BaseModel):
     currency: CurrencyEnum
     is_active: bool
     balance: int
+
+
+class RateOut(BaseModel):
+    period: str  # действует с этого месяца
+    amount: int
 
 
 class PlanInfoOut(BaseModel):
@@ -58,7 +64,10 @@ class FundOut(BaseModel):
     address: str | None = None
     code: str
     base_currency: CurrencyEnum
-    monthly_rate: int
+    monthly_rate: int  # тариф текущего месяца
+    next_monthly_rate: int | None = None  # запланированный тариф, если меняется
+    next_rate_period: str | None = None  # с какого месяца
+    rate_history: list[RateOut]
     start_period: str
     accounts: list[AccountOut]
     plan: PlanInfoOut
@@ -105,7 +114,8 @@ class FundSummaryOut(BaseModel):
     rate: int
     current_period: str
     accounts: list[AccountSummaryOut]
-    pending_count: int
+    pending_count: int  # чеки на проверке
+    pending_members_count: int  # заявки на вступление
     active_members_count: int
     debtors_count: int
 

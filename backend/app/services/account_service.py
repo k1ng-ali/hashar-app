@@ -46,6 +46,22 @@ class AccountService:
 
     # ─── Балансы ───────────────────────────────────────────────────────────────
 
+    async def ensure_sufficient(self, fund_id: int, currency: str, amount: int, allow_overdraft: bool) -> None:
+        """
+        409, если списание уводит счёт в минус и это не подтверждено явно.
+
+        Минус не запрещён совсем: платформа — учёт, а не банк. Расход мог быть оплачен
+        из личных средств председателя или в долг подрядчику, а взносы — ещё не внесены
+        в систему. Но такое действие должно быть осознанным, а не опечаткой.
+        Строку фонда блокируем, чтобы два параллельных расхода не прошли проверку оба.
+        """
+        await self.fund_repo.get(fund_id, for_update=True)
+        if allow_overdraft:
+            return
+        balance = (await self.balances(fund_id)).get(currency, 0)
+        if amount > balance:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Insufficient funds")
+
     async def balances(
         self,
         fund_id: int,
@@ -148,6 +164,10 @@ class AccountService:
         for currency in (payload.from_currency, payload.to_currency):
             if currency is not None and currency.value not in active:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Currency account is not enabled")
+        if payload.from_currency is not None:
+            await self.ensure_sufficient(
+                fund_id, payload.from_currency.value, payload.from_amount, payload.allow_overdraft
+            )
 
         transfer = await self.transfer_repo.create(
             fund_id=fund_id,

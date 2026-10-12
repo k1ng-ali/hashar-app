@@ -1,36 +1,32 @@
-import type { ResidentBalance } from '@/features/contributions/types.ts'
+import type { Contribution, ContributionStatus, ResidentBalance } from '@/features/contributions/types.ts'
+import type { ExpenseCategory } from '@/features/expenses/types.ts'
 import type { FundRole, MemberStatus, Plan } from '@/features/funds/types.ts'
 import type { TargetFundCategory } from '@/features/targetFunds/types.ts'
 import type { Currency } from '@/shared/lib/currency.ts'
 
-export type AdminTab = 'verification' | 'members' | 'expenses' | 'funds' | 'accounts' | 'settings'
+export type VerificationView = 'pending' | 'history'
 
-// ── Expenses ──
-export type ExpenseCategory = 'repair' | 'electrical' | 'emergency' | 'household' | 'landscaping' | 'cctv'
-
-export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
-  'household',
-  'repair',
-  'electrical',
-  'emergency',
-  'landscaping',
-  'cctv',
-]
-
-export interface Expense {
-  id: number
-  title: string
-  category: ExpenseCategory
-  amount: number
+// ── Receipts history ──
+export interface CurrencyTotal {
   currency: Currency
-  description: string
-  receipt_images: string[]
-  target_fund_id: number | null
-  target_fund_title: string | null
-  created_by_name: string | null
-  created_at: string
+  amount: number
+  count: number
 }
 
+export interface ContributionHistory {
+  items: Contribution[]
+  total_count: number
+  totals: CurrencyTotal[]
+}
+
+export interface HistoryFilters {
+  status: ContributionStatus | null
+  currency: Currency | null
+  requisite_id: number | null
+  q: string
+}
+
+// ── Expenses ──
 export interface ExpenseCreate {
   title: string
   category: ExpenseCategory
@@ -39,6 +35,7 @@ export interface ExpenseCreate {
   description: string
   receipt_images: string[]
   target_fund_id: number | null
+  allow_overdraft: boolean
 }
 
 // ── Members ──
@@ -54,8 +51,24 @@ export interface Member {
   address_unit: string | null
   message: string | null
   joined_at: string | null
+  left_at: string | null
+  blocked_at: string | null
   created_at: string
+  // У активных — на сегодня, у вышедших и заблокированных — на момент ухода
   balance: ResidentBalance | null
+  // Возвращение или разблокировка: решение о начислениях за период отсутствия
+  absence: Absence | null
+}
+
+export interface Absence {
+  reason: 'left' | 'blocked'
+  since: string
+  from_period: string | null
+  to_period: string | null
+  months_count: number
+  amount: number
+  currency: Currency
+  debt_before: number
 }
 
 // ── Target funds ──
@@ -68,8 +81,11 @@ export interface TargetFundCreate {
 }
 
 // ── Accounts ──
+export type RequisiteKind = 'card' | 'account'
+
 export interface RequisiteCreate {
   currency: Currency
+  kind: RequisiteKind
   bank_name: string
   card_or_account_number: string
   recipient_name: string
@@ -83,6 +99,7 @@ export interface TransferCreate {
   to_currency: Currency | null
   to_amount: number | null
   comment: string
+  allow_overdraft: boolean
 }
 
 // ── Settings ──
@@ -95,6 +112,13 @@ export interface FundSettingsUpdate {
 }
 
 // ── Plan ──
+export interface PlanRequestCreate {
+  plan: Plan
+  months: number
+  contact: string
+  comment: string | null
+}
+
 export interface PlanRequest {
   id: number
   fund_id: number
@@ -102,6 +126,7 @@ export interface PlanRequest {
   plan: Plan
   months: number
   status: 'pending' | 'approved' | 'rejected'
+  contact: string
   comment: string | null
   admin_comment: string | null
   requested_by_name: string | null

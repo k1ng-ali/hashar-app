@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import CategoryStats from '@/features/reports/components/CategoryStats.vue'
 import DebtorsList from '@/features/reports/components/DebtorsList.vue'
@@ -23,12 +23,7 @@ const currencyTabs = computed(() =>
 )
 
 onMounted(async () => {
-  headerStore.setTitle(t('reports.title'))
   await store.fetchAll()
-})
-
-onUnmounted(() => {
-  headerStore.reset()
 })
 
 // ── Handlers ─────────────────────────────────────────────────────────────
@@ -167,7 +162,7 @@ function changeCurrency(currency: Currency) {
 
 .value {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 
   &--in {

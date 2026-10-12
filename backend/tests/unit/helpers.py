@@ -38,7 +38,6 @@ def make_fund(id: int = 1, **extra):
         name="Fund",
         code="TESTCODE",
         base_currency="tjs",
-        monthly_rate=150,
         start_period="2026-07",
         plan="free",
         plan_expires_at=None,
@@ -60,6 +59,8 @@ def make_member(id: int = 1, user=None, role: str = "resident", status: str = "a
         address_unit="кв. 1",
         message=None,
         joined_at=None,
+        left_at=None,
+        blocked_at=None,
         created_at=datetime.now(timezone.utc),
     )
     fields.update(extra)
@@ -71,7 +72,15 @@ def make_ctx(user_id: int = 1, role: FundRoleEnum = FundRoleEnum.resident, fund_
 
 
 def make_requisite(currency: str = "tjs", **extra):
-    fields = dict(id=1, fund_id=1, currency=currency, is_active=True)
+    fields = dict(
+        id=1,
+        fund_id=1,
+        currency=currency,
+        is_active=True,
+        bank_name="Bank",
+        card_or_account_number="1111 2222",
+        recipient_name="Fund",
+    )
     fields.update(extra)
     return SimpleNamespace(**fields)
 
@@ -86,6 +95,10 @@ def make_contribution(id: int = 1, status: str = "pending", user=None, **extra):
         user_unit="кв. 1",
         amount=150,
         currency="tjs",
+        credited_amount=150,
+        credited_currency="tjs",
+        requisite_id=1,
+        requisite_label="Bank · 1111 2222 · Fund",
         category="monthly_fee",
         target_fund_id=None,
         target_fund=None,

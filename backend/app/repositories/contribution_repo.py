@@ -1,15 +1,49 @@
+from dataclasses import dataclass
 from datetime import datetime
 
-from sqlalchemy import distinct, func, select
+from sqlalchemy import distinct, func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.enums import ContributionCategoryEnum, ContributionStatusEnum
 from app.models.contribution import Contribution
+from app.models.user import User
 from app.repositories.base_repo import BaseRepository
 
 APPROVED = ContributionStatusEnum.approved.value
 PENDING = ContributionStatusEnum.pending.value
 MONTHLY_FEE = ContributionCategoryEnum.monthly_fee.value
+
+
+@dataclass
+class ContributionFilters:
+    user_id: int | None = None
+    status: str | None = None
+    category: str | None = None
+    currency: str | None = None
+    requisite_id: int | None = None
+    target_fund_id: int | None = None
+    search: str | None = None  # имя участника или помещение
+
+
+def _filtered(stmt, fund_id: int, filters: ContributionFilters):
+    stmt = stmt.where(Contribution.fund_id == fund_id)
+    if filters.user_id is not None:
+        stmt = stmt.where(Contribution.user_id == filters.user_id)
+    if filters.status:
+        stmt = stmt.where(Contribution.status == filters.status)
+    if filters.category:
+        stmt = stmt.where(Contribution.category == filters.category)
+    if filters.currency:
+        stmt = stmt.where(Contribution.currency == filters.currency)
+    if filters.requisite_id is not None:
+        stmt = stmt.where(Contribution.requisite_id == filters.requisite_id)
+    if filters.target_fund_id is not None:
+        stmt = stmt.where(Contribution.target_fund_id == filters.target_fund_id)
+    if filters.search:
+        pattern = f"%{filters.search}%"
+        matching_users = select(User.id).where(User.full_name.ilike(pattern))
+        stmt = stmt.where(or_(Contribution.user_id.in_(matching_users), Contribution.user_unit.ilike(pattern)))
+    return stmt
 
 
 def _with_relations(stmt):
@@ -38,29 +72,24 @@ class ContributionRepository(BaseRepository):
     async def list(
         self,
         fund_id: int,
-        user_id: int | None = None,
-        status: str | None = None,
-        category: str | None = None,
-        currency: str | None = None,
-        target_fund_id: int | None = None,
+        filters: ContributionFilters | None = None,
         skip: int = 0,
         limit: int = 50,
     ) -> list[Contribution]:
-        stmt = select(Contribution).where(Contribution.fund_id == fund_id)
-        if user_id is not None:
-            stmt = stmt.where(Contribution.user_id == user_id)
-        if status:
-            stmt = stmt.where(Contribution.status == status)
-        if category:
-            stmt = stmt.where(Contribution.category == category)
-        if currency:
-            stmt = stmt.where(Contribution.currency == currency)
-        if target_fund_id is not None:
-            stmt = stmt.where(Contribution.target_fund_id == target_fund_id)
-
+        stmt = _filtered(select(Contribution), fund_id, filters or ContributionFilters())
         stmt = _with_relations(stmt.order_by(Contribution.created_at.desc()).offset(skip).limit(limit))
         result = await self.db.execute(stmt)
         return list(result.scalars().all())
+
+    async def totals(self, fund_id: int, filters: ContributionFilters) -> list[tuple[str, int, int]]:
+        """[(валюта, сумма, число чеков)] по всем чекам под фильтром."""
+        stmt = _filtered(
+            select(Contribution.currency, func.sum(Contribution.amount), func.count(Contribution.id)),
+            fund_id,
+            filters,
+        )
+        result = await self.db.execute(stmt.group_by(Contribution.currency).order_by(Contribution.currency))
+        return [(currency, int(total or 0), int(count)) for currency, total, count in result.all()]
 
     # ─── Агрегаты ──────────────────────────────────────────────────────────────
 
@@ -70,12 +99,15 @@ class ContributionRepository(BaseRepository):
         currency: str,
         user_ids: list[int] | None = None,
     ) -> dict[int, dict[str, int]]:
-        """{user_id: {"approved": сумма, "pending": сумма}} ежемесячных взносов в базовой валюте."""
+        """
+        {user_id: {"approved": сумма, "pending": сумма}} ежемесячных взносов,
+        зачтённых в базовой валюте (оплата могла быть и в другой валюте).
+        """
         stmt = (
-            select(Contribution.user_id, Contribution.status, func.sum(Contribution.amount))
+            select(Contribution.user_id, Contribution.status, func.sum(Contribution.credited_amount))
             .where(
                 Contribution.fund_id == fund_id,
-                Contribution.currency == currency,
+                Contribution.credited_currency == currency,
                 Contribution.category == MONTHLY_FEE,
                 Contribution.status.in_([APPROVED, PENDING]),
             )
@@ -113,11 +145,11 @@ class ContributionRepository(BaseRepository):
         return result.scalar() or 0
 
     async def collected_by_target_funds(self, fund_id: int) -> dict[int, tuple[int, int]]:
-        """{target_fund_id: (собрано, число уникальных участников)} по одобренным взносам."""
+        """{target_fund_id: (собрано в валюте сбора, число уникальных участников)} по одобренным взносам."""
         result = await self.db.execute(
             select(
                 Contribution.target_fund_id,
-                func.sum(Contribution.amount),
+                func.sum(Contribution.credited_amount),
                 func.count(distinct(Contribution.user_id)),
             )
             .where(
@@ -135,11 +167,10 @@ class ContributionRepository(BaseRepository):
         currency: str | None = None,
         target_fund_id: int | None = None,
     ) -> dict[str, int]:
-        """{"YYYY-MM": сумма} одобренных взносов."""
+        """{"YYYY-MM": сумма} одобренных взносов. Для сбора — зачтённые суммы в валюте сбора."""
         period = func.to_char(Contribution.created_at, "YYYY-MM")
-        stmt = select(period, func.sum(Contribution.amount)).where(
-            Contribution.fund_id == fund_id, Contribution.status == APPROVED
-        )
+        amount = Contribution.credited_amount if target_fund_id is not None else Contribution.amount
+        stmt = select(period, func.sum(amount)).where(Contribution.fund_id == fund_id, Contribution.status == APPROVED)
         if currency:
             stmt = stmt.where(Contribution.currency == currency)
         if target_fund_id is not None:

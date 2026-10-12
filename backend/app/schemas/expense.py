@@ -13,6 +13,8 @@ class ExpenseCreateIn(BaseModel):
     description: str = Field(min_length=3)
     receipt_images: list[str] = Field(default_factory=list, max_length=10)
     target_fund_id: int | None = None
+    # Расход больше остатка счёта проводится только с явным подтверждением
+    allow_overdraft: bool = False
 
 
 class ExpenseOut(BaseModel):

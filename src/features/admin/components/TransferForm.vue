@@ -3,11 +3,14 @@ import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { type Currency } from '@/shared/lib/currency.ts'
 import type { TransferCreate } from '../types.ts'
+import OverdraftNotice from './OverdraftNotice.vue'
 
 type TransferMode = 'transfer' | 'income' | 'outcome'
 
 const props = defineProps<{
   currencies: Currency[]
+  /** Остатки счетов — чтобы предупредить о списании в минус. */
+  balances: Partial<Record<Currency, number>>
   isSubmitting: boolean
 }>()
 
@@ -24,11 +27,16 @@ const form = reactive({
   to_currency: (props.currencies[1] ?? props.currencies[0]) as Currency,
   to_amount: null as number | null,
   comment: '',
+  allowOverdraft: false,
 })
 const error = ref('')
 
 const showFrom = computed(() => mode.value !== 'income')
 const showTo = computed(() => mode.value !== 'outcome')
+const available = computed(() => props.balances[form.from_currency] ?? 0)
+const needsConfirm = computed(
+  () => showFrom.value && (form.from_amount ?? 0) > available.value && !form.allowOverdraft,
+)
 
 function handleSubmit() {
   const fromOk = !showFrom.value || (form.from_amount ?? 0) > 0
@@ -41,6 +49,10 @@ function handleSubmit() {
     error.value = t('admin.accounts.sameCurrency')
     return
   }
+  if (needsConfirm.value) {
+    error.value = t('overdraft.required')
+    return
+  }
   error.value = ''
   emit('submit', {
     from_currency: showFrom.value ? form.from_currency : null,
@@ -48,6 +60,7 @@ function handleSubmit() {
     to_currency: showTo.value ? form.to_currency : null,
     to_amount: showTo.value ? form.to_amount : null,
     comment: form.comment.trim(),
+    allow_overdraft: showFrom.value && form.allowOverdraft,
   })
 }
 </script>
@@ -73,21 +86,55 @@ function handleSubmit() {
     <div v-if="showFrom" class="side side--out">
       <span class="label">{{ $t('admin.accounts.from') }}</span>
       <div class="row">
-        <select v-model="form.from_currency">
-          <option v-for="c in currencies" :key="c" :value="c">{{ c.toUpperCase() }}</option>
-        </select>
-        <input v-model.number="form.from_amount" type="number" min="1" inputmode="numeric" placeholder="0" />
+        <div class="currencies" role="radiogroup">
+          <button
+            v-for="c in currencies"
+            :key="c"
+            type="button"
+            role="radio"
+            class="currency"
+            :class="{ 'currency--active': form.from_currency === c }"
+            :aria-checked="form.from_currency === c"
+            @click="form.from_currency = c"
+          >
+            {{ c.toUpperCase() }}
+          </button>
+        </div>
+        <div class="amount">
+          <input v-model.number="form.from_amount" type="number" min="1" inputmode="numeric" placeholder="0" />
+          <span class="amount-currency">{{ form.from_currency.toUpperCase() }}</span>
+        </div>
       </div>
+      <OverdraftNotice
+        v-model="form.allowOverdraft"
+        :available="available"
+        :amount="form.from_amount"
+        :currency="form.from_currency"
+      />
     </div>
 
     <!-- Зачисление -->
     <div v-if="showTo" class="side side--in">
       <span class="label">{{ $t('admin.accounts.to') }}</span>
       <div class="row">
-        <select v-model="form.to_currency">
-          <option v-for="c in currencies" :key="c" :value="c">{{ c.toUpperCase() }}</option>
-        </select>
-        <input v-model.number="form.to_amount" type="number" min="1" inputmode="numeric" placeholder="0" />
+        <div class="currencies" role="radiogroup">
+          <button
+            v-for="c in currencies"
+            :key="c"
+            type="button"
+            role="radio"
+            class="currency"
+            :class="{ 'currency--active': form.to_currency === c }"
+            :aria-checked="form.to_currency === c"
+            @click="form.to_currency = c"
+          >
+            {{ c.toUpperCase() }}
+          </button>
+        </div>
+        <div class="amount">
+          <input v-model.number="form.to_amount" type="number" min="1" inputmode="numeric" placeholder="0" />
+          <span class="amount-currency">{{ form.to_currency.toUpperCase() }}</span>
+        </div>
       </div>
     </div>
     <p v-if="mode === 'transfer'" class="hint">💱 {{ $t('admin.accounts.noRates') }}</p>
@@ -119,7 +166,7 @@ function handleSubmit() {
   gap: 4px;
   padding: 4px;
   border-radius: 16px;
-  background: rgba(35, 73, 112, 0.06);
+  background: rgba(17, 24, 39, 0.06);
 }
 
 .mode {
@@ -157,9 +204,50 @@ function handleSubmit() {
 }
 
 .row {
-  display: grid;
-  grid-template-columns: 110px 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+}
+
+.currencies {
+  display: flex;
+  gap: 6px;
+}
+
+.currency {
+  @include pressable;
+  flex: 1;
+  padding: 8px 0;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 12px;
+  background: $surface;
+  color: $text-secondary;
+  font-size: 13px;
+  font-weight: 600;
+
+  &--active {
+    border-color: transparent;
+    background: #111827;
+    color: #fff;
+  }
+}
+
+.amount {
+  position: relative;
+
+  input {
+    padding-right: 56px;
+  }
+}
+
+.amount-currency {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  font-size: 13px;
+  font-weight: 600;
+  color: $text-muted;
 }
 
 .label {
@@ -167,14 +255,13 @@ function handleSubmit() {
 }
 
 input,
-select,
 textarea {
   @include field-input;
 }
 
 input {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 textarea {

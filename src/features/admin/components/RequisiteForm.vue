@@ -1,8 +1,19 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import SegmentedControl from '@/shared/components/SegmentedControl.vue'
 import { type Currency } from '@/shared/lib/currency.ts'
-import type { RequisiteCreate } from '../types.ts'
+import {
+  CARD_DIGITS,
+  cardDigits,
+  formatAccountInput,
+  formatCardInput,
+  formatPhoneInput,
+  isValidAccount,
+  isValidCard,
+  isValidPhone,
+} from '@/shared/lib/formatters.ts'
+import type { RequisiteCreate, RequisiteKind } from '../types.ts'
 
 const props = defineProps<{
   currencies: Currency[]
@@ -18,17 +29,68 @@ const { t } = useI18n()
 
 const form = reactive({
   currency: props.baseCurrency as Currency,
-  bank_name: '', card_or_account_number: '', recipient_name: '', phone_number: '', note: '' })
+  kind: 'card' as RequisiteKind,
+  bank_name: '',
+  card_or_account_number: '',
+  recipient_name: '',
+  phone_number: '',
+  note: '',
+})
 const error = ref('')
 
+const kindOptions = computed(() => [
+  { value: 'card' as RequisiteKind, label: t('requisites.kind.card') },
+  { value: 'account' as RequisiteKind, label: t('requisites.kind.account') },
+])
+
+// Сменили тип — номер другого формата больше не подходит
+watch(
+  () => form.kind,
+  () => {
+    form.card_or_account_number = ''
+  },
+)
+
+const isNumberValid = computed(() =>
+  form.kind === 'card' ? isValidCard(form.card_or_account_number) : isValidAccount(form.card_or_account_number),
+)
+const isPhoneValid = computed(() => !form.phone_number.trim() || isValidPhone(form.phone_number))
+const numberHint = computed(() =>
+  form.kind === 'card'
+    ? t('requisites.cardDigits', { n: cardDigits(form.card_or_account_number), total: CARD_DIGITS })
+    : t('requisites.accountHint'),
+)
+
+// Форматирование на лету — пользователь сразу видит, как номер увидят участники
+function onNumberInput(event: Event) {
+  const input = event.target as HTMLInputElement
+  form.card_or_account_number = form.kind === 'card' ? formatCardInput(input.value) : formatAccountInput(input.value)
+  input.value = form.card_or_account_number
+}
+
+function onPhoneInput(event: Event) {
+  const input = event.target as HTMLInputElement
+  form.phone_number = formatPhoneInput(input.value)
+  input.value = form.phone_number
+}
+
 function handleSubmit() {
-  if (form.bank_name.trim().length < 2 || form.card_or_account_number.trim().length < 4 || form.recipient_name.trim().length < 2) {
+  if (form.bank_name.trim().length < 2 || form.recipient_name.trim().length < 2) {
     error.value = t('admin.settings.validation')
+    return
+  }
+  if (!isNumberValid.value) {
+    error.value = form.kind === 'card' ? t('requisites.cardInvalid') : t('requisites.accountInvalid')
+    return
+  }
+  if (!isPhoneValid.value) {
+    error.value = t('requisites.phoneInvalid')
     return
   }
   error.value = ''
   emit('submit', {
     currency: form.currency,
+    kind: form.kind,
     bank_name: form.bank_name.trim(),
     card_or_account_number: form.card_or_account_number.trim(),
     recipient_name: form.recipient_name.trim(),
@@ -61,9 +123,20 @@ function handleSubmit() {
       <input v-model="form.bank_name" :placeholder="$t('admin.settings.bankPlaceholder')" />
     </label>
 
+    <SegmentedControl v-model="form.kind" :options="kindOptions" />
+
     <label>
-      <span class="label">{{ $t('admin.settings.number') }}</span>
-      <input v-model="form.card_or_account_number" class="mono" placeholder="2202 2034 5678 9101" />
+      <span class="label">{{ form.kind === 'card' ? $t('requisites.cardNumber') : $t('requisites.accountNumber') }}</span>
+      <input
+        :value="form.card_or_account_number"
+        class="mono"
+        :class="{ 'is-valid': isNumberValid }"
+        :inputmode="form.kind === 'card' ? 'numeric' : 'text'"
+        autocomplete="off"
+        :placeholder="form.kind === 'card' ? '0000 0000 0000 0000' : 'TJ00 0000 0000 0000 0000'"
+        @input="onNumberInput"
+      />
+      <span class="field-hint" :class="{ 'field-hint--ok': isNumberValid }">{{ numberHint }}</span>
     </label>
 
     <label>
@@ -73,7 +146,15 @@ function handleSubmit() {
 
     <label>
       <span class="label">{{ $t('admin.settings.sbpPhone') }} · {{ $t('common.optional') }}</span>
-      <input v-model="form.phone_number" type="tel" :placeholder="$t('auth.phonePlaceholder')" />
+      <input
+        :value="form.phone_number"
+        type="tel"
+        inputmode="tel"
+        placeholder="+992 90 123 45 67"
+        :class="{ 'is-invalid': !isPhoneValid && form.phone_number.length > 4 }"
+        @input="onPhoneInput"
+      />
+      <span class="field-hint">{{ $t('requisites.phoneHint') }}</span>
     </label>
 
     <label>
@@ -140,5 +221,24 @@ textarea {
 
 .submit-btn {
   @include cta-button;
+}
+
+.field-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: $text-muted;
+
+  &--ok {
+    color: $success;
+  }
+}
+
+.is-valid {
+  border-color: rgba(22, 163, 74, 0.4);
+}
+
+.is-invalid {
+  border-color: rgba(229, 72, 77, 0.5);
 }
 </style>

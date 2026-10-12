@@ -1,24 +1,19 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
-import { LuPlus, LuTrash2 } from '@kalimahapps/vue-icons/lu'
-import type { Requisite } from '@/features/dashboard/types.ts'
+import { computed, reactive, watch } from 'vue'
 import type { FundInfo } from '@/features/funds/types.ts'
 import { type Currency } from '@/shared/lib/currency.ts'
+import { formatDate, formatMoney } from '@/shared/lib/format.ts'
 import type { FundSettingsUpdate } from '../types.ts'
 
 const props = defineProps<{
   fund: FundInfo
   currencies: Currency[]
-  requisites: Requisite[]
   isChairman: boolean
   isSubmitting: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'save', payload: FundSettingsUpdate): void
-  (e: 'add-requisite'): void
-  (e: 'toggle-requisite', id: number): void
-  (e: 'delete-requisite', id: number): void
 }>()
 
 const info = reactive({ name: '', address: '', description: '' })
@@ -29,10 +24,21 @@ watch(
   () => props.fund,
   (fund) => {
     Object.assign(info, { name: fund.name, address: fund.address ?? '', description: fund.description ?? '' })
-    Object.assign(finance, { base_currency: fund.base_currency, monthly_rate: fund.monthly_rate })
+    // В поле — тариф, который будет действовать с ближайшего месяца
+    Object.assign(finance, {
+      base_currency: fund.base_currency,
+      monthly_rate: fund.next_monthly_rate ?? fund.monthly_rate,
+    })
   },
   { immediate: true },
 )
+
+// Действующий тариф = запланированный, если он есть, иначе текущий
+const plannedRate = computed(() => props.fund.next_monthly_rate ?? props.fund.monthly_rate)
+const history = computed(() => [...props.fund.rate_history].reverse())
+
+/** «2026-11» → «01.11.2026»: тариф действует с 1-го числа месяца. */
+const firstDay = (period: string) => formatDate(`${period}-01T00:00:00`)
 
 function saveInfo() {
   emit('save', {
@@ -43,7 +49,12 @@ function saveInfo() {
 }
 
 function saveFinance() {
-  emit('save', { base_currency: finance.base_currency, monthly_rate: finance.monthly_rate ?? 0 })
+  const payload: FundSettingsUpdate = {}
+  if (finance.base_currency !== props.fund.base_currency) payload.base_currency = finance.base_currency
+  // Тариф отправляем, только если он правда меняется — иначе не планируем лишнее изменение
+  const rate = finance.monthly_rate ?? 0
+  if (rate !== plannedRate.value) payload.monthly_rate = rate
+  if (Object.keys(payload).length) emit('save', payload)
 }
 </script>
 
@@ -90,58 +101,35 @@ function saveFinance() {
       </div>
       <p class="hint">{{ $t('funds.create.baseCurrencyHint') }}</p>
 
+      <div class="rate-now">
+        <span>{{ $t('admin.settings.rateCurrent') }}</span>
+        <b>{{ formatMoney(fund.monthly_rate, fund.base_currency) }}</b>
+      </div>
+      <div v-if="fund.next_monthly_rate !== null && fund.next_rate_period" class="rate-planned">
+        📅 {{ $t('admin.settings.ratePlanned', {
+          amount: formatMoney(fund.next_monthly_rate, fund.base_currency),
+          date: firstDay(fund.next_rate_period),
+        }) }}
+      </div>
+
       <label>
         <span class="label">{{ $t('admin.settings.rateUnit', { currency: finance.base_currency.toUpperCase() }) }}</span>
         <input v-model.number="finance.monthly_rate" type="number" min="0" :disabled="!isChairman" />
       </label>
+      <p class="rate-note">ℹ️ {{ $t('admin.settings.rateNote') }}</p>
+
+      <details v-if="history.length > 1" class="rate-history">
+        <summary>{{ $t('admin.settings.rateHistory') }}</summary>
+        <div v-for="rate in history" :key="rate.period" class="rate-row">
+          <span>{{ $t('admin.settings.rateFrom', { date: firstDay(rate.period) }) }}</span>
+          <b>{{ formatMoney(rate.amount, fund.base_currency) }}</b>
+        </div>
+      </details>
 
       <button v-if="isChairman" class="cta-btn" :disabled="isSubmitting" @click="saveFinance">
         {{ $t('admin.settings.rateSave') }}
       </button>
       <p v-else class="hint">🔒 {{ $t('admin.settings.onlyChairman') }}</p>
-    </section>
-
-    <!-- 3. Реквизиты по валютам -->
-    <section class="card">
-      <div class="card-header">
-        <div>
-          <h3 class="card-title">{{ $t('admin.settings.requisitesTitle') }}</h3>
-          <p class="card-sub">{{ $t('admin.settings.requisitesSubtitle') }}</p>
-        </div>
-        <button v-if="isChairman" class="ghost-btn" @click="emit('add-requisite')">
-          <LuPlus /> {{ $t('admin.settings.addRequisite') }}
-        </button>
-      </div>
-
-      <div class="requisites">
-        <div v-for="requisite in requisites" :key="requisite.id" class="requisite">
-          <div class="requisite-top">
-            <b>
-              {{ requisite.bank_name }}
-              <span class="currency">{{ requisite.currency.toUpperCase() }}</span>
-            </b>
-            <div class="requisite-actions">
-              <a-switch
-                :checked="requisite.is_active"
-                :disabled="!isChairman"
-                size="small"
-                @change="emit('toggle-requisite', requisite.id)"
-              />
-              <button
-                v-if="isChairman"
-                class="icon-btn"
-                :aria-label="$t('common.delete')"
-                @click="emit('delete-requisite', requisite.id)"
-              >
-                <LuTrash2 />
-              </button>
-            </div>
-          </div>
-          <span class="number">{{ requisite.card_or_account_number }}</span>
-          <span class="recipient">{{ requisite.recipient_name }}</span>
-        </div>
-        <p v-if="!requisites.length" class="hint">{{ $t('requisites.empty') }}</p>
-      </div>
     </section>
   </div>
 </template>
@@ -163,17 +151,11 @@ function saveFinance() {
   padding: 16px;
 }
 
-.card-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
 
 .card-title {
   margin: 0;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 }
 
@@ -231,72 +213,59 @@ textarea {
   font-size: 13px;
 }
 
-.ghost-btn {
-  @include ghost-button;
-}
 
-/* ── Реквизиты ────────────────────────────────────────────────────────────── */
-.requisites {
+/* ── Тариф ────────────────────────────────────────────────────────────────── */
+.rate-now {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.requisite {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 12px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.7);
-}
-
-.requisite-top {
-  display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
+  font-size: 13px;
+  color: $text-secondary;
 
   b {
+    font-size: 18px;
     color: $navy;
   }
 }
 
-.currency {
-  margin-left: 6px;
-  padding: 1px 8px;
-  border-radius: 10px;
-  background: rgba(78, 190, 194, 0.14);
-  color: #0E7C80;
-  font-size: 11px;
-}
-
-.requisite-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.number {
-  font-family: 'SF Mono', 'Consolas', monospace;
-  font-size: 14px;
+.rate-planned {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(17, 24, 39, 0.12);
+  color: #111827;
+  font-size: 13px;
   font-weight: 700;
-  color: #1F2937;
 }
 
-.recipient {
+.rate-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.1);
+  color: #92400E;
   font-size: 12px;
-  color: $text-secondary;
+  line-height: 1.45;
 }
 
-.icon-btn {
-  @include pressable;
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 8px;
-  background: rgba(239, 68, 68, 0.08);
-  color: $danger;
+.rate-history {
+  font-size: 13px;
+  color: $text-secondary;
+
+  summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: $navy;
+  }
+}
+
+.rate-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+
+  b {
+    color: $navy;
+  }
 }
 </style>

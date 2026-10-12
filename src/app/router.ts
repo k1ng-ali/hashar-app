@@ -7,11 +7,18 @@ const FundsPage = () => import('@/pages/FundsPage/FundsPage.vue')
 const JoinPage = () => import('@/pages/JoinPage/JoinPage.vue')
 const DashboardPage = () => import('@/pages/DashboardPage/DashboardPage.vue')
 const ContributePage = () => import('@/pages/ContributePage/ContributePage.vue')
+const FinancePage = () => import('@/pages/FinancePage/FinancePage.vue')
 const HistoryPage = () => import('@/pages/HistoryPage/HistoryPage.vue')
+const ExpensesPage = () => import('@/pages/ExpensesPage/ExpensesPage.vue')
+const TargetFundsPage = () => import('@/pages/TargetFundsPage/TargetFundsPage.vue')
+const ReportsPage = () => import('@/pages/ReportsPage/ReportsPage.vue')
 const TargetFundPage = () => import('@/pages/TargetFundPage/TargetFundPage.vue')
 const AnnouncementsPage = () => import('@/pages/AnnouncementsPage/AnnouncementsPage.vue')
-const ReportsPage = () => import('@/pages/ReportsPage/ReportsPage.vue')
-const AdminPage = () => import('@/pages/AdminPage/AdminPage.vue')
+const FundPage = () => import('@/pages/FundPage/FundPage.vue')
+const FundReceiptsPage = () => import('@/pages/FundReceiptsPage/FundReceiptsPage.vue')
+const FundMembersPage = () => import('@/pages/FundMembersPage/FundMembersPage.vue')
+const FundAccountsPage = () => import('@/pages/FundAccountsPage/FundAccountsPage.vue')
+const FundSettingsPage = () => import('@/pages/FundSettingsPage/FundSettingsPage.vue')
 const PlatformAdminPage = () => import('@/pages/PlatformAdminPage/PlatformAdminPage.vue')
 
 declare module 'vue-router' {
@@ -21,6 +28,16 @@ declare module 'vue-router' {
     council?: boolean // только совет фонда
     platformAdmin?: boolean // только админ платформы
   }
+}
+
+// Вкладки старой страницы «Админ» → новые экраны
+const LEGACY_ADMIN_TABS: Record<string, string> = {
+  verification: '/fund/receipts',
+  members: '/fund/members',
+  expenses: '/finance/expenses',
+  funds: '/finance/funds',
+  accounts: '/fund/accounts',
+  settings: '/fund/settings',
 }
 
 export const router = createRouter({
@@ -33,11 +50,35 @@ export const router = createRouter({
     { path: '/platform', component: PlatformAdminPage, meta: { platformAdmin: true } },
     { path: '/', component: DashboardPage, meta: { fund: true } },
     { path: '/contribute', component: ContributePage, meta: { fund: true } },
-    { path: '/history', component: HistoryPage, meta: { fund: true } },
+
+    // Финансы: мои взносы, расходы, сборы, отчёты — видят все участники
+    {
+      path: '/finance',
+      component: FinancePage,
+      meta: { fund: true },
+      children: [
+        { path: '', redirect: '/finance/my' },
+        { path: 'my', component: HistoryPage, meta: { fund: true } },
+        { path: 'expenses', component: ExpensesPage, meta: { fund: true } },
+        { path: 'funds', component: TargetFundsPage, meta: { fund: true } },
+        { path: 'reports', component: ReportsPage, meta: { fund: true } },
+      ],
+    },
     { path: '/target-funds/:id', component: TargetFundPage, meta: { fund: true } },
     { path: '/news', component: AnnouncementsPage, meta: { fund: true } },
-    { path: '/reports', component: ReportsPage, meta: { fund: true } },
-    { path: '/admin', component: AdminPage, meta: { fund: true, council: true } },
+
+    // Фонд: карточка для всех, управление — совету
+    { path: '/fund', component: FundPage, meta: { fund: true } },
+    { path: '/fund/receipts', component: FundReceiptsPage, meta: { fund: true, council: true } },
+    { path: '/fund/members', component: FundMembersPage, meta: { fund: true, council: true } },
+    { path: '/fund/accounts', component: FundAccountsPage, meta: { fund: true, council: true } },
+    { path: '/fund/settings', component: FundSettingsPage, meta: { fund: true, council: true } },
+
+    // Старые адреса (закладки, ссылки в сообщениях)
+    { path: '/history', redirect: '/finance/my' },
+    { path: '/expenses', redirect: (to) => ({ path: '/finance/expenses', query: to.query }) },
+    { path: '/reports', redirect: '/finance/reports' },
+    { path: '/admin', redirect: (to) => LEGACY_ADMIN_TABS[String(to.query.tab)] ?? '/fund' },
     { path: '/:pathMatch(.*)*', redirect: '/' },
   ],
 })

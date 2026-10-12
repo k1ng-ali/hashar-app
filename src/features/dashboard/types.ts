@@ -13,7 +13,8 @@ export interface FundSummary {
   rate: number
   current_period: string
   accounts: AccountSummary[]
-  pending_count: number
+  pending_count: number // чеки на проверке
+  pending_members_count: number // заявки на вступление
   active_members_count: number
   debtors_count: number
 }
@@ -40,6 +41,7 @@ export interface Operation {
 export interface Requisite {
   id: number
   currency: Currency
+  kind: 'card' | 'account'
   bank_name: string
   card_or_account_number: string
   recipient_name: string

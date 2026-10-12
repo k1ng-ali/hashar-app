@@ -6,20 +6,25 @@ import type { Contribution } from '@/features/contributions/types.ts'
 import { useDashboardStore } from '@/features/dashboard/store.ts'
 import type { Requisite } from '@/features/dashboard/types.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
-import type { FundRole, MemberStatus, Plan } from '@/features/funds/types.ts'
+import type { FundRole, MemberStatus } from '@/features/funds/types.ts'
 import { useTargetFundsStore } from '@/features/targetFunds/store.ts'
 import type { Currency } from '@/shared/lib/currency.ts'
 import * as api from './api.ts'
 import type {
-  Expense,
+  CurrencyTotal,
   ExpenseCreate,
   FundSettingsUpdate,
+  HistoryFilters,
   Member,
   PlanRequest,
+  PlanRequestCreate,
   RequisiteCreate,
   TargetFundCreate,
   TransferCreate,
 } from './types.ts'
+
+// Чеков в истории за одну подгрузку
+const HISTORY_PAGE = 30
 
 /** Управление фондом для совета: чеки, участники, расходы, сборы, счета, настройки, тариф. */
 export const useAdminStore = defineStore('admin', () => {
@@ -30,10 +35,15 @@ export const useAdminStore = defineStore('admin', () => {
   // ── State ─────────────────────────────────────────────────────────────
   const pending = ref<Contribution[]>([])
   const members = ref<Member[]>([])
-  const expenses = ref<Expense[]>([])
   const requisites = ref<Requisite[]>([])
   const transfers = ref<AccountTransfer[]>([])
   const planRequests = ref<PlanRequest[]>([])
+  // История чеков: страница + итоги по всем подходящим чекам
+  const history = ref<Contribution[]>([])
+  const historyTotal = ref(0)
+  const historyTotals = ref<CurrencyTotal[]>([])
+  const historyFilters = ref<HistoryFilters>({ status: 'approved', currency: null, requisite_id: null, q: '' })
+  const isHistoryLoading = ref(false)
   const onlyDebtors = ref(false)
   const isLoading = ref(false)
   const isSubmitting = ref(false)
@@ -42,6 +52,7 @@ export const useAdminStore = defineStore('admin', () => {
   // ── Getters ───────────────────────────────────────────────────────────
   const joinRequests = computed(() => members.value.filter((m) => m.status === 'pending'))
   const registry = computed(() => members.value.filter((m) => m.status === 'active' || m.status === 'blocked'))
+  const formerMembers = computed(() => members.value.filter((m) => m.status === 'left'))
   const debtorsCount = computed(() => registry.value.filter((m) => m.balance?.status === 'debt').length)
   const visibleMembers = computed(() =>
     onlyDebtors.value ? registry.value.filter((m) => m.balance?.status === 'debt') : registry.value,
@@ -50,6 +61,7 @@ export const useAdminStore = defineStore('admin', () => {
     () => funds.current?.accounts.filter((a) => a.is_active).map((a) => a.currency) ?? [],
   )
   const hasPendingPlanRequest = computed(() => planRequests.value.some((r) => r.status === 'pending'))
+  const hasMoreHistory = computed(() => history.value.length < historyTotal.value)
 
   // ── Helpers ───────────────────────────────────────────────────────────
   async function withSubmitting<T>(action: () => Promise<T>): Promise<T> {
@@ -67,28 +79,12 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   // ── Actions: загрузка ─────────────────────────────────────────────────
-  async function fetchAll() {
+  /** Обёртка загрузки экрана: индикатор и понятная ошибка. */
+  async function load(action: () => Promise<unknown>) {
     isLoading.value = true
     errorMessage.value = ''
-    const fundId = funds.fundId
     try {
-      const [pendingRes, membersRes, expensesRes, requisitesRes, transfersRes, plansRes] = await Promise.all([
-        api.listContributions(fundId, 'pending'),
-        api.listMembers(fundId),
-        api.listExpenses(fundId),
-        api.listRequisites(fundId),
-        api.listTransfers(fundId),
-        api.listPlanRequests(fundId),
-        targetFundsStore.fetchList(),
-        funds.fetchCurrent(),
-        funds.fetchPlans(),
-      ])
-      pending.value = pendingRes.data
-      members.value = membersRes.data
-      expenses.value = expensesRes.data
-      requisites.value = requisitesRes.data
-      transfers.value = transfersRes.data
-      planRequests.value = plansRes.data
+      await action()
     } catch {
       errorMessage.value = 'errors.loadFailed'
     } finally {
@@ -96,15 +92,67 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  /** Чеки на проверке. */
+  const fetchPending = () =>
+    load(async () => {
+      pending.value = (await api.listContributions(funds.fundId, 'pending')).data
+      // Реквизиты нужны фильтру истории чеков
+      requisites.value = (await api.listRequisites(funds.fundId)).data
+    })
+
+  /** Заявки и реестр участников. */
+  const fetchMembers = () =>
+    load(async () => {
+      const [membersRes] = await Promise.all([api.listMembers(funds.fundId), funds.fetchCurrent()])
+      members.value = membersRes.data
+    })
+
+  /** Счета, переводы и реквизиты. */
+  const fetchAccounts = () =>
+    load(async () => {
+      const [requisitesRes, transfersRes] = await Promise.all([
+        api.listRequisites(funds.fundId),
+        api.listTransfers(funds.fundId),
+        funds.fetchCurrent(),
+      ])
+      requisites.value = requisitesRes.data
+      transfers.value = transfersRes.data
+    })
+
+  /** Настройки фонда и тариф платформы. */
+  const fetchSettings = () =>
+    load(async () => {
+      const [plansRes] = await Promise.all([
+        api.listPlanRequests(funds.fundId),
+        funds.fetchCurrent(),
+        funds.fetchPlans(),
+      ])
+      planRequests.value = plansRes.data
+    })
+
   async function refreshMembers() {
     const { data } = await api.listMembers(funds.fundId)
     members.value = data
   }
 
   // ── Actions: чеки ─────────────────────────────────────────────────────
-  function approve(id: number) {
+  /** Первая страница истории по текущим фильтрам (или следующая при append). */
+  async function fetchHistory(append = false) {
+    isHistoryLoading.value = true
+    const skip = append ? history.value.length : 0
+    try {
+      const { data } = await api.contributionsHistory(funds.fundId, historyFilters.value, skip, HISTORY_PAGE)
+      history.value = append ? [...history.value, ...data.items] : data.items
+      historyTotal.value = data.total_count
+      historyTotals.value = data.totals
+    } finally {
+      isHistoryLoading.value = false
+    }
+  }
+
+  function approve(id: number, creditedAmount: number | null = null) {
     return withSubmitting(async () => {
-      await api.approveContribution(funds.fundId, id)
+      await api.approveContribution(funds.fundId, id, creditedAmount)
       pending.value = pending.value.filter((item) => item.id !== id)
       // Одобренный взнос меняет сальдо участников, сборы и остатки
       await Promise.all([refreshMembers(), targetFundsStore.fetchList(), refreshBalances()])
@@ -120,19 +168,23 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   // ── Actions: участники ────────────────────────────────────────────────
-  async function approveMember(id: number) {
-    await api.approveMember(funds.fundId, id)
-    await Promise.all([refreshMembers(), funds.fetchCurrent()])
+  function approveMember(id: number, accrueAbsence: boolean | null = null) {
+    return withSubmitting(async () => {
+      await api.approveMember(funds.fundId, id, accrueAbsence)
+      await Promise.all([refreshMembers(), funds.fetchCurrent(), dashboardStore.fetchSummary()])
+    })
   }
 
   async function rejectMember(id: number) {
     await api.rejectMember(funds.fundId, id)
-    await refreshMembers()
+    await Promise.all([refreshMembers(), dashboardStore.fetchSummary()])
   }
 
-  async function setMemberStatus(id: number, status: MemberStatus) {
-    await api.updateMemberStatus(funds.fundId, id, status)
-    await Promise.all([refreshMembers(), funds.fetchCurrent()])
+  function setMemberStatus(id: number, status: MemberStatus, accrueAbsence: boolean | null = null) {
+    return withSubmitting(async () => {
+      await api.updateMemberStatus(funds.fundId, id, status, accrueAbsence)
+      await Promise.all([refreshMembers(), funds.fetchCurrent()])
+    })
   }
 
   async function setMemberRole(id: number, role: FundRole) {
@@ -149,15 +201,13 @@ export const useAdminStore = defineStore('admin', () => {
   // ── Actions: расходы ──────────────────────────────────────────────────
   function addExpense(payload: ExpenseCreate) {
     return withSubmitting(async () => {
-      const { data } = await api.createExpense(funds.fundId, payload)
-      expenses.value = [data, ...expenses.value]
+      await api.createExpense(funds.fundId, payload)
       await refreshBalances()
     })
   }
 
   async function removeExpense(id: number) {
     await api.deleteExpense(funds.fundId, id)
-    expenses.value = expenses.value.filter((item) => item.id !== id)
     await refreshBalances()
   }
 
@@ -226,9 +276,9 @@ export const useAdminStore = defineStore('admin', () => {
     })
   }
 
-  function requestPlan(plan: Plan, months: number, comment: string | null) {
+  function requestPlan(payload: PlanRequestCreate) {
     return withSubmitting(async () => {
-      const { data } = await api.createPlanRequest(funds.fundId, plan, months, comment)
+      const { data } = await api.createPlanRequest(funds.fundId, payload)
       planRequests.value = [data, ...planRequests.value]
     })
   }
@@ -236,21 +286,31 @@ export const useAdminStore = defineStore('admin', () => {
   return {
     pending,
     members,
-    expenses,
     requisites,
     transfers,
     planRequests,
+    history,
+    historyTotal,
+    historyTotals,
+    historyFilters,
+    isHistoryLoading,
+    hasMoreHistory,
     onlyDebtors,
     isLoading,
     isSubmitting,
     errorMessage,
     joinRequests,
     registry,
+    formerMembers,
     debtorsCount,
     visibleMembers,
     activeCurrencies,
     hasPendingPlanRequest,
-    fetchAll,
+    fetchPending,
+    fetchMembers,
+    fetchAccounts,
+    fetchSettings,
+    fetchHistory,
     approve,
     reject,
     approveMember,

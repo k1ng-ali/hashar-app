@@ -117,7 +117,7 @@ const missingCurrencies = computed(() =>
 
 .code {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   color: $text-secondary;
 }
 
@@ -132,7 +132,7 @@ const missingCurrencies = computed(() =>
 
 .balance {
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 }
 
@@ -177,7 +177,7 @@ const missingCurrencies = computed(() =>
 .card-title {
   margin: 0;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 }
 
@@ -203,7 +203,7 @@ const missingCurrencies = computed(() =>
   padding: 10px 0;
 
   & + & {
-    border-top: 1px solid rgba(35, 73, 112, 0.06);
+    border-top: 1px solid rgba(17, 24, 39, 0.06);
   }
 }
 
@@ -213,7 +213,7 @@ const missingCurrencies = computed(() =>
   flex-wrap: wrap;
   gap: 6px;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
 
   .out {
     color: $danger;

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { LuChevronDown, LuChevronLeft } from '@kalimahapps/vue-icons/lu'
+import { LuBell, LuChevronDown, LuChevronLeft } from '@kalimahapps/vue-icons/lu'
 import { useAuthStore } from '@/features/auth/store.ts'
+import { useDashboardStore } from '@/features/dashboard/store.ts'
 import FundSwitcherSheet from '@/features/funds/components/FundSwitcherSheet.vue'
 import { useFundsStore } from '@/features/funds/store.ts'
 import type { MyFund } from '@/features/funds/types.ts'
@@ -13,11 +14,18 @@ const router = useRouter()
 const headerStore = useHeaderStore()
 const authStore = useAuthStore()
 const fundsStore = useFundsStore()
+const dashboardStore = useDashboardStore()
 
 const isProfileOpen = ref(false)
 const isSwitcherOpen = ref(false)
 
 const initials = computed(() => authStore.user?.full_name.slice(0, 1) ?? '?')
+
+// Колокольчик — у совета: чеки на проверке и заявки на вступление
+const attentionCount = computed(() => {
+  const summary = dashboardStore.summary
+  return summary ? summary.pending_count + summary.pending_members_count : 0
+})
 
 // ── Handlers ─────────────────────────────────────────────────────────────
 async function selectFund(fund: MyFund) {
@@ -35,31 +43,42 @@ function manageFunds() {
 <template>
   <header class="app-header">
     <div class="header-inner">
-      <!-- Слева: «назад» или логотип -->
+      <!-- Слева: «назад» на вложенных экранах, иначе — профиль -->
       <button
         v-if="headerStore.leftAction"
-        class="back-btn"
+        class="circle-btn"
         :aria-label="$t('common.back')"
         @click="headerStore.leftAction()"
       >
         <LuChevronLeft />
       </button>
-      <div v-else class="brand-logo">🏠</div>
-
-      <div class="titles">
-        <h1 class="header-title">{{ headerStore.title || $t('app.name') }}</h1>
-        <!-- Переключатель фондов -->
-        <button v-if="fundsStore.current" class="fund-switch" @click="isSwitcherOpen = true">
-          {{ fundsStore.current.name }}
-          <LuChevronDown />
-        </button>
-      </div>
-
-      <!-- Справа: профиль -->
-      <button v-if="authStore.user" class="user-chip" :aria-label="$t('header.profile')" @click="isProfileOpen = true">
+      <button
+        v-else-if="authStore.user"
+        class="avatar-btn"
+        :aria-label="$t('header.profile')"
+        @click="isProfileOpen = true"
+      >
         <img v-if="authStore.user.avatar_url" :src="authStore.user.avatar_url" alt="" class="avatar" />
         <span v-else class="avatar avatar--fallback">{{ initials }}</span>
-        <span v-if="fundsStore.current" class="role">{{ $t(`roles.${fundsStore.current.my_role}`) }}</span>
+      </button>
+
+      <div class="titles">
+        <!-- Переключатель фондов — мелкой строкой над заголовком -->
+        <button v-if="fundsStore.current" class="fund-switch" @click="isSwitcherOpen = true">
+          <span>{{ fundsStore.current.name }}</span>
+          <LuChevronDown />
+        </button>
+        <h1 class="header-title">{{ headerStore.title || $t('app.name') }}</h1>
+      </div>
+
+      <button
+        v-if="fundsStore.permissions.isCouncil"
+        class="circle-btn"
+        :aria-label="$t('attention.title')"
+        @click="router.push('/fund')"
+      >
+        <LuBell />
+        <span v-if="attentionCount" class="bell-dot" />
       </button>
     </div>
 
@@ -90,49 +109,73 @@ function manageFunds() {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 100;
+  z-index: 90;
   padding-top: var(--sat);
-  background: rgba(246, 246, 246, 0.82);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(35, 73, 112, 0.05);
+  background: rgba(242, 242, 243, 0.9);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .header-inner {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: var(--header-height);
   max-width: var(--content-max);
+  height: var(--header-height);
   margin: 0 auto;
   padding: 0 16px;
 }
 
-/* ── Left ─────────────────────────────────────────────────────────────────── */
-.back-btn {
+.avatar-btn {
   @include pressable;
-  display: grid;
-  place-items: center;
   flex-shrink: 0;
-  width: 38px;
-  height: 38px;
+  padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  color: $navy;
-  font-size: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  background: none;
 }
 
-.brand-logo {
+.avatar {
+  display: block;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+
+  &--fallback {
+    display: grid;
+    place-items: center;
+    background: #E5E7EB;
+    color: $navy;
+    font-size: 16px;
+    font-weight: 600;
+  }
+}
+
+.circle-btn {
+  @include pressable;
+  position: relative;
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  background: $gradient;
-  font-size: 18px;
+  width: 42px;
+  height: 42px;
+  border: 1px solid $hairline;
+  border-radius: 50%;
+  background: $surface;
+  color: $navy;
+  font-size: 19px;
+}
+
+.bell-dot {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: $danger;
 }
 
 .titles {
@@ -142,69 +185,37 @@ function manageFunds() {
   min-width: 0;
 }
 
-.header-title {
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--fs-lg);
-  font-weight: 800;
-  line-height: 1.2;
-  color: $navy;
-}
-
 .fund-switch {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
+  align-self: flex-start;
   max-width: 100%;
   padding: 0;
-  overflow: hidden;
   border: none;
   background: none;
-  color: $teal;
+  color: $text-secondary;
   font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
+  font-weight: 500;
 
-/* ── User chip ────────────────────────────────────────────────────────────── */
-.user-chip {
-  @include pressable;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  padding: 4px 10px 4px 4px;
-  border: 1px solid rgba(35, 73, 112, 0.08);
-  border-radius: 30px;
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.avatar {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  object-fit: cover;
-
-  &--fallback {
-    display: grid;
-    place-items: center;
-    background: $gradient;
-    color: #fff;
-    font-size: 13px;
-    font-weight: 700;
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
-.role {
-  font-size: 12px;
-  font-weight: 700;
+.header-title {
+  margin: 0;
+  overflow: hidden;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.25;
   color: $navy;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* ── Toast ────────────────────────────────────────────────────────────────── */
 .toast {
   position: absolute;
   top: calc(var(--header-height) + var(--sat) + 8px);
@@ -212,18 +223,18 @@ function manageFunds() {
   transform: translateX(-50%);
   max-width: calc(100% - 32px);
   padding: 10px 18px;
-  border-radius: 30px;
+  border-radius: 16px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   color: #fff;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.18);
 
   &--success {
-    background: linear-gradient(135deg, #34D399, #10B981);
+    background: #111827;
   }
 
   &--error {
-    background: linear-gradient(135deg, #F87171, #EF4444);
+    background: $danger;
   }
 }
 
@@ -238,7 +249,7 @@ function manageFunds() {
   transform: translate(-50%, -8px);
 }
 
-// Модификатор ставит App.vue, когда слева есть сайдбар
+// Модификатор ставит App.vue, когда слева есть боковое меню
 @media (min-width: 768px) {
   .app-header--shifted {
     left: var(--nav-width);

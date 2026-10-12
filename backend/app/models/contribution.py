@@ -7,6 +7,11 @@
 - receipt_image: data URL чека (картинка или svg)
 - user_unit: снимок помещения участника на момент взноса
 - currency: валюта счёта, на который переведены деньги (из выбранного реквизита)
+- requisite_label: снимок реквизита («банк · номер · получатель») — реквизит могут удалить
+- credited_amount / credited_currency: сколько зачтено в счёт назначения — в базовой валюте
+  для ежемесячного взноса, в валюте сбора для целевого. При оплате в той же валюте
+  равно amount; при оплате в другой валюте сумму указывает участник, совет может
+  исправить при одобрении (платформа курсы не пересчитывает)
 """
 
 from sqlalchemy import TIMESTAMP, BigInteger, Column, ForeignKey, Integer, String, Text, func
@@ -24,7 +29,12 @@ class Contribution(Base):
     user_unit = Column(String(50), nullable=True)
     amount = Column(Integer, nullable=False)
     currency = Column(String(3), nullable=False, index=True)
-    requisite_id = Column(BigInteger, ForeignKey("payment_requisites.id", ondelete="SET NULL"), nullable=True)
+    requisite_id = Column(
+        BigInteger, ForeignKey("payment_requisites.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    requisite_label = Column(String(255), nullable=True)
+    credited_amount = Column(Integer, nullable=False)
+    credited_currency = Column(String(3), nullable=False)
     category = Column(String(20), nullable=False, default="monthly_fee", server_default="monthly_fee")
     target_fund_id = Column(BigInteger, ForeignKey("target_funds.id", ondelete="SET NULL"), nullable=True, index=True)
     billing_period = Column(String(7), nullable=True)

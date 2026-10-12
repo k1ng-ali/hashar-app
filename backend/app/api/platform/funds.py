@@ -91,7 +91,9 @@ async def get_fund(
 
 @router.post("/{fund_id}/leave", status_code=status.HTTP_204_NO_CONTENT)
 async def leave_fund(
-    ctx: FundContext = Depends(get_fund_context),
+    fund_id: int,
+    user: CurrentUser = Depends(get_current_user),
     service: FundService = Depends(get_fund_service),
 ):
-    await service.leave(ctx=ctx)
+    # Без проверки активного членства: выйти может и заблокированный
+    await service.leave(fund_id=fund_id, user_id=user.id)

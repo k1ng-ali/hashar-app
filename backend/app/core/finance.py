@@ -4,15 +4,25 @@
 Чистые функции без БД — их удобно покрывать unit-тестами.
 
 Правила:
-- начисление: тариф × количество месяцев от start_period фонда до текущего включительно
-- оплачено: только одобренные (approved) ежемесячные взносы в базовой валюте фонда
+- начисление: сумма тарифов за каждый месяц от начала расчётов до текущего включительно;
+  тариф месяца берётся из истории (fund_rates), поэтому смена тарифа прошлое не меняет
+- оплата закрывает месяцы по порядку: май по тарифу мая, июнь по тарифу июня и т. д.
+- оплачено: зачтённые суммы (credited_amount) одобренных ежемесячных взносов в базовой валюте фонда
 - чеки на проверке (pending) показываются отдельно и в сальдо не входят
+- excluded — месяцы паузы (совет решил не начислять за отсутствие / блокировку):
+  в них ничего не начисляется, и оплата их пропускает
 """
 
 from datetime import datetime, timezone
 
 from app.enums import BalanceStatusEnum
 from app.schemas.balance import ResidentBalanceOut
+
+# [(период "YYYY-MM", тариф)] по возрастанию периода; запись действует до следующей
+RateSchedule = list[tuple[str, int]]
+
+# Предохранитель: дальше 100 лет вперёд аванс не раскладываем
+MAX_COVERED_MONTHS = 1200
 
 
 def current_period() -> str:
@@ -39,21 +49,60 @@ def periods_range(start: str, end: str) -> list[str]:
     return result
 
 
+def rate_at(schedule: RateSchedule, period: str) -> int:
+    """Тариф, действующий в месяце period. До первой записи — тариф первой записи."""
+    if not schedule:
+        return 0
+    amount = schedule[0][1]
+    for start, value in schedule:
+        if start > period:
+            break
+        amount = value
+    return amount
+
+
+def next_rate_change(schedule: RateSchedule, period: str) -> tuple[str, int] | None:
+    """Ближайшее запланированное изменение тарифа после месяца period."""
+    for start, value in schedule:
+        if start > period:
+            return start, value
+    return None
+
+
 def calculate_balance(
     paid: int,
     pending: int,
-    rate: int,
+    schedule: RateSchedule,
     start_period: str,
     today_period: str,
     currency: str = "tjs",
+    excluded: frozenset[str] | set[str] = frozenset(),
 ) -> ResidentBalanceOut:
-    accrued = periods_range(start_period, today_period)
-    total_due = len(accrued) * rate
+    accrued = [period for period in periods_range(start_period, today_period) if period not in excluded]
+    total_due = sum(rate_at(schedule, period) for period in accrued)
     balance = paid - total_due
 
-    paid_months_count = paid // rate if rate > 0 else 0
-    covered = [shift_period(start_period, i) for i in range(paid_months_count)]
-    unpaid = [p for p in accrued if p not in covered]
+    # Оплата закрывает месяцы по порядку, каждый — по своему тарифу
+    covered: list[str] = []
+    remaining = paid
+    period = start_period
+    for _ in range(MAX_COVERED_MONTHS):
+        if period in excluded:
+            period = shift_period(period, 1)
+            continue
+        rate = rate_at(schedule, period)
+        if rate == 0:
+            # Бесплатный месяц закрыт сам собой, но вперёд за него не «платим»
+            if period > today_period:
+                break
+        elif remaining < rate:
+            break
+        remaining -= rate
+        covered.append(period)
+        period = shift_period(period, 1)
+
+    covered_set = set(covered)
+    unpaid = [p for p in accrued if p not in covered_set]
 
     debt_amount = -balance if balance < 0 else 0
     advance_amount = balance if balance > 0 else 0
@@ -65,24 +114,26 @@ def calculate_balance(
     else:
         status = BalanceStatusEnum.ok
 
+    next_period = shift_period(today_period, 1)
     return ResidentBalanceOut(
         status=status,
         currency=currency,
-        rate=rate,
+        rate=rate_at(schedule, today_period),
+        next_rate=rate_at(schedule, next_period),
         balance=balance,
         total_due=total_due,
         total_paid=paid,
         pending_amount=pending,
         has_pending=pending > 0,
-        paid_months_count=paid_months_count,
+        paid_months_count=len(covered),
         paid_until_period=covered[-1] if covered else None,
         debt_amount=debt_amount,
-        # Округление вверх: неполный месяц тоже считается долгом
-        debt_months_count=-(-debt_amount // rate) if rate > 0 else 0,
+        # Неполностью оплаченный месяц тоже считается долгом
+        debt_months_count=len(unpaid),
         advance_amount=advance_amount,
-        advance_months_count=advance_amount // rate if rate > 0 else 0,
+        advance_months_count=sum(1 for p in covered if p > today_period),
         covered_periods=covered,
         unpaid_periods=unpaid,
         current_period=today_period,
-        next_billing_period=shift_period(today_period, 1),
+        next_billing_period=next_period,
     )

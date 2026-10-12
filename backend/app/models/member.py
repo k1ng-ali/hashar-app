@@ -3,7 +3,10 @@
 
 Заявка на вступление — это запись со статусом pending.
 - role: resident / admin / chairman (председатель у фонда ровно один)
-- status: pending → active | rejected; active → blocked
+- status: pending → active | rejected; active → blocked | left; left → pending (возвращение)
+- left_at: когда участник вышел; держится до решения совета о возвращении
+- blocked_at: когда заблокирован; держится до разблокировки
+  (вышедший во время блокировки остаётся blocked с заполненным left_at)
 - address_unit: помещение участника в этом фонде ("кв. 12")
 - message: сообщение к заявке на вступление
 """
@@ -27,6 +30,8 @@ class FundMember(Base):
     message = Column(Text, nullable=True)
     reviewed_by_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     joined_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    left_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    blocked_at = Column(TIMESTAMP(timezone=True), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     user = relationship("User", foreign_keys=[user_id], lazy="raise")

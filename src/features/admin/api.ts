@@ -2,15 +2,18 @@ import { http } from '@/shared/api/http.ts'
 import type { AccountTransfer } from '@/features/announcements/types.ts'
 import type { Contribution, ContributionStatus } from '@/features/contributions/types.ts'
 import type { Requisite } from '@/features/dashboard/types.ts'
-import type { Account, FundInfo, FundRole, MemberStatus, Plan } from '@/features/funds/types.ts'
+import type { Account, FundInfo, FundRole, MemberStatus } from '@/features/funds/types.ts'
 import type { TargetFund } from '@/features/targetFunds/types.ts'
 import type { Currency } from '@/shared/lib/currency.ts'
+import type { Expense } from '@/features/expenses/types.ts'
 import type {
-  Expense,
+  ContributionHistory,
   ExpenseCreate,
   FundSettingsUpdate,
+  HistoryFilters,
   Member,
   PlanRequest,
+  PlanRequestCreate,
   RequisiteCreate,
   TargetFundCreate,
   TransferCreate,
@@ -23,8 +26,23 @@ const council = (fundId: number) => `/council/funds/${fundId}`
 export const listContributions = (fundId: number, status?: ContributionStatus) =>
   http.get<Contribution[]>(`${council(fundId)}/contributions/`, { params: { status, limit: 100 } })
 
-export const approveContribution = (fundId: number, id: number) =>
-  http.post<Contribution>(`${council(fundId)}/contributions/${id}/approve`, { comment_admin: null })
+export const contributionsHistory = (fundId: number, filters: HistoryFilters, skip: number, limit: number) =>
+  http.get<ContributionHistory>(`${council(fundId)}/contributions/history`, {
+    params: {
+      status: filters.status ?? undefined,
+      currency: filters.currency ?? undefined,
+      requisite_id: filters.requisite_id ?? undefined,
+      q: filters.q.trim() || undefined,
+      skip,
+      limit,
+    },
+  })
+
+export const approveContribution = (fundId: number, id: number, creditedAmount: number | null) =>
+  http.post<Contribution>(`${council(fundId)}/contributions/${id}/approve`, {
+    comment_admin: null,
+    credited_amount: creditedAmount,
+  })
 
 export const rejectContribution = (fundId: number, id: number, reason: string) =>
   http.post<Contribution>(`${council(fundId)}/contributions/${id}/reject`, { comment_admin: reason })
@@ -32,12 +50,13 @@ export const rejectContribution = (fundId: number, id: number, reason: string) =
 // ── Members ──
 export const listMembers = (fundId: number) => http.get<Member[]>(`${council(fundId)}/members/`)
 
-export const approveMember = (fundId: number, id: number) => http.post(`${council(fundId)}/members/${id}/approve`)
+export const approveMember = (fundId: number, id: number, accrueAbsence: boolean | null) =>
+  http.post(`${council(fundId)}/members/${id}/approve`, { accrue_absence: accrueAbsence })
 
 export const rejectMember = (fundId: number, id: number) => http.post(`${council(fundId)}/members/${id}/reject`)
 
-export const updateMemberStatus = (fundId: number, id: number, status: MemberStatus) =>
-  http.patch(`${council(fundId)}/members/${id}/status`, { status })
+export const updateMemberStatus = (fundId: number, id: number, status: MemberStatus, accrueAbsence: boolean | null) =>
+  http.patch(`${council(fundId)}/members/${id}/status`, { status, accrue_absence: accrueAbsence })
 
 export const updateMemberRole = (fundId: number, id: number, role: FundRole) =>
   http.patch(`${council(fundId)}/members/${id}/role`, { role })
@@ -46,7 +65,6 @@ export const transferChairman = (fundId: number, memberId: number) =>
   http.post(`${council(fundId)}/members/transfer-chairman`, { member_id: memberId })
 
 // ── Expenses ──
-export const listExpenses = (fundId: number) => http.get<Expense[]>(`/funds/${fundId}/expenses/`, { params: { limit: 100 } })
 
 export const createExpense = (fundId: number, payload: ExpenseCreate) =>
   http.post<Expense>(`${council(fundId)}/expenses/`, payload)
@@ -91,5 +109,5 @@ export const updateSettings = (fundId: number, payload: FundSettingsUpdate) =>
 
 export const listPlanRequests = (fundId: number) => http.get<PlanRequest[]>(`${council(fundId)}/plan-requests/`)
 
-export const createPlanRequest = (fundId: number, plan: Plan, months: number, comment: string | null) =>
-  http.post<PlanRequest>(`${council(fundId)}/plan-requests/`, { plan, months, comment })
+export const createPlanRequest = (fundId: number, payload: PlanRequestCreate) =>
+  http.post<PlanRequest>(`${council(fundId)}/plan-requests/`, payload)

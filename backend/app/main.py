@@ -27,6 +27,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Имя CSV-файла фронтенд берёт из Content-Disposition
+    expose_headers=["Content-Disposition"],
 )
 
 app.include_router(api_router)

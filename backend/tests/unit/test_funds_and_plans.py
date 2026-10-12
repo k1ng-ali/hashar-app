@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
@@ -12,7 +13,7 @@ from app.services.account_service import AccountService
 from app.services.fund_service import FundService
 from app.services.member_service import MemberService
 from app.services.plan_service import PlanService
-from tests.unit.helpers import make_ctx, make_db, make_fund, make_member
+from tests.unit.helpers import make_db, make_fund, make_member
 
 # ─── Тарифы ───────────────────────────────────────────────────────────────────
 
@@ -47,7 +48,9 @@ async def test_plan_request_only_one_pending():
     from app.schemas.plan import PlanRequestIn
 
     with pytest.raises(HTTPException) as exc:
-        await service.create_request(fund_id=1, user_id=1, payload=PlanRequestIn(plan=PlanEnum.pro))
+        await service.create_request(
+            fund_id=1, user_id=1, payload=PlanRequestIn(plan=PlanEnum.pro, contact="+992900000000")
+        )
 
     assert exc.value.status_code == 409
     db.commit.assert_not_called()
@@ -80,9 +83,10 @@ async def test_join_blocked_member_forbidden():
 
 async def test_chairman_cannot_leave():
     service = FundService(db=make_db())
+    service.member_repo.get_by_user = AsyncMock(return_value=make_member(role="chairman"))
 
     with pytest.raises(HTTPException) as exc:
-        await service.leave(ctx=make_ctx(role=FundRoleEnum.chairman))
+        await service.leave(fund_id=1, user_id=1)
 
     assert exc.value.status_code == 409
 
@@ -167,10 +171,51 @@ async def test_new_member_accrues_from_join_month():
 
     service = MemberService(db=make_db())
     service.contribution_repo.monthly_sums_by_user = AsyncMock(return_value={})
+    service.rate_repo.schedule = AsyncMock(return_value=[("2020-01", 150)])
+    service.pause_repo.excluded_periods = AsyncMock(return_value={})
     member = make_member(joined_at=datetime.now(timezone.utc))
 
-    balances = await service._balances_for(make_fund(start_period="2020-01", monthly_rate=150), [member])
+    balances = await service._balances_for(make_fund(start_period="2020-01"), [member])
 
     # Вступил в этом месяце — начислен только текущий месяц, а не все с 2020 года
     assert balances[member.user_id].total_due == 150
     assert balances[member.user_id].unpaid_periods == [current_period()]
+
+
+# ─── Тариф взноса ────────────────────────────────────────────────────────────
+
+
+def make_fund_service(schedule):
+    service = FundService(db=make_db())
+    service.rate_repo.get = AsyncMock(
+        side_effect=lambda fund_id, period: next(
+            (SimpleNamespace(period=p, amount=a) for p, a in schedule if p == period), None
+        )
+    )
+    service.rate_repo.schedule = AsyncMock(side_effect=lambda fund_id: list(schedule))
+    service.rate_repo.create = AsyncMock()
+    service.rate_repo.delete = AsyncMock(side_effect=lambda rate: schedule.remove((rate.period, rate.amount)))
+    return service
+
+
+async def test_rate_change_starts_next_month():
+    from app.core.finance import current_period, shift_period
+
+    service = make_fund_service([("2020-01", 150)])
+    await service._schedule_rate(make_fund(start_period="2020-01"), 200, user_id=1)
+
+    kwargs = service.rate_repo.create.call_args.kwargs
+    assert kwargs["period"] == shift_period(current_period(), 1)
+    assert kwargs["amount"] == 200
+
+
+async def test_rate_change_back_cancels_planned():
+    from app.core.finance import current_period, shift_period
+
+    next_period = shift_period(current_period(), 1)
+    schedule = [("2020-01", 150), (next_period, 200)]
+    service = make_fund_service(schedule)
+    await service._schedule_rate(make_fund(start_period="2020-01"), 150, user_id=1)
+
+    service.rate_repo.create.assert_not_called()
+    assert schedule == [("2020-01", 150)]

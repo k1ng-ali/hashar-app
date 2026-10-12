@@ -31,9 +31,15 @@ const purpose = computed(() =>
       <div class="info">
         <span class="category">{{ $t(`contributionCategory.${contribution.category}`) }}</span>
         <span class="purpose">{{ purpose }}</span>
+        <span v-if="contribution.requisite_label" class="requisite">💳 {{ contribution.requisite_label }}</span>
         <span v-if="contribution.comment_user" class="comment">«{{ contribution.comment_user }}»</span>
       </div>
-      <span class="amount">{{ formatMoney(contribution.amount, contribution.currency, true) }}</span>
+      <div class="sums">
+        <span class="amount">{{ formatMoney(contribution.amount, contribution.currency, true) }}</span>
+        <span v-if="contribution.currency !== contribution.credited_currency" class="credited">
+          {{ $t('contribution.creditedShort', { amount: formatMoney(contribution.credited_amount, contribution.credited_currency) }) }}
+        </span>
+      </div>
     </div>
 
     <div class="footer">
@@ -114,7 +120,7 @@ const purpose = computed(() =>
 .amount {
   flex-shrink: 0;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   color: $success;
 }
 
@@ -144,5 +150,26 @@ const purpose = computed(() =>
   color: #B91C1C;
   font-size: 12px;
   font-weight: 600;
+}
+
+.requisite {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: $text-secondary;
+}
+
+.sums {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.credited {
+  font-size: 11px;
+  font-weight: 600;
+  color: $text-muted;
 }
 </style>

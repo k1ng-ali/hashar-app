@@ -38,7 +38,7 @@ defineProps<{
   padding: 10px 0;
 
   & + & {
-    border-top: 1px solid rgba(35, 73, 112, 0.06);
+    border-top: 1px solid rgba(17, 24, 39, 0.06);
   }
 }
 
@@ -66,7 +66,7 @@ defineProps<{
 
 .amount {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   color: $danger;
 }
 

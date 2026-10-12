@@ -12,7 +12,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'request', plan: Plan): void
+  (e: 'request', plan: Plan, renewal: boolean): void
 }>()
 
 const usage = computed(() =>
@@ -21,6 +21,9 @@ const usage = computed(() =>
 
 // Апгрейд — только на тарифы выше текущего
 const ORDER: Plan[] = ['free', 'pro', 'max', 'individual']
+// Продлить можно действующий платный тариф (срок добавится к дате окончания)
+const canRenew = computed(() => props.info.effective_plan !== 'free')
+
 const upgrades = computed(() =>
   props.options.filter((o) => ORDER.indexOf(o.plan) > ORDER.indexOf(props.info.effective_plan)),
 )
@@ -48,6 +51,15 @@ const upgrades = computed(() =>
 
     <p v-if="info.plan !== info.effective_plan" class="warning">⚠️ {{ $t('plans.expired') }}</p>
 
+    <button
+      v-if="canRequest && canRenew"
+      class="renew-btn"
+      :disabled="hasPendingRequest"
+      @click="emit('request', info.effective_plan, true)"
+    >
+      🔄 {{ $t('plans.renew') }}
+    </button>
+
     <!-- Тарифы для повышения -->
     <div v-if="upgrades.length" class="options">
       <div v-for="option in upgrades" :key="option.plan" class="option">
@@ -65,7 +77,7 @@ const upgrades = computed(() =>
             v-if="canRequest"
             class="request-btn"
             :disabled="hasPendingRequest"
-            @click="emit('request', option.plan)"
+            @click="emit('request', option.plan, false)"
           >
             {{ $t('plans.request') }}
           </button>
@@ -100,7 +112,7 @@ const upgrades = computed(() =>
 
 .plan-name {
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   background: $gradient;
   -webkit-background-clip: text;
   background-clip: text;
@@ -110,8 +122,8 @@ const upgrades = computed(() =>
 .expires {
   padding: 3px 10px;
   border-radius: 20px;
-  background: rgba(78, 190, 194, 0.14);
-  color: #0E7C80;
+  background: rgba(17, 24, 39, 0.14);
+  color: #111827;
   font-size: 11px;
   font-weight: 700;
 }
@@ -186,5 +198,12 @@ const upgrades = computed(() =>
   margin: 0;
   font-size: 12px;
   color: #B45309;
+}
+
+.renew-btn {
+  @include cta-button;
+  align-self: flex-start;
+  padding: 9px 16px;
+  font-size: 13px;
 }
 </style>

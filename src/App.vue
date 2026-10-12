@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/features/auth/store.ts'
+import { useDashboardStore } from '@/features/dashboard/store.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
 import Header from '@/features/header/Header.vue'
 import Navigator from '@/features/navigator/Navigator.vue'
@@ -12,6 +13,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const fundsStore = useFundsStore()
 const navStore = useNavStore()
+const dashboardStore = useDashboardStore()
 
 const isReady = ref(false)
 
@@ -19,13 +21,25 @@ const isReady = ref(false)
 const showChrome = computed(() => authStore.isAuthenticated && !route.meta.public)
 const showNavigator = computed(() => showChrome.value && !!fundsStore.current && !!route.meta.fund)
 
+// Подразделы «Финансов» меняются внутри своей страницы, без её пересоздания
+const pageKey = computed(() => (route.path.startsWith('/finance/') ? '/finance' : route.path))
+
+// Счётчики совета (колокольчик, бейджи в навигации) нужны на любом экране
+watch(
+  () => [fundsStore.fundId, fundsStore.permissions.isCouncil] as const,
+  ([fundId, isCouncil]) => {
+    if (fundId && isCouncil) void dashboardStore.fetchSummary().catch(() => undefined)
+  },
+  { immediate: true },
+)
+
 // Тема ant-design-vue под фирменные цвета
 const antTheme = {
   token: {
-    colorPrimary: '#4EBEC2',
-    colorLink: '#234970',
+    colorPrimary: '#111827',
+    colorLink: '#111827',
     borderRadius: 12,
-    fontFamily: "'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   },
 }
 
@@ -62,7 +76,7 @@ onMounted(async () => {
         <router-view v-slot="{ Component }">
           <Transition name="fade" mode="out-in">
             <!-- key по фонду: при переключении фонда страница загружает данные заново -->
-            <component :is="Component" :key="`${fundsStore.fundId}-${route.path}`" />
+            <component :is="Component" :key="`${fundsStore.fundId}-${pageKey}`" />
           </Transition>
         </router-view>
       </main>
@@ -99,13 +113,13 @@ onMounted(async () => {
   border-radius: 26px;
   background: $gradient;
   font-size: 40px;
-  box-shadow: 0 10px 30px rgba(78, 190, 194, 0.4);
+  box-shadow: none;
   animation: pulse 1.4s ease-in-out infinite;
 }
 
 .splash-title {
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 }
 

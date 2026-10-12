@@ -3,6 +3,7 @@
 
 Онлайн-оплаты пока нет: админ платформы подтверждает заявку после оплаты
 и включает тариф на указанное число месяцев.
+- contact: как связаться с председателем по оплате (телефон, Telegram, email)
 """
 
 from sqlalchemy import TIMESTAMP, BigInteger, Column, ForeignKey, Integer, String, Text, func
@@ -19,6 +20,7 @@ class PlanRequest(Base):
     plan = Column(String(20), nullable=False)
     months = Column(Integer, nullable=False, default=1, server_default="1")
     status = Column(String(20), nullable=False, default="pending", server_default="pending", index=True)
+    contact = Column(String(150), nullable=False)
     comment = Column(Text, nullable=True)
     admin_comment = Column(Text, nullable=True)
     requested_by_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

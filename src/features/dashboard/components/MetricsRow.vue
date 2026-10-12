@@ -59,7 +59,7 @@ defineProps<{
   height: 30px;
   margin-bottom: 4px;
   border-radius: 10px;
-  background: rgba(35, 73, 112, 0.08);
+  background: rgba(17, 24, 39, 0.08);
   color: $navy;
   font-size: 16px;
 
@@ -84,7 +84,7 @@ defineProps<{
 
 .metric-value {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 
   &--in {

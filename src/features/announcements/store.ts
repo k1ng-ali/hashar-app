@@ -3,7 +3,13 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useFundsStore } from '@/features/funds/store.ts'
 import * as api from './api.ts'
-import type { Announcement, AnnouncementCategory, AnnouncementCreate } from './types.ts'
+import type {
+  Announcement,
+  AnnouncementCategory,
+  AnnouncementCreate,
+  EmergencyContact,
+  EmergencyContactCreate,
+} from './types.ts'
 
 export type AnnouncementsFilter = 'all' | AnnouncementCategory
 
@@ -12,6 +18,7 @@ export const useAnnouncementsStore = defineStore('announcements', () => {
 
   // ── State ─────────────────────────────────────────────────────────────
   const items = ref<Announcement[]>([])
+  const contacts = ref<EmergencyContact[]>([])
   const filter = ref<AnnouncementsFilter>('all')
   const isLoading = ref(false)
   const isSubmitting = ref(false)
@@ -65,12 +72,33 @@ export const useAnnouncementsStore = defineStore('announcements', () => {
     items.value = items.value.filter((item) => item.id !== id)
   }
 
+  // ── Экстренные телефоны ───────────────────────────────────────────────
+  async function fetchContacts() {
+    contacts.value = (await api.listEmergencyContacts(funds.fundId)).data
+  }
+
+  async function addContact(payload: EmergencyContactCreate) {
+    isSubmitting.value = true
+    try {
+      const { data } = await api.createEmergencyContact(funds.fundId, payload)
+      contacts.value = [...contacts.value, data]
+    } finally {
+      isSubmitting.value = false
+    }
+  }
+
+  async function removeContact(id: number) {
+    await api.deleteEmergencyContact(funds.fundId, id)
+    contacts.value = contacts.value.filter((contact) => contact.id !== id)
+  }
+
   function replace(announcement: Announcement) {
     items.value = items.value.map((item) => (item.id === announcement.id ? announcement : item))
   }
 
   return {
     items,
+    contacts,
     filter,
     isLoading,
     isSubmitting,
@@ -80,5 +108,8 @@ export const useAnnouncementsStore = defineStore('announcements', () => {
     like,
     comment,
     remove,
+    fetchContacts,
+    addContact,
+    removeContact,
   }
 })

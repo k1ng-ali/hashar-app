@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
 import { LuPlus } from '@kalimahapps/vue-icons/lu'
 import { useAuthStore } from '@/features/auth/store.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
@@ -14,25 +13,17 @@ import CardSkeleton from '@/shared/components/CardSkeleton.vue'
 import EmptyState from '@/shared/components/EmptyState.vue'
 import PillTabs from '@/shared/components/PillTabs.vue'
 import { formatMoney } from '@/shared/lib/format.ts'
-import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 import { useReceiptStore } from '@/shared/stores/useReceiptStore.ts'
 
-const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const fundsStore = useFundsStore()
 const store = useContributionsStore()
-const headerStore = useHeaderStore()
 const receiptStore = useReceiptStore()
 
 onMounted(async () => {
-  headerStore.setTitle(t('history.title'))
   store.filter = 'all'
   await store.fetchMy()
-})
-
-onUnmounted(() => {
-  headerStore.reset()
 })
 
 // ── Handlers ─────────────────────────────────────────────────────────────
@@ -137,7 +128,7 @@ function openReceipt(contribution: Contribution) {
 
 .account-unit {
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 }
 

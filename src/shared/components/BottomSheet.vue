@@ -1,3 +1,18 @@
+<script lang="ts">
+// Общий счётчик открытых шторок: закрытие верхней не должна разблокировать прокрутку под нижней
+let openSheets = 0
+
+function lockScroll() {
+  openSheets += 1
+  document.body.style.overflow = 'hidden'
+}
+
+function unlockScroll() {
+  openSheets = Math.max(0, openSheets - 1)
+  if (!openSheets) document.body.style.overflow = ''
+}
+</script>
+
 <script setup lang="ts">
 import { onBeforeUnmount, watch } from 'vue'
 import { LuX } from '@kalimahapps/vue-icons/lu'
@@ -6,29 +21,33 @@ const props = defineProps<{
   open: boolean
   title: string
   subtitle?: string
+  // Поверх других шторок (например, просмотр чека из карточки расхода)
+  overlay?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-// Блокируем прокрутку страницы под шторкой
+// Блокируем прокрутку страницы, пока открыта хотя бы одна шторка
 watch(
   () => props.open,
-  (isOpen) => {
-    document.body.style.overflow = isOpen ? 'hidden' : ''
+  (isOpen, wasOpen) => {
+    if (isOpen && !wasOpen) lockScroll()
+    else if (!isOpen && wasOpen) unlockScroll()
   },
+  { immediate: true },
 )
 
 onBeforeUnmount(() => {
-  document.body.style.overflow = ''
+  if (props.open) unlockScroll()
 })
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="sheet">
-      <div v-if="open" class="sheet-backdrop" @click.self="emit('close')">
+      <div v-if="open" class="sheet-backdrop" :class="{ 'sheet-backdrop--overlay': overlay }" @click.self="emit('close')">
         <div class="sheet" role="dialog" :aria-label="title">
           <div class="sheet-handle" />
 
@@ -67,6 +86,10 @@ onBeforeUnmount(() => {
   justify-content: center;
   background: rgba(15, 23, 42, 0.4);
   backdrop-filter: blur(4px);
+
+  &--overlay {
+    z-index: 1100;
+  }
 }
 
 .sheet {
@@ -86,7 +109,7 @@ onBeforeUnmount(() => {
   height: 5px;
   margin: 10px auto 0;
   border-radius: 3px;
-  background: rgba(35, 73, 112, 0.18);
+  background: rgba(17, 24, 39, 0.18);
 }
 
 /* ── Header ───────────────────────────────────────────────────────────────── */
@@ -101,7 +124,7 @@ onBeforeUnmount(() => {
 .sheet-title {
   margin: 0;
   font-size: 19px;
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 }
 
@@ -120,7 +143,7 @@ onBeforeUnmount(() => {
   height: 36px;
   border: none;
   border-radius: 50%;
-  background: rgba(35, 73, 112, 0.08);
+  background: rgba(17, 24, 39, 0.08);
   color: $navy;
   font-size: 18px;
 }
@@ -136,7 +159,7 @@ onBeforeUnmount(() => {
   display: flex;
   gap: 10px;
   padding: 12px 20px 16px;
-  border-top: 1px solid rgba(35, 73, 112, 0.06);
+  border-top: 1px solid rgba(17, 24, 39, 0.06);
 }
 
 /* ── Анимация ─────────────────────────────────────────────────────────────── */

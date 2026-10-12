@@ -7,6 +7,7 @@ from app.services.announcement_service import AnnouncementService
 from app.services.auth_service import AuthService
 from app.services.contribution_service import ContributionService
 from app.services.dashboard_service import DashboardService
+from app.services.emergency_contact_service import EmergencyContactService
 from app.services.expense_service import ExpenseService
 from app.services.fund_service import FundService
 from app.services.member_service import MemberService
@@ -57,3 +58,7 @@ async def get_announcement_service(db: AsyncSession = Depends(get_db)) -> Announ
 
 async def get_report_service(db: AsyncSession = Depends(get_db)) -> ReportService:
     return ReportService(db=db)
+
+
+async def get_emergency_contact_service(db: AsyncSession = Depends(get_db)) -> EmergencyContactService:
+    return EmergencyContactService(db=db)

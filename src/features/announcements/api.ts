@@ -1,5 +1,12 @@
 import { http } from '@/shared/api/http.ts'
-import type { Announcement, AnnouncementCategory, AnnouncementComment, AnnouncementCreate } from './types.ts'
+import type {
+  Announcement,
+  AnnouncementCategory,
+  AnnouncementComment,
+  AnnouncementCreate,
+  EmergencyContact,
+  EmergencyContactCreate,
+} from './types.ts'
 
 const base = (fundId: number) => `/funds/${fundId}/announcements`
 
@@ -15,3 +22,13 @@ export const addComment = (fundId: number, id: number, text: string) =>
   http.post<AnnouncementComment>(`${base(fundId)}/${id}/comments`, { text })
 
 export const deleteAnnouncement = (fundId: number, id: number) => http.delete<void>(`${base(fundId)}/${id}`)
+
+// ── Экстренные телефоны: смотрят все, ведёт совет ──
+export const listEmergencyContacts = (fundId: number) =>
+  http.get<EmergencyContact[]>(`/funds/${fundId}/emergency-contacts/`)
+
+export const createEmergencyContact = (fundId: number, payload: EmergencyContactCreate) =>
+  http.post<EmergencyContact>(`/council/funds/${fundId}/emergency-contacts/`, payload)
+
+export const deleteEmergencyContact = (fundId: number, id: number) =>
+  http.delete<void>(`/council/funds/${fundId}/emergency-contacts/${id}`)

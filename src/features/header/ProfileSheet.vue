@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatPhone } from '@/shared/lib/formatters.ts'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { LuLogOut } from '@kalimahapps/vue-icons/lu'
@@ -6,8 +7,6 @@ import { useAuthStore } from '@/features/auth/store.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
 import BottomSheet from '@/shared/components/BottomSheet.vue'
 import { LOCALES, setLocale } from '@/shared/i18n/index.ts'
-import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
-import { errorDetail } from '@/shared/api/http.ts'
 
 defineProps<{
   open: boolean
@@ -17,28 +16,14 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-const { t, locale } = useI18n()
+const { locale } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const fundsStore = useFundsStore()
-const headerStore = useHeaderStore()
 
 function go(path: string) {
   emit('close')
   void router.push(path)
-}
-
-async function handleLeave() {
-  if (!fundsStore.current || !window.confirm(t('funds.leaveConfirm', { name: fundsStore.current.name }))) return
-  try {
-    await fundsStore.leave()
-    emit('close')
-    await router.push(fundsStore.current ? '/' : '/funds')
-  } catch (error) {
-    // Председатель не может выйти, пока не передал права
-    const transferFirst = errorDetail(error) === 'Transfer chairman rights first'
-    headerStore.showNotification(transferFirst ? t('funds.leaveChairman') : t('errors.generic'), 'error', 3500)
-  }
 }
 
 async function handleLogout() {
@@ -51,7 +36,7 @@ async function handleLogout() {
   <BottomSheet :open="open" :title="$t('header.profile')" @close="emit('close')">
     <div v-if="authStore.user" class="profile-card">
       <div class="name">{{ authStore.user.full_name }}</div>
-      <div class="meta">{{ authStore.user.phone ?? authStore.user.email }}</div>
+      <div class="meta">{{ authStore.user.phone ? formatPhone(authStore.user.phone) : authStore.user.email }}</div>
       <div v-if="fundsStore.current" class="fund-line">
         <span class="role-badge">{{ $t(`roles.${fundsStore.current.my_role}`) }}</span>
         <span>{{ fundsStore.current.name }} · {{ fundsStore.currentMembership?.address_unit }}</span>
@@ -79,7 +64,6 @@ async function handleLogout() {
       </button>
     </div>
 
-    <button v-if="fundsStore.current" class="leave-btn" @click="handleLeave">{{ $t('funds.leave') }}</button>
     <button class="logout-btn" @click="handleLogout">
       <LuLogOut />
       {{ $t('header.logout') }}
@@ -101,7 +85,7 @@ async function handleLogout() {
 
   .name {
     font-size: 18px;
-    font-weight: 800;
+    font-weight: 700;
     color: $navy;
   }
 
@@ -164,13 +148,6 @@ async function handleLogout() {
   }
 }
 
-.leave-btn {
-  @include ghost-button;
-  width: 100%;
-  margin-bottom: 8px;
-  padding: 12px;
-  color: $text-secondary;
-}
 
 .logout-btn {
   @include ghost-button;

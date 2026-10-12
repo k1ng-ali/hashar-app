@@ -5,13 +5,17 @@ import ReceiptPicker from '@/shared/components/ReceiptPicker.vue'
 import { generateReceiptSvg } from '@/shared/lib/receiptGenerator.ts'
 import type { TargetFund } from '@/features/targetFunds/types.ts'
 import { type Currency } from '@/shared/lib/currency.ts'
-import { EXPENSE_CATEGORIES, type ExpenseCategory, type ExpenseCreate } from '../types.ts'
+import { EXPENSE_CATEGORIES, type ExpenseCategory } from '@/features/expenses/types.ts'
+import type { ExpenseCreate } from '../types.ts'
+import OverdraftNotice from './OverdraftNotice.vue'
 
 const props = defineProps<{
   funds: TargetFund[]
   fundName: string
   currencies: Currency[]
   baseCurrency: Currency
+  /** Остатки счетов — чтобы предупредить о списании в минус. */
+  balances: Partial<Record<Currency, number>>
   isSubmitting: boolean
 }>()
 
@@ -30,8 +34,12 @@ const form = reactive({
   receipt: '',
   // 0 — общий баланс дома (a-select не принимает null)
   targetFundId: 0,
+  allowOverdraft: false,
 })
 const error = ref('')
+
+const available = computed(() => props.balances[form.currency] ?? 0)
+const needsConfirm = computed(() => (form.amount ?? 0) > available.value && !form.allowOverdraft)
 
 // Списать за счёт сбора можно только в его валюте
 const fundsInCurrency = computed(() => props.funds.filter((f) => f.currency === form.currency))
@@ -59,6 +67,10 @@ function handleSubmit() {
     error.value = t('admin.expenses.validation')
     return
   }
+  if (needsConfirm.value) {
+    error.value = t('overdraft.required')
+    return
+  }
   error.value = ''
   emit('submit', {
     title: form.title.trim(),
@@ -68,6 +80,7 @@ function handleSubmit() {
     description: form.description.trim(),
     receipt_images: form.receipt ? [form.receipt] : [],
     target_fund_id: form.targetFundId || null,
+    allow_overdraft: form.allowOverdraft,
   })
 }
 </script>
@@ -110,6 +123,13 @@ function handleSubmit() {
         </button>
       </div>
     </div>
+
+    <OverdraftNotice
+      v-model="form.allowOverdraft"
+      :available="available"
+      :amount="form.amount"
+      :currency="form.currency"
+    />
 
     <div>
       <span class="label">{{ $t('admin.expenses.fromFund') }}</span>

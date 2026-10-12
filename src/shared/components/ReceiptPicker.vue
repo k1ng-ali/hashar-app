@@ -80,7 +80,7 @@ async function handleFile(event: Event) {
     height: 84px;
     object-fit: cover;
     border-radius: 10px;
-    border: 1px solid rgba(35, 73, 112, 0.1);
+    border: 1px solid rgba(17, 24, 39, 0.1);
     background: #fff;
   }
 }
@@ -125,9 +125,9 @@ async function handleFile(event: Event) {
   align-items: center;
   gap: 4px;
   padding: 20px 16px;
-  border: 2px dashed rgba(78, 190, 194, 0.5);
+  border: 2px dashed rgba(17, 24, 39, 0.5);
   border-radius: 18px;
-  background: rgba(78, 190, 194, 0.06);
+  background: rgba(17, 24, 39, 0.06);
   cursor: pointer;
   text-align: center;
 }

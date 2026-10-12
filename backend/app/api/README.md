@@ -56,9 +56,9 @@
 | GET | `/operations?type=all\|income\|expense\|transfer` | Лента операций |
 | GET | `/accounts`, `/requisites` | Активные счета и реквизиты |
 | GET | `/contributions/my`, `/contributions/my/balance` | Мои взносы и сальдо (в базовой валюте) |
-| POST | `/contributions/` | Взнос: `requisite_id` задаёт валюту |
+| POST | `/contributions/` | Взнос: `requisite_id` задаёт валюту; `credited_amount` — если валюта не совпадает с валютой назначения |
 | GET | `/target-funds/`, `/target-funds/{id}` | Целевые сборы |
-| GET | `/expenses/` | Реестр расходов |
+| GET | `/expenses/?category=&currency=`, `/expenses/{id}` | Лента расходов и карточка расхода |
 | GET / POST / DELETE | `/announcements/...` | Доска объявлений, лайки, комментарии |
 | GET | `/reports/financial?currency=`, `/reports/debtors`, `/reports/export/*` | Отчёты и CSV |
 
@@ -71,14 +71,15 @@
 | PATCH | `/members/{id}/status` | Блокировка / разблокировка |
 | PATCH ⭐ | `/members/{id}/role` | Житель ↔ ревизор |
 | POST ⭐ | `/members/transfer-chairman` | Передать права председателя |
-| GET / POST | `/contributions/`, `/{id}/approve`, `/{id}/reject` | Проверка чеков |
-| POST / DELETE ⭐ | `/expenses/` | Расходы (валюта счёта списания) |
+| GET / POST | `/contributions/`, `/{id}/approve`, `/{id}/reject` | Проверка чеков (при одобрении можно поправить `credited_amount`) |
+| GET | `/contributions/history?status=&currency=&requisite_id=&q=` | История чеков с итогами по валютам |
+| POST / DELETE ⭐ | `/expenses/` | Расходы (валюта счёта списания); сверх остатка — только с `allow_overdraft` |
 | POST / PATCH / toggle / DELETE ⭐ | `/target-funds/...` | Целевые сборы (валюта цели) |
-| PATCH | `/settings` | Инфо фонда; ⭐ базовая валюта, тариф взноса, период |
+| PATCH | `/settings` | Инфо фонда; ⭐ базовая валюта, тариф взноса (с 1-го числа следующего месяца), период |
 | POST ⭐ | `/accounts`, `/accounts/{currency}/disable` | Включить / отключить валютный счёт |
 | GET / POST ⭐ / toggle ⭐ / DELETE ⭐ | `/requisites` | Реквизиты с валютой |
-| GET / POST | `/transfers/` | Переводы и корректировки (+ объявление) |
-| GET / POST ⭐ | `/plan-requests/` | Заявки на тариф |
+| GET / POST | `/transfers/` | Переводы и корректировки (+ объявление); списание сверх остатка — только с `allow_overdraft` |
+| GET / POST ⭐ | `/plan-requests/` | Заявки на тариф и продление (обязателен `contact`) |
 
 ### Admin — админ платформы
 
@@ -86,5 +87,5 @@
 |---|---|---|
 | GET | `/admin/plan-requests?status=` | Заявки на тарифы |
 | POST | `/admin/plan-requests/{id}/approve`, `/reject` | Включить тариф на N месяцев / отклонить |
-| GET | `/admin/funds` | Все фонды с тарифами |
+| GET | `/admin/funds` | Все фонды с тарифами, председателем и администраторами (контакты) |
 | PUT | `/admin/funds/{id}/plan` | Установить тариф вручную |

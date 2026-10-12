@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatPhone, phoneHref } from '@/shared/lib/formatters.ts'
 import { LuCopy } from '@kalimahapps/vue-icons/lu'
 import type { Requisite } from '../types.ts'
 
@@ -29,7 +30,7 @@ const emit = defineEmits<{
     </div>
     <div v-if="requisite.phone_number" class="row">
       <span class="label">{{ $t('requisites.sbp') }}</span>
-      <strong>{{ requisite.phone_number }}</strong>
+      <a class="phone-link" :href="phoneHref(requisite.phone_number)">{{ formatPhone(requisite.phone_number) }}</a>
     </div>
     <p v-if="requisite.note" class="note">{{ requisite.note }}</p>
 
@@ -66,7 +67,7 @@ const emit = defineEmits<{
 
 .bank {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 }
 
@@ -74,8 +75,8 @@ const emit = defineEmits<{
   margin-left: 6px;
   padding: 2px 8px;
   border-radius: 10px;
-  background: rgba(78, 190, 194, 0.14);
-  color: #0E7C80;
+  background: rgba(17, 24, 39, 0.14);
+  color: #111827;
   font-size: 11px;
   font-weight: 700;
 }
@@ -89,7 +90,7 @@ const emit = defineEmits<{
   font-weight: 700;
 
   .requisite--inactive & {
-    background: rgba(35, 73, 112, 0.08);
+    background: rgba(17, 24, 39, 0.08);
     color: $text-secondary;
   }
 }
@@ -100,14 +101,14 @@ const emit = defineEmits<{
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 1px;
-  color: #1F2937;
+  color: #111827;
 }
 
 .row {
   display: flex;
   gap: 6px;
   font-size: 13px;
-  color: #1F2937;
+  color: #111827;
 }
 
 .label {
@@ -118,7 +119,7 @@ const emit = defineEmits<{
   margin: 4px 0 0;
   padding: 8px 10px;
   border-radius: 10px;
-  background: rgba(78, 190, 194, 0.08);
+  background: rgba(17, 24, 39, 0.08);
   font-size: 12px;
   color: $text-secondary;
 }
@@ -130,5 +131,11 @@ const emit = defineEmits<{
   &:disabled {
     opacity: 0.5;
   }
+}
+
+.phone-link {
+  font-weight: 700;
+  color: $navy;
+  text-decoration: none;
 }
 </style>

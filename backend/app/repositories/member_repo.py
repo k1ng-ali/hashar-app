@@ -46,6 +46,26 @@ class MemberRepository(BaseRepository):
         result = await self.db.execute(stmt.order_by(role_order, FundMember.address_unit, FundMember.id))
         return list(result.scalars().all())
 
+    async def list_council_by_funds(self, fund_ids: list[int]) -> dict[int, list[FundMember]]:
+        """{fund_id: [председатель, администраторы]} — активные члены совета с пользователями."""
+        if not fund_ids:
+            return {}
+        role_order = case({"chairman": 0}, value=FundMember.role, else_=1)
+        result = await self.db.execute(
+            select(FundMember)
+            .where(
+                FundMember.fund_id.in_(fund_ids),
+                FundMember.status == ACTIVE,
+                FundMember.role.in_([FundRoleEnum.chairman.value, FundRoleEnum.admin.value]),
+            )
+            .options(selectinload(FundMember.user))
+            .order_by(FundMember.fund_id, role_order, FundMember.id)
+        )
+        council: dict[int, list[FundMember]] = {}
+        for member in result.scalars().all():
+            council.setdefault(member.fund_id, []).append(member)
+        return council
+
     async def list_by_user(self, user_id: int) -> list[FundMember]:
         result = await self.db.execute(
             select(FundMember)

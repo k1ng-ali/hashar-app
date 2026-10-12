@@ -1,6 +1,7 @@
 export default {
   // ── Common ──
   common: {
+    cancel: 'Cancel',
     loading: 'Loading…',
     close: 'Close',
     delete: 'Delete',
@@ -23,11 +24,10 @@ export default {
   // ── Navigation ──
   nav: {
     home: 'Home',
-    history: 'Payments',
-    contribute: 'Pay',
+    finance: 'Finance',
+    contribute: 'Contribute',
     news: 'News',
-    reports: 'Reports',
-    admin: 'Admin',
+    fund: 'Fund',
   },
 
   // ── Header / profile ──
@@ -49,6 +49,7 @@ export default {
     active: 'Member',
     rejected: 'Request rejected',
     blocked: 'Blocked',
+    left: 'Left',
   },
   contributionStatus: {
     pending: 'Under review',
@@ -135,6 +136,7 @@ export default {
       name: 'Enter a name (2+ characters)',
       contact: 'Enter a phone or email',
       password: 'Password must be at least 6 characters',
+      email: 'Check the email: name@mail.com',
     },
     or: 'or',
     soon: 'soon',
@@ -238,20 +240,22 @@ export default {
     paymentNote: 'The platform administrator will contact you for payment and enable the plan.',
     pending: 'Plan request is awaiting confirmation',
     requested: 'Plan request sent ✅',
+    renew: 'Renew plan',
+    renewTitle: 'Plan renewal',
+    renewHint: 'The period will be added to the current end date ({date})',
+    renewHintNoDate: 'The period will be added to the current plan',
+    renewRequested: 'Renewal request sent ✅',
+    contact: 'Contact',
+    contactPlaceholder: 'Phone, Telegram or email',
+    contactHint: 'The platform administrator will use it to arrange payment',
   },
 
   // ── Dashboard ──
   dashboard: {
-    greeting: 'Hi, {name} 👋',
+    greeting: 'Hi, {name}',
     balanceLabel: 'Fund balance',
     balanceCaption: 'Available on the fund accounts',
     toggleBalance: 'Show / hide balance',
-    actions: {
-      contribute: 'Pay',
-      expense: 'Expenses',
-      receipts: 'My receipts',
-      funds: 'Funds',
-    },
     metrics: {
       collected: 'Collected in {month}',
       spent: 'Spent this month',
@@ -269,6 +273,22 @@ export default {
       transfer: 'Transfers',
     },
     noOperations: 'No operations yet',
+    quickActions: 'Quick actions',
+    seeAll: 'See all',
+    tiles: {
+      contribute: 'Contribute',
+      contributeHint: 'Transfer with a receipt',
+      requisites: 'Bank details',
+      requisitesHint: 'Where to transfer',
+      expenses: 'Expenses',
+      expensesHint: 'Where the money went',
+      funds: 'Campaigns',
+      fundsHint: 'Active: {n}',
+    },
+    card: {
+      fund: 'Fund',
+      unit: 'Unit',
+    },
   },
 
   // ── Transfers ──
@@ -303,12 +323,21 @@ export default {
     title: 'Fund bank details',
     subtitle: 'Fund accounts for payments',
     recipient: 'Recipient',
-    sbp: 'SBP',
+    sbp: 'Phone',
     copy: 'Copy number',
     copied: 'Number copied 📋',
     empty: 'No bank details yet',
     active: 'Active',
     inactive: 'Disabled',
+    kind: { card: 'Card', account: 'Account' },
+    cardNumber: 'Card number',
+    accountNumber: 'Account number (IBAN)',
+    cardDigits: 'Digits: {n} of {total}',
+    accountHint: 'Latin letters and digits, 10 to 34 characters',
+    cardInvalid: 'A card number has exactly 16 digits',
+    accountInvalid: 'An account number is 10–34 latin letters and digits',
+    phoneHint: 'With the country code: +992, +7…',
+    phoneInvalid: 'Phone with the country code, 10–15 digits',
   },
 
   // ── Contribution ──
@@ -326,8 +355,8 @@ export default {
     selectFund: 'Fund project',
     selectFundPlaceholder: 'Choose a fund',
     noActiveFunds: 'No open funds right now',
-    toAccount: 'Where you transfer ({currency})',
-    noRequisites: 'The fund has no {currency} bank details — contact the chairman',
+    toAccount: 'Where you transfer',
+    noRequisites: 'The fund has no bank details yet — contact the chairman',
     amount: 'Amount, {currency}',
     receipt: 'Receipt or transfer screenshot',
     comment: 'Comment for the council',
@@ -342,7 +371,14 @@ export default {
       receipt: 'Attach a receipt',
       fund: 'Choose a target fund',
       requisite: 'Choose the account you transferred to',
+      credited: 'Enter how much to credit in the fee currency',
     },
+    anyCurrencyFee: 'The fee is credited in {currency}. You can also pay to an account in another currency — then enter how much to credit',
+    anyCurrencyFund: 'The campaign is in {currency}. You can also pay to an account in another currency — then enter how much to credit',
+    creditedFee: 'Credit towards the fee, {currency}',
+    creditedFund: 'Credit towards the campaign, {currency}',
+    creditedHint: 'The platform does not convert rates: enter how much {to} your {from} transfer covers. The council will check it.',
+    creditedShort: 'credited {amount}',
   },
 
   // ── Receipt ──
@@ -407,6 +443,8 @@ export default {
     notFound: 'Fund not found',
     emptyTitle: 'No funds yet',
     emptyHint: 'The council will open a fund for a new project',
+    tabActive: 'Active',
+    tabClosed: 'Finished',
   },
 
   // ── Announcements ──
@@ -418,11 +456,6 @@ export default {
     expand: 'Show',
     collapse: 'Hide',
     call: 'Call',
-    contacts: {
-      dispatcher: 'Dispatcher (24/7)',
-      lift: 'Lift emergency service',
-      chairman: 'Chairman',
-    },
     pinned: 'Pinned',
     comments: 'Comments · {n}',
     commentPlaceholder: 'Write a comment…',
@@ -473,21 +506,11 @@ export default {
 
   // ── Admin (fund council) ──
   admin: {
-    title: 'Fund management',
-    tabs: {
-      verification: 'Receipts',
-      members: 'Members',
-      expenses: 'Expenses',
-      funds: 'Funds',
-      accounts: 'Accounts',
-      settings: 'Settings',
-    },
     errors: {
       memberLimit: 'Member limit of the plan reached — upgrade the plan',
       balanceNotZero: 'Move the remaining balance to another account first',
       baseCurrency: 'The base currency cannot be disabled',
       currencyDisabled: 'This currency account is disabled',
-      currencyMismatch: 'Currency must match the target fund currency',
     },
     verification: {
       title: 'Receipt review queue',
@@ -510,6 +533,10 @@ export default {
       approved: 'Payment approved ✅',
       rejected: 'Payment rejected',
       zoom: 'Tap to zoom',
+      queue: 'Pending',
+      requisite: 'Bank details',
+      credited: 'Credit, {currency}',
+      creditedHint: 'Paid in another currency — check the credited amount and correct it if needed',
     },
     members: {
       requestsTitle: 'Join requests',
@@ -631,7 +658,153 @@ export default {
       added: 'Bank details added',
       deleted: 'Bank details deleted',
       validation: 'Fill in the bank, number and recipient',
+      rateCurrent: 'This month\'s fee',
+      ratePlanned: 'From {date}: {amount}',
+      rateNote: 'The new fee takes effect on the 1st of next month. Past months keep the old fee — debts and advances are not recalculated.',
+      rateHistory: 'Fee history',
+      rateFrom: 'from {date}',
+      rateScheduled: 'The new fee will apply from the 1st of next month',
     },
+    history: {
+      title: 'Receipt history',
+      search: 'Member or unit',
+      allCurrencies: 'Currency',
+      allRequisites: 'All bank details',
+      found: 'Found: {n}',
+      more: 'Show more',
+      empty: 'No receipts match these filters',
+    },
+  },
+
+  // ── Expenses ──
+  expenses: {
+    title: 'Fund expenses',
+    subtitle: 'Where the fund money goes — with justification and documents',
+    thisMonth: 'Spent this month',
+    allAccounts: 'All accounts',
+    fromFund: 'Paid from «{title}»',
+    documents: 'Documents: {n}',
+    noDocuments: 'Details',
+    detailTitle: 'Expense',
+    category: 'Category',
+    account: 'Account',
+    targetFund: 'Campaign',
+    recordedBy: 'Recorded by',
+    date: 'Date',
+    justification: 'Justification',
+    documentsTitle: 'Receipts and acts',
+    noDocumentsHint: 'No documents attached',
+    emptyTitle: 'No expenses yet',
+    emptyHint: 'When the council records an expense, it will appear here with its justification and receipts',
+  },
+
+  // ── Overdraft ──
+  overdraft: {
+    available: 'Available on the account: {amount}',
+    warning: 'The amount exceeds the balance — the account will be at {amount} after this.',
+    confirm: 'Record anyway: the money is already spent (e.g. from personal funds or owed to a contractor), the fund will repay it from future contributions',
+    required: 'Confirm the overdraft or reduce the amount',
+    rejected: 'Not enough money on the account — confirm the overdraft',
+  },
+
+  finance: {
+    title: 'Finance',
+    tabs: {
+      my: 'Mine',
+      expenses: 'Expenses',
+      funds: 'Campaigns',
+      reports: 'Reports',
+    },
+  },
+
+  fundMenu: {
+    manage: 'Management',
+    general: 'General',
+    code: 'Code {code}',
+    receipts: 'Receipt review',
+    receiptsHint: 'Pending: {n}',
+    members: 'Members',
+    membersHint: 'Members: {n} · requests: {requests}',
+    accounts: 'Accounts and bank details',
+    settings: 'Settings and plan',
+    settingsHintUntil: '{plan} · until {date}',
+    invite: 'Invite neighbours',
+    inviteHint: 'Fund code and link',
+    myFundsHint: 'Switch, create or find a fund',
+  },
+
+  quickActions: {
+    title: 'New action',
+    contribute: {
+      title: 'Contribute',
+      hint: 'Transfer to the fund with a receipt',
+    },
+    expense: {
+      title: 'Add expense',
+      hint: 'With justification and documents',
+    },
+    fund: {
+      title: 'Open campaign',
+      hint: 'Raise money for a building project',
+    },
+    transfer: {
+      title: 'Transfer between accounts',
+      hint: 'Currency exchange or correction',
+    },
+    announcement: {
+      title: 'Announcement',
+      hint: 'News for all members',
+    },
+  },
+
+  attention: {
+    title: 'Needs attention',
+    receipts: 'Receipts to review',
+    members: 'Join requests',
+    plan: 'The fund plan ends in {n} days',
+  },
+
+  absence: {
+    titleReturn: 'Member returning',
+    titleUnblock: 'Unblock member',
+    leftAt: 'left on {date}',
+    blockedAt: 'blocked on {date}',
+    leftWhileBlocked: 'left the fund',
+    returning: 'Former member, left on {date}',
+    debtShort: 'debt {amount}',
+    noDebtShort: 'no debt',
+    debtBefore: 'Debt before leaving: {amount}',
+    noDebtBefore: 'No debt before leaving',
+    debtKept: 'Charges for the months the member was in the fund always stay — they cannot be waived.',
+    questionReturn: 'Charge fees for the time the member was away?',
+    questionUnblock: 'Charge fees for the time the member was blocked?',
+    months: '{n} mo.',
+    accrueTitle: 'Charge',
+    accrueHint: 'The amount is added to the member\'s debt — as if they had never left.',
+    skipTitle: 'Don\'t charge',
+    skipHint: 'These months are skipped: not added to the debt and marked as a pause in history.',
+    final: 'This decision cannot be changed after confirming.',
+    nothingToDecide: 'The absence is shorter than a full month — nothing to charge.',
+    confirmReturn: 'Accept member',
+    confirmUnblock: 'Unblock',
+    chooseFirst: 'Choose whether to charge fees for the absence',
+    doneAccrued: 'Done: fees for the absence were charged',
+    doneSkipped: 'Done: the absence was not charged',
+    balanceFrozen: 'Balance as of blocking',
+    formerTitle: 'Left the fund',
+    formerHint: 'Debt for the membership period is kept. If the person returns, the council decides whether to charge for the absence.',
+    rejoin: 'Return',
+    youLeft: 'You left the fund',
+  },
+
+  emergency: {
+    add: 'Add phone',
+    save: 'Save',
+    added: 'Phone added',
+    titlePlaceholder: 'Name: First aid, Fire service, School principal',
+    validationTitle: 'Enter whose phone it is',
+    empty: 'The fund council hasn\'t added any phones yet',
+    emptyCouncil: 'Add first aid, fire service and dispatcher phones — every member will see them',
   },
 
   // ── Platform admin ──
@@ -654,6 +827,8 @@ export default {
       approved: 'Approved',
       rejected: 'Rejected',
     },
+    contact: 'Contact',
+    council: 'Chairman and administrators',
   },
 
   // ── Errors ──

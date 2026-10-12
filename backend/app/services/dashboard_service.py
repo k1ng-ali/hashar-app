@@ -3,10 +3,11 @@ from typing import Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.finance import current_period, shift_period
-from app.enums import ContributionCategoryEnum
+from app.core.finance import current_period, rate_at, shift_period
+from app.enums import ContributionCategoryEnum, MemberStatusEnum
 from app.repositories.contribution_repo import ContributionRepository
 from app.repositories.expense_repo import ExpenseRepository
+from app.repositories.fund_rate_repo import FundRateRepository
 from app.repositories.fund_repo import FundRepository
 from app.repositories.member_repo import MemberRepository
 from app.repositories.transfer_repo import TransferRepository
@@ -30,6 +31,7 @@ class DashboardService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.fund_repo = FundRepository(db=db)
+        self.rate_repo = FundRateRepository(db=db)
         self.contribution_repo = ContributionRepository(db=db)
         self.expense_repo = ExpenseRepository(db=db)
         self.transfer_repo = TransferRepository(db=db)
@@ -48,7 +50,7 @@ class DashboardService:
 
         return FundSummaryOut(
             base_currency=fund.base_currency,
-            rate=fund.monthly_rate,
+            rate=rate_at(await self.rate_repo.schedule(fund_id), today),
             current_period=today,
             accounts=[
                 AccountSummaryOut(
@@ -60,6 +62,7 @@ class DashboardService:
                 for currency in await self.accounts.active_currencies(fund_id)
             ],
             pending_count=await self.contribution_repo.count_pending(fund_id),
+            pending_members_count=await self.member_repo.count_by_status(fund_id, MemberStatusEnum.pending.value),
             active_members_count=await self.member_repo.count_active(fund_id),
             debtors_count=len(await self.members.list_debtors(fund_id)),
         )

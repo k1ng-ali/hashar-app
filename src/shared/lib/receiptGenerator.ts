@@ -24,14 +24,14 @@ export function generateReceiptSvg(params: ReceiptParams): string {
 
   const row = (y: number, label: string, value: string) => `
     <text x='40' y='${y}' ${font} font-size='12' fill='#6B7280'>${escapeXml(label)}</text>
-    <text x='380' y='${y}' text-anchor='end' ${font} font-size='12' font-weight='600' fill='#1F2937'>${escapeXml(value)}</text>`
+    <text x='380' y='${y}' text-anchor='end' ${font} font-size='12' font-weight='600' fill='#111827'>${escapeXml(value)}</text>`
 
   const svg = `
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 420 560'>
   <defs>
     <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
-      <stop offset='0%' stop-color='#4EBEC2'/>
-      <stop offset='100%' stop-color='#234970'/>
+      <stop offset='0%' stop-color='#111827'/>
+      <stop offset='100%' stop-color='#111827'/>
     </linearGradient>
   </defs>
   <rect x='10' y='10' width='400' height='540' rx='20' fill='#ffffff' stroke='#E5E7EB'/>
@@ -41,7 +41,7 @@ export function generateReceiptSvg(params: ReceiptParams): string {
   <text x='78' y='49' ${font} font-size='15' font-weight='700' fill='#fff'>${escapeXml(params.bankName)}</text>
   <text x='78' y='68' ${font} font-size='11' fill='rgba(255,255,255,0.85)'>Чек по операции</text>
   <text x='210' y='146' text-anchor='middle' ${font} font-size='12' fill='#6B7280'>Сумма перевода</text>
-  <text x='210' y='186' text-anchor='middle' ${font} font-size='32' font-weight='800' fill='#234970'>${amount}</text>
+  <text x='210' y='186' text-anchor='middle' ${font} font-size='32' font-weight='800' fill='#111827'>${amount}</text>
   <rect x='150' y='204' width='120' height='26' rx='13' fill='#D1FAE5'/>
   <text x='210' y='221' text-anchor='middle' ${font} font-size='11' font-weight='700' fill='#047857'>ИСПОЛНЕН</text>
   <line x1='34' y1='250' x2='386' y2='250' stroke='#E5E7EB' stroke-dasharray='6 4'/>

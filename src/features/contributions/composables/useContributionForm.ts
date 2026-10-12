@@ -12,8 +12,9 @@ import type { ContributionCategory } from '../types.ts'
  * Форма взноса: предзаполнение, выбор реквизита (= валюты), валидация, демо-чек, отправка.
  *
  * Правила валют (как на бэкенде):
- * - ежемесячный взнос — только на реквизиты базовой валюты фонда
- * - взнос в целевой сбор — только в валюте этого сбора
+ * - платить можно на любой активный реквизит фонда — валюта взноса = валюта реквизита
+ * - ежемесячный взнос засчитывается в базовой валюте, целевой — в валюте сбора
+ * - если валюта реквизита другая, участник сам указывает, сколько зачесть (курс не считаем)
  */
 export function useContributionForm() {
   const { t } = useI18n()
@@ -28,6 +29,7 @@ export function useContributionForm() {
   const targetFundId = ref<number | null>(null)
   const requisiteId = ref<number | null>(null)
   const amount = ref<number | null>(null)
+  const creditedAmount = ref<number | null>(null)
   const receipt = ref('')
   const comment = ref('')
   const validationError = ref('')
@@ -37,28 +39,51 @@ export function useContributionForm() {
   const rate = computed(() => fundsStore.current?.monthly_rate ?? 0)
   const targetFund = computed(() => targetFundsStore.items.find((f) => f.id === targetFundId.value) ?? null)
 
-  /** Валюта, в которой сейчас можно заплатить. */
+  /** Валюта назначения: в ней взнос засчитывается (базовая или валюта сбора). */
   const requiredCurrency = computed(() =>
     category.value === 'monthly_fee' ? baseCurrency.value : (targetFund.value?.currency ?? null),
   )
 
+  // Все реквизиты фонда; сначала — в валюте назначения
   const availableRequisites = computed(() =>
-    dashboardStore.requisites.filter((r) => r.currency === requiredCurrency.value),
+    [...dashboardStore.requisites].sort(
+      (a, b) => Number(b.currency === requiredCurrency.value) - Number(a.currency === requiredCurrency.value),
+    ),
   )
   const selectedRequisite = computed(
     () => dashboardStore.requisites.find((r) => r.id === requisiteId.value) ?? null,
   )
   const currency = computed(() => selectedRequisite.value?.currency ?? requiredCurrency.value ?? baseCurrency.value)
+  /** Платим в другой валюте — нужно указать, сколько зачесть. */
+  const needsCredit = computed(
+    () => !!selectedRequisite.value && !!requiredCurrency.value && currency.value !== requiredCurrency.value,
+  )
+
+  function defaultRequisiteId(): number | null {
+    const preferred = availableRequisites.value.find((r) => r.currency === requiredCurrency.value)
+    return (preferred ?? availableRequisites.value[0])?.id ?? null
+  }
 
   const debtAmount = computed(() =>
     contributionsStore.balance?.status === 'debt' ? contributionsStore.balance.debt_amount : 0,
   )
+  /** Быстрые суммы тарифа — в базовой валюте, поэтому для поля зачёта или суммы в базовой. */
   const presets = computed(() => (category.value === 'monthly_fee' && rate.value ? [1, 2, 3, 6].map((n) => rate.value * n) : []))
 
-  // Сменилась валюта — выбираем первый подходящий реквизит
+  // Сменилось назначение — предлагаем реквизит в его валюте
   watch(requiredCurrency, () => {
-    if (!availableRequisites.value.some((r) => r.id === requisiteId.value)) {
-      requisiteId.value = availableRequisites.value[0]?.id ?? null
+    requisiteId.value = defaultRequisiteId()
+  })
+
+  // Сумма в валюте назначения (долг, тариф) переезжает в поле зачёта, а сумму перевода
+  // в другой валюте участник вводит сам; при возврате к валюте назначения — обратно
+  watch(needsCredit, (value) => {
+    if (value) {
+      creditedAmount.value = amount.value
+      amount.value = null
+    } else {
+      amount.value = creditedAmount.value ?? amount.value
+      creditedAmount.value = null
     }
   })
 
@@ -78,7 +103,8 @@ export function useContributionForm() {
       targetFundId.value = null
       amount.value = debtAmount.value || rate.value || null
     }
-    requisiteId.value = availableRequisites.value[0]?.id ?? null
+    creditedAmount.value = null
+    requisiteId.value = defaultRequisiteId()
   }
 
   function generateDemoReceipt() {
@@ -104,6 +130,8 @@ export function useContributionForm() {
       validationError.value = t('contribution.validation.requisite')
     } else if (!amount.value || amount.value < 1) {
       validationError.value = t('contribution.validation.amount')
+    } else if (needsCredit.value && (!creditedAmount.value || creditedAmount.value < 1)) {
+      validationError.value = t('contribution.validation.credited')
     } else if (!receipt.value) {
       validationError.value = t('contribution.validation.receipt')
     }
@@ -115,6 +143,7 @@ export function useContributionForm() {
     return contributionsStore.submit({
       requisite_id: requisiteId.value!,
       amount: amount.value!,
+      credited_amount: needsCredit.value ? creditedAmount.value : null,
       category: category.value,
       target_fund_id: category.value === 'target_fund' ? targetFundId.value : null,
       receipt_image: receipt.value,
@@ -127,6 +156,7 @@ export function useContributionForm() {
     targetFundId,
     requisiteId,
     amount,
+    creditedAmount,
     receipt,
     comment,
     validationError,
@@ -134,6 +164,7 @@ export function useContributionForm() {
     baseCurrency,
     currency,
     requiredCurrency,
+    needsCredit,
     availableRequisites,
     debtAmount,
     presets,

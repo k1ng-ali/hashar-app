@@ -60,7 +60,7 @@ defineProps<{
   background: rgba(255, 255, 255, 0.7);
 
   &--current {
-    border: 1px solid rgba(78, 190, 194, 0.45);
+    border: 1px solid rgba(17, 24, 39, 0.45);
   }
 }
 
@@ -73,14 +73,14 @@ defineProps<{
 
 .name {
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 }
 
 .badge {
   padding: 2px 10px;
   border-radius: 20px;
-  background: rgba(35, 73, 112, 0.08);
+  background: rgba(17, 24, 39, 0.08);
   color: $text-secondary;
   font-size: 11px;
   font-weight: 700;

@@ -53,7 +53,7 @@ const link = computed(() => `${window.location.origin}/join/${props.code}`)
 .code {
   font-family: 'SF Mono', 'Consolas', monospace;
   font-size: 30px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 4px;
   background: $gradient;
   -webkit-background-clip: text;
@@ -75,7 +75,7 @@ const link = computed(() => `${window.location.origin}/join/${props.code}`)
   text-overflow: ellipsis;
   white-space: nowrap;
   border-radius: 12px;
-  background: rgba(35, 73, 112, 0.05);
+  background: rgba(17, 24, 39, 0.05);
   font-size: 12px;
   color: $navy;
 }

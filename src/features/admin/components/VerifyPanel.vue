@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { LuCircleCheck, LuCircleX } from '@kalimahapps/vue-icons/lu'
 import { formatDateTime, formatMoney, formatPeriod } from '@/shared/lib/format.ts'
 import type { Contribution } from '@/features/contributions/types.ts'
@@ -11,21 +11,29 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'zoom', contribution: Contribution): void
-  (e: 'approve'): void
+  (e: 'approve', creditedAmount: number | null): void
   (e: 'reject', reason: string): void
 }>()
 
 const isRejecting = ref(false)
 const reason = ref('')
+// Оплата в другой валюте: совет сверяет и при необходимости правит зачтённую сумму
+const isOtherCurrency = computed(() => props.contribution.currency !== props.contribution.credited_currency)
+const credited = ref<number | null>(props.contribution.credited_amount)
 
-// Новая заявка — сбрасываем форму отклонения
+// Новая заявка — сбрасываем форму
 watch(
   () => props.contribution.id,
   () => {
     isRejecting.value = false
     reason.value = ''
+    credited.value = props.contribution.credited_amount
   },
 )
+
+function approve() {
+  emit('approve', isOtherCurrency.value && credited.value ? credited.value : null)
+}
 </script>
 
 <template>
@@ -38,6 +46,10 @@ watch(
       <div class="row">
         <span class="label">{{ $t('admin.verification.amount') }}</span>
         <span class="value value--amount">{{ formatMoney(contribution.amount, contribution.currency) }}</span>
+      </div>
+      <div class="row">
+        <span class="label">{{ $t('admin.verification.requisite') }}</span>
+        <span class="value">{{ contribution.requisite_label ?? '—' }}</span>
       </div>
       <div class="row">
         <span class="label">{{ $t('admin.verification.purpose') }}</span>
@@ -58,6 +70,15 @@ watch(
         <p>«{{ contribution.comment_user }}»</p>
       </div>
     </div>
+
+    <!-- Зачёт при оплате в другой валюте -->
+    <label v-if="isOtherCurrency" class="credited-box">
+      <span class="label">
+        {{ $t('admin.verification.credited', { currency: contribution.credited_currency.toUpperCase() }) }}
+      </span>
+      <input v-model.number="credited" type="number" min="1" inputmode="numeric" />
+      <span class="hint">{{ $t('admin.verification.creditedHint') }}</span>
+    </label>
 
     <button class="receipt" @click="emit('zoom', contribution)">
       <img :src="contribution.receipt_image" alt="" />
@@ -84,7 +105,7 @@ watch(
       <button class="ghost-btn ghost-btn--danger" :disabled="isSubmitting" @click="isRejecting = true">
         <LuCircleX /> {{ $t('admin.verification.reject') }}
       </button>
-      <button class="approve-btn" :disabled="isSubmitting" @click="emit('approve')">
+      <button class="approve-btn" :disabled="isSubmitting || (isOtherCurrency && !credited)" @click="approve">
         <LuCircleCheck /> {{ $t('admin.verification.approve') }}
       </button>
     </div>
@@ -122,11 +143,11 @@ watch(
 
 .value {
   text-align: right;
-  color: #1F2937;
+  color: #111827;
 
   &--amount {
     font-size: 18px;
-    font-weight: 800;
+    font-weight: 700;
     color: $success;
   }
 }
@@ -142,7 +163,7 @@ watch(
   @include pressable;
   position: relative;
   padding: 8px;
-  border: 1px solid rgba(35, 73, 112, 0.08);
+  border: 1px solid rgba(17, 24, 39, 0.08);
   border-radius: 18px;
   background: #fff;
 
@@ -201,12 +222,31 @@ watch(
 .approve-btn {
   @include cta-button;
   background: linear-gradient(135deg, #34D399, #10B981);
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+  box-shadow: none;
 }
 
 .danger-btn {
   @include cta-button;
   background: linear-gradient(135deg, #F87171, #EF4444);
-  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+  box-shadow: none;
+}
+
+.credited-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 14px;
+  background: rgba(255, 251, 235, 0.9);
+
+  input {
+    @include field-input;
+  }
+
+  .hint {
+    font-size: 12px;
+    color: #B45309;
+  }
 }
 </style>

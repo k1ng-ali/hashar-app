@@ -63,7 +63,7 @@ async function handleSubmit() {
     headerStore.showNotification(t('contribution.success'))
     // Обновляем счётчик чеков на проверке (бейдж «Админ» в навигации)
     void dashboardStore.fetchSummary()
-    await router.replace('/history')
+    await router.replace('/finance/my')
   } catch (error) {
     headerStore.showNotification(errorDetail(error) ?? t('contribution.error'), 'error', 3000)
   }
@@ -88,12 +88,14 @@ async function handleSubmit() {
         v-model:target-fund-id="form.targetFundId.value"
         v-model:requisite-id="form.requisiteId.value"
         v-model:amount="form.amount.value"
+        v-model:credited-amount="form.creditedAmount.value"
         v-model:receipt="form.receipt.value"
         v-model:comment="form.comment.value"
         :rate="form.rate.value"
         :base-currency="form.baseCurrency.value"
         :currency="form.currency.value"
         :required-currency="form.requiredCurrency.value"
+        :needs-credit="form.needsCredit.value"
         :funds="targetFundsStore.activeItems"
         :requisites="form.availableRequisites.value"
         :presets="form.presets.value"

@@ -136,13 +136,13 @@ async function handleDemo(user: DemoUser) {
     border-radius: 24px;
     background: $gradient;
     font-size: 36px;
-    box-shadow: 0 10px 30px rgba(78, 190, 194, 0.4);
+    box-shadow: none;
   }
 
   h1 {
     margin: 0 0 6px;
     font-size: 24px;
-    font-weight: 800;
+    font-weight: 700;
     color: $navy;
   }
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatPhoneInput, isValidPhone } from '@/shared/lib/formatters.ts'
 import type { RegisterPayload } from '../types.ts'
 
 defineProps<{
@@ -14,14 +15,27 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+
 const form = reactive({ full_name: '', phone: '', email: '', password: '' })
 const localError = ref('')
+
+// Номер форматируется на лету — как у реквизитов
+function onPhoneInput(event: Event) {
+  const input = event.target as HTMLInputElement
+  form.phone = formatPhoneInput(input.value)
+  input.value = form.phone
+}
 
 function handleSubmit() {
   if (form.full_name.trim().length < 2) {
     localError.value = t('auth.validation.name')
   } else if (!form.phone.trim() && !form.email.trim()) {
     localError.value = t('auth.validation.contact')
+  } else if (form.phone.trim() && !isValidPhone(form.phone)) {
+    localError.value = t('requisites.phoneInvalid')
+  } else if (form.email.trim() && !EMAIL_PATTERN.test(form.email.trim())) {
+    localError.value = t('auth.validation.email')
   } else if (form.password.length < 6) {
     localError.value = t('auth.validation.password')
   } else {
@@ -43,16 +57,21 @@ function handleSubmit() {
       <input v-model="form.full_name" autocomplete="name" :placeholder="$t('auth.fullNamePlaceholder')" />
     </label>
 
-    <div class="two">
-      <label>
-        <span class="label">{{ $t('auth.phone') }}</span>
-        <input v-model="form.phone" type="tel" autocomplete="tel" :placeholder="$t('auth.phonePlaceholder')" />
-      </label>
-      <label>
-        <span class="label">Email</span>
-        <input v-model="form.email" type="email" autocomplete="email" placeholder="name@mail.com" />
-      </label>
-    </div>
+    <label>
+      <span class="label">{{ $t('auth.phone') }}</span>
+      <input
+        :value="form.phone"
+        type="tel"
+        inputmode="tel"
+        autocomplete="tel"
+        placeholder="+992 90 123 45 67"
+        @input="onPhoneInput"
+      />
+    </label>
+    <label>
+      <span class="label">Email</span>
+      <input v-model="form.email" type="email" autocomplete="email" placeholder="name@mail.com" />
+    </label>
     <p class="hint">{{ $t('auth.contactHint') }}</p>
 
     <label>
@@ -83,11 +102,6 @@ input {
   @include field-input;
 }
 
-.two {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
 
 .hint {
   margin: -8px 0 0;

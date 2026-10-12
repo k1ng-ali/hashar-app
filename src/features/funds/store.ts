@@ -140,11 +140,14 @@ export const useFundsStore = defineStore('funds', () => {
     await fetchMy()
   }
 
-  async function leave() {
-    if (!current.value) return
-    await api.leaveFund(current.value.id)
-    current.value = null
-    rememberFund(null)
+  /** Выход из фонда: текущего или указанного (заблокированный выходит со списка «Мои фонды»). */
+  async function leave(fundId: number | null = current.value?.id ?? null) {
+    if (!fundId) return
+    await api.leaveFund(fundId)
+    if (fundId === current.value?.id) {
+      current.value = null
+      rememberFund(null)
+    }
     await restore()
   }
 

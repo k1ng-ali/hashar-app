@@ -1,7 +1,7 @@
 import type { Currency } from '@/shared/lib/currency.ts'
 
 export type FundRole = 'resident' | 'admin' | 'chairman'
-export type MemberStatus = 'pending' | 'active' | 'rejected' | 'blocked'
+export type MemberStatus = 'pending' | 'active' | 'rejected' | 'blocked' | 'left'
 export type Plan = 'free' | 'pro' | 'max' | 'individual'
 
 export interface Account {
@@ -19,6 +19,12 @@ export interface PlanInfo {
   price_tjs: number | null
 }
 
+/** Запись истории тарифа: действует с period до следующей записи. */
+export interface Rate {
+  period: string
+  amount: number
+}
+
 export interface PlanOption {
   plan: Plan
   member_limit: number | null
@@ -33,7 +39,12 @@ export interface FundInfo {
   address: string | null
   code: string
   base_currency: Currency
+  /** Тариф текущего месяца. */
   monthly_rate: number
+  /** Запланированный тариф — вступит в силу с 1-го числа next_rate_period. */
+  next_monthly_rate: number | null
+  next_rate_period: string | null
+  rate_history: Rate[]
   start_period: string
   accounts: Account[]
   plan: PlanInfo

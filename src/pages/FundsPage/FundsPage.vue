@@ -54,7 +54,14 @@ onUnmounted(() => {
 
           <div v-if="store.requests.length" class="list">
             <h2 class="section-title">{{ $t('funds.myRequests') }}</h2>
-            <MyFundCard v-for="fund in store.requests" :key="fund.id" :fund="fund" @cancel="flow.cancelRequest" />
+            <MyFundCard
+              v-for="fund in store.requests"
+              :key="fund.id"
+              :fund="fund"
+              @cancel="flow.cancelRequest"
+              @rejoin="flow.rejoin"
+              @leave="flow.leaveBlocked"
+            />
           </div>
         </template>
 
@@ -144,7 +151,7 @@ onUnmounted(() => {
   border-radius: 18px;
   background: $gradient;
   font-size: 26px;
-  box-shadow: 0 8px 20px rgba(78, 190, 194, 0.35);
+  box-shadow: none;
 }
 
 .section {

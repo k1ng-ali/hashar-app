@@ -5,10 +5,12 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.finance import current_period, shift_period
+from app.core.finance import current_period, rate_at, shift_period
+from app.core.formatting import display_phone
 from app.enums import CurrencyEnum
 from app.repositories.contribution_repo import ContributionRepository
 from app.repositories.expense_repo import ExpenseRepository
+from app.repositories.fund_rate_repo import FundRateRepository
 from app.repositories.fund_repo import FundRepository
 from app.repositories.transfer_repo import TransferRepository
 from app.schemas.report import CategoryStatOut, DebtorOut, FinancialReportOut, MonthlyLedgerRowOut
@@ -28,6 +30,7 @@ class ReportService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.fund_repo = FundRepository(db=db)
+        self.rate_repo = FundRateRepository(db=db)
         self.contribution_repo = ContributionRepository(db=db)
         self.expense_repo = ExpenseRepository(db=db)
         self.transfer_repo = TransferRepository(db=db)
@@ -85,7 +88,7 @@ class ReportService:
             total_expense=total_expense,
             # Остаток счёта учитывает и переводы между валютами
             net_balance=(await self.accounts.balances(fund_id))[code],
-            rate=fund.monthly_rate,
+            rate=rate_at(await self.rate_repo.schedule(fund_id), current_period()),
         )
 
     async def debtors(self, fund_id: int) -> list[DebtorOut]:
@@ -105,6 +108,9 @@ class ReportService:
                 c.billing_period or (c.target_fund.title if c.target_fund else ""),
                 c.amount,
                 c.currency.upper(),
+                c.credited_amount,
+                c.credited_currency.upper(),
+                c.requisite_label or "",
                 STATUS_TITLES.get(c.status, c.status),
                 c.reviewed_by.full_name if c.reviewed_by else "",
                 c.comment_admin or c.comment_user or "",
@@ -113,7 +119,7 @@ class ReportService:
         ]
         header = [
             "ID", "Дата", "Участник", "Помещение", "Категория", "Период / Сбор",
-            "Сумма", "Валюта", "Статус", "Проверил", "Комментарий",
+            "Сумма", "Валюта", "Зачтено", "Валюта зачёта", "Реквизит", "Статус", "Проверил", "Комментарий",
         ]  # fmt: skip
         return self._filename("reestr_vznosov"), self._to_csv(header, rows)
 
@@ -142,7 +148,7 @@ class ReportService:
             [
                 d.address_unit or "",
                 d.full_name,
-                d.phone or "",
+                display_phone(d.phone),
                 d.debt_amount,
                 d.currency.upper(),
                 d.debt_months_count,

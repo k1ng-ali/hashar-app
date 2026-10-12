@@ -1,6 +1,7 @@
 export default {
   // ── Common ──
   common: {
+    cancel: 'Отмена',
     loading: 'Загрузка…',
     close: 'Закрыть',
     delete: 'Удалить',
@@ -23,11 +24,10 @@ export default {
   // ── Navigation ──
   nav: {
     home: 'Главная',
-    history: 'Взносы',
-    contribute: 'Внести',
+    finance: 'Финансы',
+    contribute: 'Внести взнос',
     news: 'Новости',
-    reports: 'Отчёты',
-    admin: 'Админ',
+    fund: 'Фонд',
   },
 
   // ── Header / профиль ──
@@ -49,6 +49,7 @@ export default {
     active: 'Участник',
     rejected: 'Заявка отклонена',
     blocked: 'Заблокирован',
+    left: 'Вышел',
   },
   contributionStatus: {
     pending: 'На проверке',
@@ -135,6 +136,7 @@ export default {
       name: 'Укажите имя (от 2 символов)',
       contact: 'Укажите телефон или email',
       password: 'Пароль — минимум 6 символов',
+      email: 'Проверьте email: name@mail.com',
     },
     or: 'или',
     soon: 'скоро',
@@ -238,20 +240,22 @@ export default {
     paymentNote: 'После заявки администратор платформы свяжется с вами для оплаты и включит тариф.',
     pending: 'Заявка на тариф ждёт подтверждения',
     requested: 'Заявка на тариф отправлена ✅',
+    renew: 'Продлить тариф',
+    renewTitle: 'Продление тарифа',
+    renewHint: 'Срок добавится к текущей дате окончания ({date})',
+    renewHintNoDate: 'Срок добавится к текущему тарифу',
+    renewRequested: 'Заявка на продление отправлена ✅',
+    contact: 'Контакт для связи',
+    contactPlaceholder: 'Телефон, Telegram или email',
+    contactHint: 'По нему администратор платформы свяжется с вами для оплаты',
   },
 
   // ── Dashboard ──
   dashboard: {
-    greeting: 'Привет, {name} 👋',
+    greeting: 'Привет, {name}',
     balanceLabel: 'Баланс фонда',
     balanceCaption: 'Доступно на счетах фонда',
     toggleBalance: 'Показать / скрыть баланс',
-    actions: {
-      contribute: 'Взнос',
-      expense: 'Расходы',
-      receipts: 'Мои чеки',
-      funds: 'Сборы',
-    },
     metrics: {
       collected: 'Собрано за {month}',
       spent: 'Расходы за месяц',
@@ -269,6 +273,22 @@ export default {
       transfer: 'Переводы',
     },
     noOperations: 'Операций пока нет',
+    quickActions: 'Быстрые действия',
+    seeAll: 'Все',
+    tiles: {
+      contribute: 'Внести взнос',
+      contributeHint: 'Перевод с чеком',
+      requisites: 'Реквизиты',
+      requisitesHint: 'Куда переводить',
+      expenses: 'Расходы',
+      expensesHint: 'Куда ушли деньги',
+      funds: 'Сборы',
+      fundsHint: 'Активных: {n}',
+    },
+    card: {
+      fund: 'Фонд',
+      unit: 'Помещение',
+    },
   },
 
   // ── Transfers (движение по счетам) ──
@@ -303,12 +323,21 @@ export default {
     title: 'Реквизиты фонда',
     subtitle: 'Счета фонда для перевода взносов',
     recipient: 'Получатель',
-    sbp: 'СБП',
+    sbp: 'Тел.',
     copy: 'Скопировать номер',
     copied: 'Номер скопирован 📋',
     empty: 'Реквизиты ещё не добавлены',
     active: 'Активен',
     inactive: 'Отключён',
+    kind: { card: 'Карта', account: 'Счёт' },
+    cardNumber: 'Номер карты',
+    accountNumber: 'Номер счёта (IBAN)',
+    cardDigits: 'Цифр: {n} из {total}',
+    accountHint: 'Латинские буквы и цифры, от 10 до 34 знаков',
+    cardInvalid: 'Номер карты — ровно 16 цифр',
+    accountInvalid: 'Номер счёта — от 10 до 34 латинских букв и цифр',
+    phoneHint: 'С кодом страны: +992, +7…',
+    phoneInvalid: 'Телефон — с кодом страны, 10–15 цифр',
   },
 
   // ── Contribution ──
@@ -326,8 +355,8 @@ export default {
     selectFund: 'Проект сбора',
     selectFundPlaceholder: 'Выберите сбор',
     noActiveFunds: 'Сейчас нет открытых сборов',
-    toAccount: 'Куда переводите ({currency})',
-    noRequisites: 'У фонда нет реквизитов в {currency} — обратитесь к председателю',
+    toAccount: 'Куда переводите',
+    noRequisites: 'У фонда пока нет реквизитов — обратитесь к председателю',
     amount: 'Сумма, {currency}',
     receipt: 'Чек или скриншот перевода',
     comment: 'Комментарий для совета',
@@ -342,7 +371,14 @@ export default {
       receipt: 'Прикрепите чек',
       fund: 'Выберите целевой сбор',
       requisite: 'Выберите счёт, на который перевели деньги',
+      credited: 'Укажите, сколько зачесть в валюте взноса',
     },
+    anyCurrencyFee: 'Взнос засчитывается в {currency}. Можно перевести и на счёт в другой валюте — тогда укажите, сколько зачесть',
+    anyCurrencyFund: 'Сбор ведётся в {currency}. Можно перевести и на счёт в другой валюте — тогда укажите, сколько зачесть',
+    creditedFee: 'Зачесть в счёт взноса, {currency}',
+    creditedFund: 'Зачесть в счёт сбора, {currency}',
+    creditedHint: 'Платформа не пересчитывает курс: укажите, сколько {to} покрывает ваш перевод в {from}. Совет сверит при проверке.',
+    creditedShort: 'зачтено {amount}',
   },
 
   // ── Receipt ──
@@ -407,6 +443,8 @@ export default {
     notFound: 'Сбор не найден',
     emptyTitle: 'Сборов пока нет',
     emptyHint: 'Совет фонда откроет сбор под новый проект',
+    tabActive: 'Активные',
+    tabClosed: 'Завершённые',
   },
 
   // ── Announcements ──
@@ -418,11 +456,6 @@ export default {
     expand: 'Показать',
     collapse: 'Свернуть',
     call: 'Позвонить',
-    contacts: {
-      dispatcher: 'Диспетчерская (круглосуточно)',
-      lift: 'Аварийная служба лифтов',
-      chairman: 'Председатель',
-    },
     pinned: 'Закреплено',
     comments: 'Комментарии · {n}',
     commentPlaceholder: 'Написать комментарий…',
@@ -473,21 +506,11 @@ export default {
 
   // ── Admin (совет фонда) ──
   admin: {
-    title: 'Управление фондом',
-    tabs: {
-      verification: 'Чеки',
-      members: 'Участники',
-      expenses: 'Расходы',
-      funds: 'Сборы',
-      accounts: 'Счета',
-      settings: 'Настройки',
-    },
     errors: {
       memberLimit: 'Достигнут лимит участников по тарифу — подключите тариф выше',
       balanceNotZero: 'Сначала переведите остаток на другой счёт',
       baseCurrency: 'Базовую валюту отключить нельзя',
       currencyDisabled: 'Этот валютный счёт отключён',
-      currencyMismatch: 'Валюта должна совпадать с валютой сбора',
     },
     verification: {
       title: 'Очередь проверки чеков',
@@ -510,6 +533,10 @@ export default {
       approved: 'Взнос одобрен ✅',
       rejected: 'Взнос отклонён',
       zoom: 'Нажмите, чтобы увеличить',
+      queue: 'На проверке',
+      requisite: 'Реквизит',
+      credited: 'Зачесть, {currency}',
+      creditedHint: 'Оплата в другой валюте — сверьте сумму к зачёту и при необходимости исправьте',
     },
     members: {
       requestsTitle: 'Заявки на вступление',
@@ -631,7 +658,153 @@ export default {
       added: 'Реквизит добавлен',
       deleted: 'Реквизит удалён',
       validation: 'Заполните банк, номер и получателя',
+      rateCurrent: 'Тариф этого месяца',
+      ratePlanned: 'С {date}: {amount}',
+      rateNote: 'Новый тариф вступит в силу с 1-го числа следующего месяца. Прошлые месяцы остаются по прежнему тарифу — долги и авансы не пересчитываются.',
+      rateHistory: 'История тарифа',
+      rateFrom: 'с {date}',
+      rateScheduled: 'Новый тариф начнёт действовать с 1-го числа следующего месяца',
     },
+    history: {
+      title: 'История чеков',
+      search: 'Участник или помещение',
+      allCurrencies: 'Валюта',
+      allRequisites: 'Все реквизиты',
+      found: 'Найдено: {n}',
+      more: 'Показать ещё',
+      empty: 'Чеков по этим условиям нет',
+    },
+  },
+
+  // ── Expenses ──
+  expenses: {
+    title: 'Расходы фонда',
+    subtitle: 'Куда уходят деньги фонда — с обоснованием и документами',
+    thisMonth: 'Потрачено в этом месяце',
+    allAccounts: 'Все счета',
+    fromFund: 'За счёт сбора «{title}»',
+    documents: 'Документы: {n}',
+    noDocuments: 'Подробнее',
+    detailTitle: 'Расход',
+    category: 'Категория',
+    account: 'Счёт',
+    targetFund: 'Целевой сбор',
+    recordedBy: 'Внёс',
+    date: 'Дата',
+    justification: 'Обоснование',
+    documentsTitle: 'Чеки и акты',
+    noDocumentsHint: 'Документы к расходу не приложены',
+    emptyTitle: 'Расходов пока нет',
+    emptyHint: 'Когда совет проведёт расход, он появится здесь с обоснованием и чеками',
+  },
+
+  // ── Overdraft ──
+  overdraft: {
+    available: 'Доступно на счёте: {amount}',
+    warning: 'Сумма больше остатка — после списания на счёте будет {amount}.',
+    confirm: 'Всё равно провести: деньги уже потрачены (например, из личных средств или в долг подрядчику), фонд вернёт их из будущих взносов',
+    required: 'Подтвердите списание сверх остатка или уменьшите сумму',
+    rejected: 'На счёте недостаточно средств — подтвердите списание в минус',
+  },
+
+  finance: {
+    title: 'Финансы',
+    tabs: {
+      my: 'Мои',
+      expenses: 'Расходы',
+      funds: 'Сборы',
+      reports: 'Отчёты',
+    },
+  },
+
+  fundMenu: {
+    manage: 'Управление',
+    general: 'Общее',
+    code: 'Код {code}',
+    receipts: 'Проверка чеков',
+    receiptsHint: 'На проверке: {n}',
+    members: 'Участники',
+    membersHint: 'Участников: {n} · заявок: {requests}',
+    accounts: 'Счета и реквизиты',
+    settings: 'Настройки и тариф',
+    settingsHintUntil: '{plan} · до {date}',
+    invite: 'Пригласить соседей',
+    inviteHint: 'Код и ссылка на фонд',
+    myFundsHint: 'Переключиться, создать или найти фонд',
+  },
+
+  quickActions: {
+    title: 'Новое действие',
+    contribute: {
+      title: 'Внести взнос',
+      hint: 'Перевод на реквизиты фонда с чеком',
+    },
+    expense: {
+      title: 'Добавить расход',
+      hint: 'С обоснованием и документами',
+    },
+    fund: {
+      title: 'Открыть сбор',
+      hint: 'Целевой сбор на проект дома',
+    },
+    transfer: {
+      title: 'Перевод между счетами',
+      hint: 'Обмен валют или корректировка',
+    },
+    announcement: {
+      title: 'Объявление',
+      hint: 'Новость для всех участников',
+    },
+  },
+
+  attention: {
+    title: 'Требует внимания',
+    receipts: 'Чеки на проверке',
+    members: 'Заявки на вступление',
+    plan: 'Тариф фонда заканчивается через {n} дн.',
+  },
+
+  absence: {
+    titleReturn: 'Возвращение участника',
+    titleUnblock: 'Разблокировка участника',
+    leftAt: 'вышел {date}',
+    blockedAt: 'заблокирован {date}',
+    leftWhileBlocked: 'вышел из фонда',
+    returning: 'Бывший участник, вышел {date}',
+    debtShort: 'долг {amount}',
+    noDebtShort: 'без долга',
+    debtBefore: 'Долг до ухода: {amount}',
+    noDebtBefore: 'Долгов до ухода нет',
+    debtKept: 'Начисления за месяцы, когда участник был в фонде, остаются в любом случае — их не отменить.',
+    questionReturn: 'Начислять взносы за время, пока участника не было?',
+    questionUnblock: 'Начислять взносы за время блокировки?',
+    months: '{n} мес.',
+    accrueTitle: 'Начислить',
+    accrueHint: 'Сумма добавится к долгу участника — он оплатит эти месяцы, как если бы не уходил.',
+    skipTitle: 'Не начислять',
+    skipHint: 'Эти месяцы будут пропущены: в долг не войдут и в истории будут отмечены как пауза.',
+    final: 'Решение нельзя изменить после подтверждения.',
+    nothingToDecide: 'Отсутствие короче полного месяца — начислять нечего.',
+    confirmReturn: 'Принять участника',
+    confirmUnblock: 'Разблокировать',
+    chooseFirst: 'Выберите, начислять ли взносы за период отсутствия',
+    doneAccrued: 'Готово: взносы за период отсутствия начислены',
+    doneSkipped: 'Готово: период отсутствия не начислен',
+    balanceFrozen: 'Сальдо на момент блокировки',
+    formerTitle: 'Вышли из фонда',
+    formerHint: 'Долг за время участия сохраняется. Если человек вернётся, совет решит, начислять ли за период отсутствия.',
+    rejoin: 'Вернуться',
+    youLeft: 'Вы вышли из фонда',
+  },
+
+  emergency: {
+    add: 'Добавить телефон',
+    save: 'Сохранить',
+    added: 'Телефон добавлен',
+    titlePlaceholder: 'Название: Медпункт, Пожарная, Директор школы',
+    validationTitle: 'Укажите, чей это телефон',
+    empty: 'Совет фонда пока не добавил телефоны',
+    emptyCouncil: 'Добавьте телефоны медпункта, пожарной, диспетчера — их увидят все участники',
   },
 
   // ── Platform admin ──
@@ -654,6 +827,8 @@ export default {
       approved: 'Подтверждена',
       rejected: 'Отклонена',
     },
+    contact: 'Контакт',
+    council: 'Председатель и администраторы',
   },
 
   // ── Errors ──

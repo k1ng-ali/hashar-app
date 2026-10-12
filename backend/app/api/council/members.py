@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Body, Depends
 
 from app.deps.fund import require_fund_chairman, require_fund_council
 from app.deps.services import get_member_service
@@ -6,6 +6,7 @@ from app.enums import MemberStatusEnum
 from app.schemas.member import (
     ChairmanTransferIn,
     FundContext,
+    MemberApproveIn,
     MemberOut,
     MemberOutCouncil,
     MemberRoleUpdateIn,
@@ -29,10 +30,16 @@ async def list_members(
 @router.post("/{member_id}/approve", response_model=MemberOut)
 async def approve_member(
     member_id: int,
+    payload: MemberApproveIn = Body(default_factory=MemberApproveIn),
     ctx: FundContext = Depends(require_fund_council),
     service: MemberService = Depends(get_member_service),
 ):
-    return await service.approve(fund_id=ctx.fund_id, member_id=member_id, reviewer_id=ctx.user_id)
+    return await service.approve(
+        fund_id=ctx.fund_id,
+        member_id=member_id,
+        reviewer_id=ctx.user_id,
+        accrue_absence=payload.accrue_absence,
+    )
 
 
 @router.post("/{member_id}/reject", response_model=MemberOut)
@@ -56,6 +63,7 @@ async def update_member_status(
         member_id=member_id,
         new_status=payload.status,
         actor_id=ctx.user_id,
+        accrue_absence=payload.accrue_absence,
     )
 
 

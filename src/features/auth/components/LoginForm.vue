@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
+import { formatLoginInput } from '@/shared/lib/formatters.ts'
 import type { LoginPayload } from '../types.ts'
 
 defineProps<{
@@ -12,13 +13,25 @@ const emit = defineEmits<{
 }>()
 
 const form = reactive({ login: '', password: '' })
+
+function onLoginInput(event: Event) {
+  const input = event.target as HTMLInputElement
+  form.login = formatLoginInput(input.value)
+  input.value = form.login
+}
 </script>
 
 <template>
   <form class="auth-form" @submit.prevent="emit('submit', { login: form.login.trim(), password: form.password })">
     <label>
       <span class="label">{{ $t('auth.login') }}</span>
-      <input v-model="form.login" autocomplete="username" required :placeholder="$t('auth.loginPlaceholder')" />
+      <input
+        :value="form.login"
+        autocomplete="username"
+        required
+        :placeholder="$t('auth.loginPlaceholder')"
+        @input="onLoginInput"
+      />
     </label>
 
     <label>

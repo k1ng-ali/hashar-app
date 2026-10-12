@@ -7,9 +7,11 @@
 Что создаётся:
 - админ платформы (подтверждает тарифы)
 - фонд «ЖК Северная Звезда»: тариф Pro, счета TJS (базовый) / RUB / USD,
-  взносы, расходы, целевые сборы, перевод между счетами, заявки на вступление
+  взнос 120 → 150 TJS (история тарифа), взносы, в т. ч. в RUB с зачётом в TJS,
+  расходы, целевые сборы, перевод между счетами, заявки на вступление
 - фонд «Дачный посёлок Варзоб»: тариф Free, заявка на Pro ждёт админа
 - Сергей Васильев состоит в обоих фондах (переключатель фондов)
+- Руслан вышел и просится обратно, Ольга заблокирована — совет решает о начислениях
 
 Даты считаются относительно текущего месяца. Пароль у всех: password123
 """
@@ -28,15 +30,18 @@ from app.models import (
     AnnouncementComment,
     AnnouncementLike,
     Contribution,
+    EmergencyContact,
     Expense,
     Fund,
     FundAccount,
     FundMember,
+    FundRate,
     PaymentRequisite,
     PlanRequest,
     TargetFund,
     User,
 )
+from app.services.contribution_service import requisite_label
 
 DEMO_PASSWORD = "password123"
 
@@ -111,7 +116,6 @@ async def seed() -> None:
             address="Душанбе, ул. Рудаки, 15",
             code="STAR2026",
             base_currency="tjs",
-            monthly_rate=150,
             start_period=period(3),
             plan="pro",
             plan_expires_at=datetime.now(timezone.utc) + timedelta(days=25),
@@ -121,17 +125,36 @@ async def seed() -> None:
         db.add(star)
         await db.flush()
         db.add_all([FundAccount(fund_id=star.id, currency=c) for c in ("tjs", "rub", "usd")])
+        db.add_all(
+            [
+                EmergencyContact(fund_id=star.id, title=title, phone=phone, created_by_id=alexey.id)
+                for title, phone in (
+                    ("Медпункт", "+992 37 221 03 03"),
+                    ("Пожарная служба", "+992 37 221 01 01"),
+                    ("Диспетчер ЖЭУ", "+992 90 555 12 34"),
+                    ("Директор школы №15", "+992 93 777 45 45"),
+                )
+            ]
+        )
+        # Тариф поднимали: 120 TJS первые два месяца, затем 150 TJS
+        db.add_all(
+            [
+                FundRate(fund_id=star.id, period=period(3), amount=120, created_by_id=alexey.id),
+                FundRate(fund_id=star.id, period=period(1), amount=150, created_by_id=alexey.id),
+            ]
+        )
 
-        def member(fund, who, role, unit, status="active", message=None):
-            return FundMember(
+        def member(fund, who, role, unit, status="active", message=None, **extra):
+            fields = dict(
                 fund_id=fund.id,
                 user_id=who.id,
                 role=role,
                 status=status,
                 address_unit=unit,
                 message=message,
-                joined_at=at(4, 2) if status == "active" else None,
+                joined_at=at(4, 2) if status in ("active", "blocked") else None,
             )
+            return FundMember(**{**fields, **extra})
 
         db.add_all(
             [
@@ -141,9 +164,20 @@ async def seed() -> None:
                 member(star, anna, "resident", "кв. 24"),
                 member(star, sergey, "resident", "кв. 7"),
                 member(star, elena, "resident", "кв. 31"),
-                member(star, olga, "resident", "кв. 42"),
+                # Заблокирована два месяца назад — при разблокировке совет решит про начисления
+                member(star, olga, "resident", "кв. 42", status="blocked", blocked_at=at(2, 5)),
                 member(star, dmitry, "resident", "кв. 18", status="pending", message="Купил квартиру в сентябре"),
-                member(star, ruslan, "resident", "кв. 5", status="pending"),
+                # Был участником, вышел и подал заявку на возвращение
+                member(
+                    star,
+                    ruslan,
+                    "resident",
+                    "кв. 5",
+                    status="pending",
+                    message="Вернулся после ремонта квартиры",
+                    joined_at=at(4, 2),
+                    left_at=at(3, 10),
+                ),
             ]
         )
 
@@ -162,13 +196,14 @@ async def seed() -> None:
             bank_name="Сбербанк",
             card_or_account_number="2202 2034 5678 9101",
             recipient_name="Алексей Викторович Н.",
-            phone_number="+7 (916) 123-45-67",
+            phone_number="+7 916 123-45-67",
             note="Для жильцов, работающих в России. СБП без комиссии.",
         )
         usd_card = PaymentRequisite(
             fund_id=star.id,
             currency="usd",
             bank_name="Эсхата Банк",
+            kind="account",
             card_or_account_number="TJ22 0000 1111 2222 3333",
             recipient_name="ТСЖ «Северная Звезда»",
         )
@@ -197,14 +232,20 @@ async def seed() -> None:
         db.add_all([barrier, greening])
         await db.flush()
 
-        def contribution(fund, who, unit, amount, months_ago, day, requisite, status="approved", target=None, **extra):
+        def contribution(
+            fund, who, unit, amount, months_ago, day, requisite, status="approved", target=None, credited=None, **extra
+        ):
             return Contribution(
                 fund_id=fund.id,
                 user_id=who.id,
                 user_unit=unit,
                 amount=amount,
                 currency=requisite.currency,
+                # Зачёт в валюте назначения; для оплаты в той же валюте — та же сумма
+                credited_amount=credited or amount,
+                credited_currency=target.currency if target else fund.base_currency,
                 requisite_id=requisite.id,
+                requisite_label=requisite_label(requisite),
                 category="target_fund" if target else "monthly_fee",
                 target_fund_id=target.id if target else None,
                 billing_period=None if target else period(months_ago),
@@ -218,7 +259,7 @@ async def seed() -> None:
 
         db.add_all(
             [
-                # Ежемесячные взносы (TJS, 150 в месяц)
+                # Ежемесячные взносы (TJS: 120 первые два месяца, затем 150)
                 contribution(star, alexey, "кв. 15", 600, 3, 2, tjs_card, comment_user="Сразу за 4 месяца"),
                 contribution(star, marat, "кв. 28", 450, 3, 3, tjs_card),
                 contribution(star, ivan, "кв. 12", 150, 3, 5, tjs_card),
@@ -227,6 +268,19 @@ async def seed() -> None:
                 contribution(star, sergey, "кв. 7", 900, 2, 15, tjs_card, comment_user="Оплата на полгода вперёд"),
                 contribution(star, anna, "кв. 24", 300, 2, 8, tjs_card),
                 contribution(star, anna, "кв. 24", 150, 0, 3, tjs_card, status="pending", comment_user="Проверьте чек"),
+                # Взнос в рублях: участник сам указал, сколько зачесть в TJS
+                contribution(
+                    star,
+                    marat,
+                    "кв. 28",
+                    1300,
+                    0,
+                    4,
+                    rub_card,
+                    status="pending",
+                    credited=150,
+                    comment_user="Перевёл в рублях, зачтите 150 TJS за этот месяц",
+                ),
                 contribution(
                     star,
                     olga,
@@ -381,7 +435,6 @@ async def seed() -> None:
             address="Варзобский район",
             code="VARZOB77",
             base_currency="usd",
-            monthly_rate=10,
             start_period=period(1),
             plan="free",
             created_by_id=sergey.id,
@@ -390,6 +443,7 @@ async def seed() -> None:
         db.add(dacha)
         await db.flush()
         db.add(FundAccount(fund_id=dacha.id, currency="usd"))
+        db.add(FundRate(fund_id=dacha.id, period=period(1), amount=10, created_by_id=sergey.id))
         db.add_all(
             [
                 member(dacha, sergey, "chairman", "участок 3"),
@@ -411,6 +465,7 @@ async def seed() -> None:
                 fund_id=dacha.id,
                 plan="pro",
                 months=3,
+                contact="+79255678901, Telegram @sergey_varzob",
                 comment="Посёлок растёт, нужно больше 10 участников",
                 requested_by_id=sergey.id,
                 created_at=at(0, 2),

@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { LuPlus, LuPower, LuShare2 } from '@kalimahapps/vue-icons/lu'
+import { LuPlus, LuPower, LuShare2, LuTrash2 } from '@kalimahapps/vue-icons/lu'
 import { useAdminStore } from '@/features/admin/store.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
 import type { Contribution } from '@/features/contributions/types.ts'
@@ -33,7 +33,7 @@ const fund = computed(() => store.detail)
 
 onMounted(() => {
   headerStore.setTitle(t('targetFunds.title'))
-  headerStore.setLeftAction(() => (window.history.state?.back ? router.back() : router.push('/')))
+  headerStore.setLeftAction(() => (window.history.state?.back ? router.back() : router.push('/finance/funds')))
   navStore.hideTabs()
   void store.fetchDetail(fundId.value)
 })
@@ -57,6 +57,17 @@ async function handleToggle() {
   if (!fund.value) return
   await adminStore.toggleTargetFund(fund.value.id)
   headerStore.showNotification(t('targetFunds.toggled'))
+}
+
+async function handleDelete() {
+  if (!fund.value || !window.confirm(t('common.confirmDelete'))) return
+  try {
+    await adminStore.removeTargetFund(fund.value.id)
+    headerStore.showNotification(t('targetFunds.deleted'))
+    await router.replace('/finance/funds')
+  } catch {
+    headerStore.showNotification(t('errors.generic'), 'error')
+  }
 }
 
 function openReceipt(contribution: Contribution) {
@@ -110,6 +121,9 @@ function openReceipt(contribution: Contribution) {
           <button class="ghost-btn" @click="handleShare"><LuShare2 /> {{ $t('targetFunds.share') }}</button>
           <button v-if="fundsStore.permissions.canManageFinance" class="ghost-btn" @click="handleToggle">
             <LuPower /> {{ fund.is_active ? $t('targetFunds.closeFund') : $t('targetFunds.reopenFund') }}
+          </button>
+          <button v-if="fundsStore.permissions.canDeleteRecords" class="ghost-btn ghost-btn--danger" @click="handleDelete">
+            <LuTrash2 /> {{ $t('common.delete') }}
           </button>
         </div>
       </div>
@@ -204,7 +218,7 @@ function openReceipt(contribution: Contribution) {
 .title {
   margin: 0;
   font-size: var(--fs-xl);
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 }
 
@@ -232,7 +246,7 @@ function openReceipt(contribution: Contribution) {
 
 .collected {
   font-size: 26px;
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 }
 
@@ -251,7 +265,7 @@ function openReceipt(contribution: Contribution) {
 .meta-pill {
   padding: 6px 12px;
   border-radius: 20px;
-  background: rgba(35, 73, 112, 0.06);
+  background: rgba(17, 24, 39, 0.06);
   font-size: 12px;
   font-weight: 600;
   color: $navy;
@@ -265,6 +279,10 @@ function openReceipt(contribution: Contribution) {
 
 .ghost-btn {
   @include ghost-button;
+
+  &--danger {
+    color: $danger;
+  }
 }
 
 /* ── Cards ────────────────────────────────────────────────────────────────── */
@@ -295,8 +313,8 @@ function openReceipt(contribution: Contribution) {
   flex-shrink: 0;
   padding: 4px 10px;
   border-radius: 20px;
-  background: rgba(78, 190, 194, 0.14);
-  color: #0E7C80;
+  background: rgba(17, 24, 39, 0.14);
+  color: #111827;
   font-size: 11px;
   font-weight: 700;
 }

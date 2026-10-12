@@ -70,7 +70,7 @@ function shortAmount(amount: number) {
   width: 100%;
   max-width: 36px;
   border-radius: 10px 10px 6px 6px;
-  background: rgba(78, 190, 194, 0.35);
+  background: rgba(17, 24, 39, 0.35);
   transition: height 0.6s ease;
 
   &--current {
@@ -78,7 +78,7 @@ function shortAmount(amount: number) {
   }
 
   &--empty {
-    background: rgba(35, 73, 112, 0.08);
+    background: rgba(17, 24, 39, 0.08);
   }
 }
 

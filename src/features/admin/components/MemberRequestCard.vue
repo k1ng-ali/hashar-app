@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { formatPhone } from '@/shared/lib/formatters.ts'
 import { LuCheck, LuX } from '@kalimahapps/vue-icons/lu'
-import { formatDateTime } from '@/shared/lib/format.ts'
+import { formatDate, formatDateTime, formatMoney } from '@/shared/lib/format.ts'
 import type { Member } from '../types.ts'
 
 defineProps<{
@@ -23,7 +24,14 @@ const emit = defineEmits<{
         {{ member.full_name }}
         <span v-if="member.address_unit" class="unit">{{ member.address_unit }}</span>
       </span>
-      <span class="contact">{{ member.phone ?? member.email }}</span>
+      <span class="contact">{{ member.phone ? formatPhone(member.phone) : member.email }}</span>
+      <!-- Бывший участник: совет решит про период отсутствия при одобрении -->
+      <span v-if="member.absence" class="returning">
+        ↩︎ {{ $t('absence.returning', { date: formatDate(member.absence.since) }) }}
+        <template v-if="member.absence.debt_before">
+          · {{ $t('absence.debtShort', { amount: formatMoney(member.absence.debt_before, member.absence.currency) }) }}
+        </template>
+      </span>
       <span v-if="member.message" class="message">«{{ member.message }}»</span>
       <span class="date">{{ formatDateTime(member.created_at) }}</span>
     </div>
@@ -123,5 +131,16 @@ const emit = defineEmits<{
     background: rgba(239, 68, 68, 0.1);
     color: $danger;
   }
+}
+
+.returning {
+  align-self: flex-start;
+  margin: 2px 0;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: #FFFBEB;
+  color: #92400E;
+  font-size: 12px;
+  font-weight: 600;
 }
 </style>

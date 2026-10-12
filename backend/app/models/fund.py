@@ -3,8 +3,8 @@
 
 - code: публичный код для поиска и ссылки-приглашения (/join/<code>)
 - base_currency: валюта ежемесячного тарифа — долги считаются только в ней
-- monthly_rate: ежемесячный взнос в базовой валюте
 - start_period: первый расчётный месяц (YYYY-MM)
+- ежемесячный тариф хранится историей в fund_rates (см. models/fund_rate.py)
 - plan / plan_expires_at: тариф платформы; после истечения действует free
 - member_limit: лимит участников для тарифа individual (null — без ограничений)
 
@@ -37,7 +37,6 @@ class Fund(Base):
     address = Column(String(255), nullable=True)
     code = Column(String(12), nullable=False, unique=True, index=True)
     base_currency = Column(String(3), nullable=False, default="tjs", server_default="tjs")
-    monthly_rate = Column(Integer, nullable=False, default=0, server_default="0")
     start_period = Column(String(7), nullable=False)
     plan = Column(String(20), nullable=False, default="free", server_default="free")
     plan_expires_at = Column(TIMESTAMP(timezone=True), nullable=True)

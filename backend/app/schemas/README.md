@@ -16,12 +16,12 @@
 |---|---|
 | `auth.py` | `RegisterIn`, `LoginIn`, `DevLoginIn`, `TokenOut` |
 | `user.py` | `CurrentUser`, `UserOut`, `DemoUserOut` |
-| `fund.py` | `FundCreateIn`, `FundUpdateIn`, `FundOut`, `FundPublicOut`, `MyFundOut`, `AccountOut`, `PlanInfoOut`, `FundSummaryOut`, `AccountSummaryOut`, `OperationOut` |
+| `fund.py` | `FundCreateIn`, `FundUpdateIn`, `RateOut`, `FundOut`, `FundPublicOut`, `MyFundOut`, `AccountOut`, `PlanInfoOut`, `FundSummaryOut`, `AccountSummaryOut`, `OperationOut` |
 | `member.py` | `FundContext`, `JoinIn`, `MemberOut`, `MemberOutCouncil`, `MemberStatusUpdateIn`, `MemberRoleUpdateIn`, `ChairmanTransferIn` |
-| `plan.py` | `PlanOptionOut`, `PlanRequestIn`, `PlanRequestOut`, `PlanApproveIn`, `PlanRejectIn`, `FundPlanSetIn`, `FundOutAdmin` |
+| `plan.py` | `PlanOptionOut`, `PlanRequestIn`, `PlanRequestOut`, `PlanApproveIn`, `PlanRejectIn`, `FundPlanSetIn`, `FundCouncilMemberOut`, `FundOutAdmin` |
 | `account.py` | `AccountCreateIn`, `RequisiteCreateIn`, `RequisiteOut`, `TransferCreateIn`, `TransferOut` |
 | `balance.py` | `ResidentBalanceOut` |
-| `contribution.py` | `ContributionCreateIn`, `ContributionApproveIn`, `ContributionRejectIn`, `ContributionOut` |
+| `contribution.py` | `ContributionCreateIn`, `ContributionApproveIn`, `ContributionRejectIn`, `ContributionOut`, `CurrencyTotalOut`, `ContributionHistoryOut` |
 | `expense.py` | `ExpenseCreateIn`, `ExpenseOut` |
 | `target_fund.py` | `TargetFundCreateIn`, `TargetFundUpdateIn`, `TargetFundOut`, `TargetFundDetailOut`, `MonthAmountOut` |
 | `announcement.py` | `AnnouncementCreateIn`, `AnnouncementOut`, `CommentCreateIn`, `CommentOut` |

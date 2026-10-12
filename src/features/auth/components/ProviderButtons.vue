@@ -39,7 +39,7 @@ const PROVIDERS: { id: AuthProvider; label: string; icon: string }[] = [
     content: '';
     flex: 1;
     height: 1px;
-    background: rgba(35, 73, 112, 0.1);
+    background: rgba(17, 24, 39, 0.1);
   }
 }
 

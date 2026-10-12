@@ -29,7 +29,7 @@ const width = computed(() => `${Math.min(100, Math.max(props.percent, 0))}%`)
 .progress-track {
   height: 10px;
   border-radius: 10px;
-  background: rgba(35, 73, 112, 0.08);
+  background: rgba(17, 24, 39, 0.08);
   overflow: hidden;
 }
 

@@ -27,6 +27,7 @@ const comment = ref('')
       </div>
       <span class="plan">{{ $t(`plans.${request.plan}`) }} · {{ $t('plans.monthsShort', { n: request.months }) }}</span>
     </div>
+    <p class="contact">📞 {{ $t('platform.contact') }}: <b>{{ request.contact || '—' }}</b></p>
     <p v-if="request.comment" class="comment">«{{ request.comment }}»</p>
 
     <!-- Решение админа -->
@@ -167,5 +168,16 @@ const comment = ref('')
   margin: 0;
   font-size: 13px;
   color: $text-secondary;
+}
+
+.contact {
+  margin: 0;
+  font-size: 13px;
+  color: $text-secondary;
+  word-break: break-word;
+
+  b {
+    color: $navy;
+  }
 }
 </style>

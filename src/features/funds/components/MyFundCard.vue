@@ -10,6 +10,8 @@ defineProps<{
 const emit = defineEmits<{
   (e: 'open', fund: MyFund): void
   (e: 'cancel', fund: MyFund): void
+  (e: 'rejoin', fund: MyFund): void
+  (e: 'leave', fund: MyFund): void
 }>()
 </script>
 
@@ -35,6 +37,12 @@ const emit = defineEmits<{
     <button v-else-if="fund.status === 'pending'" class="cancel-btn" @click.stop="emit('cancel', fund)">
       {{ $t('funds.cancelRequest') }}
     </button>
+    <button v-else-if="fund.status === 'left'" class="cancel-btn" @click.stop="emit('rejoin', fund)">
+      {{ $t('absence.rejoin') }}
+    </button>
+    <button v-else-if="fund.status === 'blocked'" class="cancel-btn" @click.stop="emit('leave', fund)">
+      {{ $t('funds.leave') }}
+    </button>
   </div>
 </template>
 
@@ -54,8 +62,8 @@ const emit = defineEmits<{
   }
 
   &--current {
-    border-color: rgba(78, 190, 194, 0.6);
-    box-shadow: 0 6px 24px rgba(78, 190, 194, 0.2);
+    border-color: rgba(17, 24, 39, 0.6);
+    box-shadow: none;
   }
 }
 
@@ -66,7 +74,7 @@ const emit = defineEmits<{
   width: 42px;
   height: 42px;
   border-radius: 14px;
-  background: rgba(78, 190, 194, 0.14);
+  background: rgba(17, 24, 39, 0.14);
   font-size: 20px;
 }
 
@@ -94,8 +102,8 @@ const emit = defineEmits<{
 .role {
   padding: 3px 10px;
   border-radius: 20px;
-  background: rgba(78, 190, 194, 0.16);
-  color: #0E7C80;
+  background: rgba(17, 24, 39, 0.16);
+  color: #111827;
   font-size: 11px;
   font-weight: 700;
 }

@@ -4,12 +4,13 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.codes import generate_fund_code
-from app.core.finance import current_period
+from app.core.finance import current_period, next_rate_change, rate_at, shift_period
 from app.enums import FundRoleEnum, MemberStatusEnum
 from app.models.fund import Fund
+from app.repositories.fund_rate_repo import FundRateRepository
 from app.repositories.fund_repo import FundRepository
 from app.repositories.member_repo import MemberRepository
-from app.schemas.fund import FundCreateIn, FundOut, FundPublicOut, FundUpdateIn, MyFundOut
+from app.schemas.fund import FundCreateIn, FundOut, FundPublicOut, FundUpdateIn, MyFundOut, RateOut
 from app.schemas.member import FundContext, JoinIn, MemberOut
 from app.services.account_service import AccountService
 from app.services.member_service import member_out
@@ -25,6 +26,7 @@ class FundService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.repo = FundRepository(db=db)
+        self.rate_repo = FundRateRepository(db=db)
         self.member_repo = MemberRepository(db=db)
         self.accounts = AccountService(db=db)
         self.plans = PlanService(db=db)
@@ -38,9 +40,12 @@ class FundService:
             address=payload.address,
             code=await self._free_code(),
             base_currency=payload.base_currency.value,
-            monthly_rate=payload.monthly_rate,
             start_period=payload.start_period or current_period(),
             created_by_id=user_id,
+        )
+        # Первый тариф действует с начала расчётов
+        await self.rate_repo.create(
+            fund_id=fund.id, period=fund.start_period, amount=payload.monthly_rate, created_by_id=user_id
         )
 
         # Счёт базовой валюты есть всегда, остальные — по выбору председателя
@@ -88,7 +93,7 @@ class FundService:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Request is already pending")
             if member.status == MemberStatusEnum.blocked.value:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Blocked in this fund")
-            # Отклонённую заявку можно подать повторно
+            # Отклонённую заявку можно подать повторно; вышедший возвращается через заявку
             member.status = MemberStatusEnum.pending.value
             member.address_unit = payload.address_unit.strip()
             member.message = payload.message
@@ -107,15 +112,30 @@ class FundService:
         member = await self.member_repo.get_by_user(fund_id, user_id)
         if not member or member.status != MemberStatusEnum.pending.value:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Request not found")
-        await self.db.delete(member)
+        if member.left_at is not None:
+            # Бывший участник передумал возвращаться — история и долг остаются
+            member.status = MemberStatusEnum.left.value
+        else:
+            await self.db.delete(member)
         await self.db.commit()
 
-    async def leave(self, ctx: FundContext) -> None:
-        if ctx.is_chairman:
+    async def leave(self, fund_id: int, user_id: int) -> None:
+        """
+        Выход из фонда. Запись не удаляется: долг за время участия сохраняется,
+        а при возвращении совет решит, начислять ли за период отсутствия.
+        Заблокированный тоже может выйти — останется заблокированным с датой выхода.
+        """
+        member = await self.member_repo.get_by_user(fund_id, user_id)
+        if not member or member.status not in (MemberStatusEnum.active.value, MemberStatusEnum.blocked.value):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not a member of this fund")
+        if member.role == FundRoleEnum.chairman.value:
             # Фонд не существует без председателя — сначала передайте права
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Transfer chairman rights first")
-        member = await self.member_repo.get(ctx.fund_id, ctx.member_id)
-        await self.db.delete(member)
+
+        member.left_at = datetime.now(timezone.utc)
+        member.role = FundRoleEnum.resident.value
+        if member.status == MemberStatusEnum.active.value:
+            member.status = MemberStatusEnum.left.value
         await self.db.commit()
 
     # ─── Мои фонды и карточка ──────────────────────────────────────────────────
@@ -152,6 +172,8 @@ class FundService:
         if "base_currency" in data:
             await self.accounts.ensure_active_currency(fund.id, payload.base_currency.value)
             data["base_currency"] = payload.base_currency.value
+        if "monthly_rate" in data:
+            await self._schedule_rate(fund, data.pop("monthly_rate"), ctx.user_id)
 
         for field, value in data.items():
             setattr(fund, field, value)
@@ -160,7 +182,27 @@ class FundService:
 
     # ─── Helpers ───────────────────────────────────────────────────────────────
 
+    async def _schedule_rate(self, fund: Fund, amount: int, user_id: int) -> None:
+        """
+        Новый тариф — с 1-го числа следующего месяца (или с начала расчётов, если фонд ещё не начал).
+
+        Прошедшие и текущий месяц остаются по старому тарифу. Повторное изменение в том же
+        месяце перезаписывает запланированное; возврат к текущему тарифу отменяет его.
+        """
+        today = current_period()
+        effective = max(shift_period(today, 1), fund.start_period)
+
+        planned = await self.rate_repo.get(fund.id, effective)
+        if planned:
+            await self.rate_repo.delete(planned)
+        if rate_at(await self.rate_repo.schedule(fund.id), effective) != amount:
+            await self.rate_repo.create(fund_id=fund.id, period=effective, amount=amount, created_by_id=user_id)
+
     async def _fund_out(self, fund: Fund, role: FundRoleEnum) -> FundOut:
+        schedule = await self.rate_repo.schedule(fund.id)
+        today = current_period()
+        # Пока расчёты не начались, «текущий» тариф — стартовый
+        upcoming = next_rate_change(schedule, max(today, fund.start_period))
         return FundOut(
             id=fund.id,
             name=fund.name,
@@ -168,7 +210,10 @@ class FundService:
             address=fund.address,
             code=fund.code,
             base_currency=fund.base_currency,
-            monthly_rate=fund.monthly_rate,
+            monthly_rate=rate_at(schedule, today),
+            next_monthly_rate=upcoming[1] if upcoming else None,
+            next_rate_period=upcoming[0] if upcoming else None,
+            rate_history=[RateOut(period=period, amount=amount) for period, amount in schedule],
             start_period=fund.start_period,
             accounts=await self.accounts.list_accounts(fund.id),
             plan=await self.plans.info(fund),

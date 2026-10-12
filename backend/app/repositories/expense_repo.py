@@ -21,11 +21,14 @@ class ExpenseRepository(BaseRepository):
     async def list(
         self,
         fund_id: int,
+        category: str | None = None,
         currency: str | None = None,
         skip: int = 0,
         limit: int = 50,
     ) -> list[Expense]:
         stmt = select(Expense).where(Expense.fund_id == fund_id)
+        if category:
+            stmt = stmt.where(Expense.category == category)
         if currency:
             stmt = stmt.where(Expense.currency == currency)
         stmt = _with_relations(stmt.order_by(Expense.created_at.desc()).offset(skip).limit(limit))

@@ -1,5 +1,4 @@
-import { computed, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Contribution } from '@/features/contributions/types.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
@@ -10,7 +9,7 @@ import type { Currency } from '@/shared/lib/currency.ts'
 import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 import { useAdminStore } from '../store.ts'
 import type {
-  AdminTab,
+  VerificationView,
   ExpenseCreate,
   FundSettingsUpdate,
   Member,
@@ -19,42 +18,34 @@ import type {
   TransferCreate,
 } from '../types.ts'
 
-const TABS: AdminTab[] = ['verification', 'members', 'expenses', 'funds', 'accounts', 'settings']
+export type AdminSheet = 'verify' | 'expense' | 'fund' | 'requisite' | 'transfer' | 'plan' | 'absence' | null
 
-export type AdminSheet = 'verify' | 'expense' | 'fund' | 'requisite' | 'transfer' | 'plan' | null
-
-/** Оркестрация экрана управления фондом: вкладка из URL, шторки, обработчики с уведомлениями. */
+/** Действия совета для экранов раздела «Фонд» и «Финансы»: шторки и обработчики с уведомлениями. */
 export function useAdminFlow() {
   const { t } = useI18n()
-  const route = useRoute()
-  const router = useRouter()
   const store = useAdminStore()
   const fundsStore = useFundsStore()
   const headerStore = useHeaderStore()
-
-  // ── View ──────────────────────────────────────────────────────────────
-  const view = computed<AdminTab>({
-    get: () => {
-      const tab = route.query.tab as AdminTab
-      return TABS.includes(tab) ? tab : 'verification'
-    },
-    set: (tab) => {
-      void router.replace({ query: { ...route.query, tab } })
-    },
-  })
-
-  const tabs = computed(() =>
-    TABS.map((tab) => ({
-      value: tab,
-      label: t(`admin.tabs.${tab}`),
-      badge: tab === 'verification' ? store.pending.length : tab === 'members' ? store.joinRequests.length : 0,
-    })),
-  )
 
   // ── Sheets ────────────────────────────────────────────────────────────
   const sheet = ref<AdminSheet>(null)
   const selectedContribution = ref<Contribution | null>(null)
   const selectedPlan = ref<Plan | null>(null)
+  // Участник, по которому совет решает о начислениях за период отсутствия
+  const selectedMember = ref<Member | null>(null)
+  // Продление текущего тарифа, а не переход на новый
+  const isRenewal = ref(false)
+
+  // ── Чеки: очередь или история ─────────────────────────────────────────
+  const verificationView = ref<VerificationView>('pending')
+  const verificationTabs = computed(() => [
+    { value: 'pending' as VerificationView, label: t('admin.verification.queue'), badge: store.pending.length },
+    { value: 'history' as VerificationView, label: t('admin.history.title') },
+  ])
+
+  watch(verificationView, (value) => {
+    if (value === 'history' && !store.history.length) void store.fetchHistory()
+  })
 
   function openSheet(name: Exclude<AdminSheet, null>) {
     sheet.value = name
@@ -64,6 +55,8 @@ export function useAdminFlow() {
     sheet.value = null
     selectedContribution.value = null
     selectedPlan.value = null
+    selectedMember.value = null
+    isRenewal.value = false
   }
 
   function openVerify(contribution: Contribution) {
@@ -71,19 +64,10 @@ export function useAdminFlow() {
     sheet.value = 'verify'
   }
 
-  function openPlanRequest(plan: Plan) {
+  function openPlanRequest(plan: Plan, renewal = false) {
     selectedPlan.value = plan
+    isRenewal.value = renewal
     sheet.value = 'plan'
-  }
-
-  // ── Lifecycle ─────────────────────────────────────────────────────────
-  async function initView() {
-    headerStore.setTitle(t('admin.title'))
-    await store.fetchAll()
-  }
-
-  function dispose() {
-    headerStore.reset()
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
@@ -107,8 +91,9 @@ export function useAdminFlow() {
       'Account balance must be zero': 'admin.errors.balanceNotZero',
       'Cannot disable the base currency': 'admin.errors.baseCurrency',
       'Currency account is not enabled': 'admin.errors.currencyDisabled',
-      'Currency must match the target fund': 'admin.errors.currencyMismatch',
       'Plan request is already pending': 'plans.pending',
+      'Insufficient funds': 'overdraft.rejected',
+      'Absence decision required': 'absence.chooseFirst',
     }
     return detail && known[detail] ? t(known[detail]) : (detail ?? t('errors.generic'))
   }
@@ -118,21 +103,57 @@ export function useAdminFlow() {
   }
 
   // ── Handlers: проверка чеков ──────────────────────────────────────────
-  async function handleApprove() {
+  async function handleApprove(creditedAmount: number | null) {
     const contribution = selectedContribution.value
-    if (contribution) await run(() => store.approve(contribution.id), 'admin.verification.approved', true)
+    if (!contribution) return
+    const ok = await run(() => store.approve(contribution.id, creditedAmount), 'admin.verification.approved', true)
+    if (ok && store.history.length) void store.fetchHistory()
   }
 
   async function handleReject(reason: string) {
     const contribution = selectedContribution.value
-    if (contribution) await run(() => store.reject(contribution.id, reason), 'admin.verification.rejected', true)
+    if (!contribution) return
+    const ok = await run(() => store.reject(contribution.id, reason), 'admin.verification.rejected', true)
+    if (ok && store.history.length) void store.fetchHistory()
   }
 
+  const handleHistoryFilter = () => run(() => store.fetchHistory())
+  const handleHistoryMore = () => run(() => store.fetchHistory(true))
+
   // ── Handlers: участники ───────────────────────────────────────────────
-  const handleApproveMember = (member: Member) => run(() => store.approveMember(member.id), 'admin.members.approved')
+  // Возвращающийся участник — сначала решение о периоде отсутствия
+  function handleApproveMember(member: Member) {
+    if (member.absence) {
+      selectedMember.value = member
+      sheet.value = 'absence'
+      return Promise.resolve(false)
+    }
+    return run(() => store.approveMember(member.id), 'admin.members.approved')
+  }
+
+  // Разблокировка: если не выходил — решение о периоде блокировки; если вышел — просто снимаем блок
+  function handleUnblock(member: Member) {
+    if (member.absence) {
+      selectedMember.value = member
+      sheet.value = 'absence'
+      return Promise.resolve(false)
+    }
+    return run(() => store.setMemberStatus(member.id, 'active'), 'admin.members.updated')
+  }
+
+  /** Подтверждение из шторки выбора: возвращение или разблокировка. */
+  function handleAbsenceDecision(accrue: boolean) {
+    const member = selectedMember.value
+    if (!member?.absence) return Promise.resolve(false)
+    const action =
+      member.absence.reason === 'left'
+        ? () => store.approveMember(member.id, accrue)
+        : () => store.setMemberStatus(member.id, 'active', accrue)
+    return run(action, accrue ? 'absence.doneAccrued' : 'absence.doneSkipped', true)
+  }
   const handleRejectMember = (member: Member) => run(() => store.rejectMember(member.id), 'admin.members.rejected')
   const handleMemberStatus = (member: Member, status: MemberStatus) =>
-    run(() => store.setMemberStatus(member.id, status), 'admin.members.updated')
+    status === 'active' ? handleUnblock(member) : run(() => store.setMemberStatus(member.id, status), 'admin.members.updated')
   const handleMemberRole = (member: Member, role: FundRole) =>
     run(() => store.setMemberRole(member.id, role), 'admin.members.updated')
 
@@ -165,7 +186,13 @@ export function useAdminFlow() {
 
   // ── Handlers: настройки ───────────────────────────────────────────────
   const handleSaveSettings = (payload: FundSettingsUpdate) =>
-    run(() => store.saveSettings(payload), 'admin.settings.saved')
+    run(
+      () => store.saveSettings(payload),
+      // Новый тариф вступает в силу не сразу — говорим об этом прямо
+      payload.monthly_rate !== undefined ? 'admin.settings.rateScheduled' : 'admin.settings.saved',
+    )
+
+  // ── Handlers: реквизиты ───────────────────────────────────────────────
   const handleAddRequisite = (payload: RequisiteCreate) =>
     run(() => store.addRequisite(payload), 'admin.settings.added', true)
   const handleToggleRequisite = (id: number) => run(() => store.toggleRequisite(id))
@@ -178,28 +205,35 @@ export function useAdminFlow() {
     if (await copyText(value)) headerStore.showNotification(t('common.copied'))
   }
 
-  const handlePlanRequest = (months: number, comment: string | null) => {
+  const handlePlanRequest = (months: number, contact: string, comment: string | null) => {
     const plan = selectedPlan.value
     if (!plan) return Promise.resolve(false)
-    return run(() => store.requestPlan(plan, months, comment), 'plans.requested', true)
+    return run(
+      () => store.requestPlan({ plan, months, contact, comment }),
+      isRenewal.value ? 'plans.renewRequested' : 'plans.requested',
+      true,
+    )
   }
 
   return {
-    view,
-    tabs,
     sheet,
     selectedContribution,
     selectedPlan,
+    selectedMember,
+    isRenewal,
+    verificationView,
+    verificationTabs,
     permissions: computed(() => fundsStore.permissions),
-    initView,
-    dispose,
     openSheet,
     closeSheet,
     openVerify,
     openPlanRequest,
     handleApprove,
     handleReject,
+    handleHistoryFilter,
+    handleHistoryMore,
     handleApproveMember,
+    handleAbsenceDecision,
     handleRejectMember,
     handleMemberStatus,
     handleMemberRole,

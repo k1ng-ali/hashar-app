@@ -1,27 +1,31 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { LuLandmark, LuPlus } from '@kalimahapps/vue-icons/lu'
+import { LuCreditCard, LuReceiptText, LuTarget, LuWallet } from '@kalimahapps/vue-icons/lu'
 import { useAuthStore } from '@/features/auth/store.ts'
 import BalanceBanner from '@/features/contributions/components/BalanceBanner.vue'
 import { useContributionsStore } from '@/features/contributions/store.ts'
+import AttentionCard, { type AttentionItem } from '@/features/dashboard/components/AttentionCard.vue'
 import BalanceCard from '@/features/dashboard/components/BalanceCard.vue'
 import MetricsRow from '@/features/dashboard/components/MetricsRow.vue'
 import OperationsList from '@/features/dashboard/components/OperationsList.vue'
+import QuickTiles, { type QuickTile } from '@/features/dashboard/components/QuickTiles.vue'
 import RequisitesSheet from '@/features/dashboard/components/RequisitesSheet.vue'
 import { useDashboardStore } from '@/features/dashboard/store.ts'
 import type { Operation, OperationsFilter } from '@/features/dashboard/types.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
-import TargetFundCard from '@/features/targetFunds/components/TargetFundCard.vue'
 import { useTargetFundsStore } from '@/features/targetFunds/store.ts'
-import type { TargetFund } from '@/features/targetFunds/types.ts'
 import CardSkeleton from '@/shared/components/CardSkeleton.vue'
 import EmptyState from '@/shared/components/EmptyState.vue'
 import PillTabs from '@/shared/components/PillTabs.vue'
 import { firstName } from '@/shared/lib/format.ts'
 import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 import { useReceiptStore } from '@/shared/stores/useReceiptStore.ts'
+
+// Тариф платформы скоро закончится — предупреждаем председателя заранее
+const PLAN_WARNING_DAYS = 7
+const DAY_MS = 24 * 60 * 60 * 1000
 
 const { t } = useI18n()
 const router = useRouter()
@@ -34,8 +38,6 @@ const headerStore = useHeaderStore()
 const receiptStore = useReceiptStore()
 
 const isRequisitesOpen = ref(false)
-const fundsSection = ref<HTMLElement | null>(null)
-const operationsSection = ref<HTMLElement | null>(null)
 
 onMounted(async () => {
   headerStore.setTitle(t('dashboard.greeting', { name: firstName(authStore.user?.full_name ?? '') }))
@@ -46,16 +48,47 @@ onUnmounted(() => {
   headerStore.reset()
 })
 
-// ── Handlers ─────────────────────────────────────────────────────────────
-function goContribute(fund?: TargetFund) {
-  void router.push({ path: '/contribute', query: fund ? { fund: fund.id } : undefined })
+// ── Быстрые действия ─────────────────────────────────────────────────────
+const tiles = computed<QuickTile[]>(() => [
+  { key: 'contribute', icon: LuWallet, title: t('dashboard.tiles.contribute'), hint: t('dashboard.tiles.contributeHint') },
+  { key: 'requisites', icon: LuCreditCard, title: t('dashboard.tiles.requisites'), hint: t('dashboard.tiles.requisitesHint') },
+  { key: 'expenses', icon: LuReceiptText, title: t('dashboard.tiles.expenses'), hint: t('dashboard.tiles.expensesHint') },
+  {
+    key: 'funds',
+    icon: LuTarget,
+    title: t('dashboard.tiles.funds'),
+    hint: t('dashboard.tiles.fundsHint', { n: targetFundsStore.activeItems.length }),
+  },
+])
+
+function handleTile(key: string) {
+  if (key === 'requisites') isRequisitesOpen.value = true
+  else if (key === 'contribute') void router.push('/contribute')
+  else void router.push(`/finance/${key}`)
 }
 
-function showExpenses() {
-  void store.fetchOperations('expense')
-  operationsSection.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
+// ── Требует внимания (совет) ─────────────────────────────────────────────
+const attention = computed<AttentionItem[]>(() => {
+  const summary = store.summary
+  const fund = fundsStore.current
+  if (!fundsStore.permissions.isCouncil || !summary || !fund) return []
 
+  const items: AttentionItem[] = []
+  if (summary.pending_count) {
+    items.push({ key: 'receipts', label: t('attention.receipts'), count: summary.pending_count, to: '/fund/receipts' })
+  }
+  if (summary.pending_members_count) {
+    items.push({ key: 'members', label: t('attention.members'), count: summary.pending_members_count, to: '/fund/members' })
+  }
+  const expiresAt = fund.plan.expires_at ? new Date(fund.plan.expires_at).getTime() : null
+  if (fund.plan.effective_plan !== 'free' && expiresAt && expiresAt - Date.now() < PLAN_WARNING_DAYS * DAY_MS) {
+    const days = Math.max(0, Math.ceil((expiresAt - Date.now()) / DAY_MS))
+    items.push({ key: 'plan', label: t('attention.plan', { n: days }), to: '/fund/settings' })
+  }
+  return items
+})
+
+// ── Операции ─────────────────────────────────────────────────────────────
 function changeFilter(filter: OperationsFilter) {
   void store.fetchOperations(filter)
 }
@@ -63,34 +96,46 @@ function changeFilter(filter: OperationsFilter) {
 function openReceipt(operation: Operation) {
   if (operation.receipt_image) receiptStore.open(operation.title, operation.receipt_image)
 }
+
+// Строка расхода в ленте операций ведёт на его карточку («e-<id>»)
+function openExpense(operation: Operation) {
+  void router.push({ path: '/finance/expenses', query: { id: operation.id.replace('e-', '') } })
+}
 </script>
 
 <template>
   <div class="dashboard-page">
-    <!-- 1. Балансы фонда по валютам -->
-    <CardSkeleton v-if="store.isLoading && !store.summary" :lines="4" :height="250" />
+    <!-- 1. Остаток фонда -->
+    <CardSkeleton v-if="store.isLoading && !store.summary" :lines="3" :height="120" />
     <BalanceCard
       v-else-if="store.baseAccount"
       :base-account="store.baseAccount"
       :other-accounts="store.otherAccounts"
-      :caption="`${fundsStore.current?.name} · ${fundsStore.currentMembership?.address_unit ?? ''}`"
-      @contribute="goContribute()"
-      @expenses="showExpenses"
-      @receipts="router.push('/history')"
-      @funds="fundsSection?.scrollIntoView({ behavior: 'smooth', block: 'start' })"
+      :caption="$t('dashboard.balanceLabel')"
+      :fund-name="fundsStore.current?.name ?? ''"
+      :unit="fundsStore.currentMembership?.address_unit ?? null"
     />
     <EmptyState v-else-if="store.errorMessage" icon="📡" :title="$t(store.errorMessage)">
       <button class="ghost-btn" @click="store.fetchDashboard()">{{ $t('common.retry') }}</button>
     </EmptyState>
 
-    <!-- 2. Сальдо участника -->
+    <!-- 2. Дела совета -->
+    <AttentionCard v-if="attention.length" :items="attention" @open="(to) => router.push(to)" />
+
+    <!-- 3. Моё сальдо -->
     <BalanceBanner
       v-if="contributionsStore.balance && contributionsStore.balance.rate > 0"
       :balance="contributionsStore.balance"
-      @pay="goContribute()"
+      @pay="router.push('/contribute')"
     />
 
-    <!-- 3. Метрики месяца (базовая валюта) -->
+    <!-- 4. Быстрые действия -->
+    <section class="section">
+      <h2 class="section-title">{{ $t('dashboard.quickActions') }}</h2>
+      <QuickTiles :tiles="tiles" @select="handleTile" />
+    </section>
+
+    <!-- 5. Месяц по базовому счёту -->
     <MetricsRow
       v-if="store.summary && store.baseAccount"
       :account="store.baseAccount"
@@ -99,48 +144,11 @@ function openReceipt(operation: Operation) {
       :members-count="store.summary.active_members_count"
     />
 
-    <button class="requisites-btn" @click="isRequisitesOpen = true">
-      <LuLandmark /> {{ $t('requisites.title') }}
-    </button>
-
-    <!-- 4. Целевые сборы -->
-    <section ref="fundsSection" class="section">
+    <!-- 6. Последние операции -->
+    <section class="section">
       <div class="section-header">
-        <div>
-          <h2 class="section-title">{{ $t('dashboard.fundsTitle') }}</h2>
-          <span class="section-sub">{{ $t('dashboard.fundsSubtitle') }}</span>
-        </div>
-        <button
-          v-if="fundsStore.permissions.canManageFinance"
-          class="ghost-btn"
-          @click="router.push({ path: '/admin', query: { tab: 'funds' } })"
-        >
-          <LuPlus /> {{ $t('dashboard.createFund') }}
-        </button>
-      </div>
-
-      <div v-if="targetFundsStore.isLoading && !targetFundsStore.items.length" class="grid">
-        <CardSkeleton v-for="i in 2" :key="i" />
-      </div>
-      <div v-else-if="targetFundsStore.items.length" class="grid">
-        <TargetFundCard
-          v-for="fund in targetFundsStore.items"
-          :key="fund.id"
-          :fund="fund"
-          @open="(f) => router.push(`/target-funds/${f.id}`)"
-          @contribute="goContribute"
-        />
-      </div>
-      <EmptyState v-else icon="🎯" :title="$t('targetFunds.emptyTitle')" :hint="$t('targetFunds.emptyHint')" />
-    </section>
-
-    <!-- 5. Операции -->
-    <section ref="operationsSection" class="section">
-      <div class="section-header">
-        <div>
-          <h2 class="section-title">{{ $t('dashboard.operationsTitle') }}</h2>
-          <span class="section-sub">{{ $t('dashboard.operationsSubtitle') }}</span>
-        </div>
+        <h2 class="section-title">{{ $t('dashboard.operationsTitle') }}</h2>
+        <router-link to="/finance/reports" class="see-all">{{ $t('dashboard.seeAll') }}</router-link>
       </div>
 
       <PillTabs
@@ -154,7 +162,12 @@ function openReceipt(operation: Operation) {
         @update:model-value="changeFilter"
       />
 
-      <OperationsList v-if="store.operations.length" :operations="store.operations" @open-receipt="openReceipt" />
+      <OperationsList
+        v-if="store.operations.length"
+        :operations="store.operations"
+        @open-receipt="openReceipt"
+        @open-expense="openExpense"
+      />
       <EmptyState v-else-if="!store.isOperationsLoading" icon="🧾" :title="$t('dashboard.noOperations')" />
     </section>
 
@@ -168,56 +181,46 @@ function openReceipt(operation: Operation) {
 .dashboard-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: 16px;
+  padding: 12px 16px 16px;
 }
 
 .section {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  scroll-margin-top: calc(var(--header-height) + var(--sat) + 12px);
 }
 
 .section-header {
   display: flex;
-  align-items: flex-end;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
 }
 
 .section-title {
   @include section-title;
+  font-size: 15px;
+  font-weight: 500;
+  color: $text-secondary;
 }
 
-.section-sub {
-  font-size: 12px;
-  color: $text-muted;
-}
-
-.grid {
-  display: grid;
-  gap: 12px;
+.see-all {
+  font-size: 14px;
+  font-weight: 600;
+  color: $navy;
+  text-decoration: none;
 }
 
 .ghost-btn {
   @include ghost-button;
 }
 
-.requisites-btn {
-  @include ghost-button;
-  padding: 12px;
-}
-
 @media (min-width: 768px) {
   .dashboard-page {
     padding: 24px;
-  }
-
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

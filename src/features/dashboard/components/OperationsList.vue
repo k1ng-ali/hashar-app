@@ -11,6 +11,7 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'open-receipt', operation: Operation): void
+  (e: 'open-expense', operation: Operation): void
 }>()
 
 const { t } = useI18n()
@@ -45,7 +46,11 @@ function amountLabel(operation: Operation): string {
         <LuArrowUpRight v-else />
       </span>
 
-      <div class="op-main">
+      <div
+        class="op-main"
+        :class="{ 'op-main--link': operation.type === 'expense' }"
+        @click="operation.type === 'expense' && emit('open-expense', operation)"
+      >
         <div class="op-row">
           <span class="op-title">{{ operation.title }}</span>
           <span class="op-amount" :class="`op-amount--${operation.type}`">{{ amountLabel(operation) }}</span>
@@ -73,45 +78,35 @@ function amountLabel(operation: Operation): string {
 @use '@/shared/styles/mixins' as *;
 
 .operations {
-  @include glass-card;
   display: flex;
   flex-direction: column;
-  padding: 6px 14px;
+  gap: 8px;
 }
 
 .operation {
+  @include glass-card(18px);
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 0;
-
-  & + & {
-    border-top: 1px solid rgba(35, 73, 112, 0.06);
-  }
+  padding: 12px 14px;
 }
 
 .op-icon {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
-  font-size: 18px;
+  @include icon-circle(40px);
 
   &--income {
-    background: rgba(16, 185, 129, 0.12);
+    background: rgba(22, 163, 74, 0.1);
     color: $success;
   }
 
   &--expense {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(229, 72, 77, 0.1);
     color: $danger;
   }
 
   &--transfer {
-    background: rgba(99, 102, 241, 0.12);
-    color: #4338CA;
+    background: $surface-muted;
+    color: $navy;
   }
 }
 
@@ -130,15 +125,15 @@ function amountLabel(operation: Operation): string {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 500;
   color: $navy;
 }
 
 .op-amount {
   flex-shrink: 0;
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 15px;
+  font-weight: 600;
 
   &--income {
     color: $success;
@@ -149,7 +144,7 @@ function amountLabel(operation: Operation): string {
   }
 
   &--transfer {
-    color: #4338CA;
+    color: $navy;
   }
 }
 
@@ -177,7 +172,7 @@ function amountLabel(operation: Operation): string {
   height: 46px;
   padding: 0;
   overflow: hidden;
-  border: 1px solid rgba(35, 73, 112, 0.1);
+  border: 1px solid rgba(17, 24, 39, 0.1);
   border-radius: 8px;
   background: #fff;
 
@@ -185,6 +180,16 @@ function amountLabel(operation: Operation): string {
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+}
+
+.op-main--link {
+  cursor: pointer;
+
+  .op-title {
+    text-decoration: underline;
+    text-decoration-color: rgba(17, 24, 39, 0.2);
+    text-underline-offset: 3px;
   }
 }
 </style>

@@ -6,12 +6,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.finance import current_period
 from app.enums import ContributionCategoryEnum, ContributionStatusEnum
 from app.models.contribution import Contribution
-from app.repositories.contribution_repo import ContributionRepository
+from app.models.requisite import PaymentRequisite
+from app.repositories.contribution_repo import ContributionFilters, ContributionRepository
 from app.repositories.fund_repo import FundRepository
 from app.repositories.member_repo import MemberRepository
 from app.repositories.target_fund_repo import TargetFundRepository
-from app.schemas.contribution import ContributionCreateIn, ContributionOut
+from app.schemas.contribution import (
+    ContributionCreateIn,
+    ContributionHistoryOut,
+    ContributionOut,
+    CurrencyTotalOut,
+)
 from app.services.account_service import AccountService
+
+
+def requisite_label(requisite: PaymentRequisite) -> str:
+    return f"{requisite.bank_name} · {requisite.card_or_account_number} · {requisite.recipient_name}"
 
 
 def contribution_out(contribution: Contribution) -> ContributionOut:
@@ -23,6 +33,10 @@ def contribution_out(contribution: Contribution) -> ContributionOut:
         user_unit=contribution.user_unit,
         amount=contribution.amount,
         currency=contribution.currency,
+        credited_amount=contribution.credited_amount,
+        credited_currency=contribution.credited_currency,
+        requisite_id=contribution.requisite_id,
+        requisite_label=contribution.requisite_label,
         category=contribution.category,
         target_fund_id=contribution.target_fund_id,
         target_fund_title=contribution.target_fund.title if contribution.target_fund else None,
@@ -56,13 +70,8 @@ class ContributionService:
         skip: int = 0,
         limit: int = 50,
     ) -> list[ContributionOut]:
-        items = await self.repo.list(
-            fund_id,
-            user_id=user_id,
-            status=status_filter.value if status_filter else None,
-            skip=skip,
-            limit=limit,
-        )
+        filters = ContributionFilters(user_id=user_id, status=status_filter.value if status_filter else None)
+        items = await self.repo.list(fund_id, filters, skip=skip, limit=limit)
         return [contribution_out(item) for item in items]
 
     async def create(self, fund_id: int, user_id: int, payload: ContributionCreateIn) -> ContributionOut:
@@ -78,14 +87,23 @@ class ContributionService:
                 raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Target fund not found")
             if not target_fund.is_active:
                 raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Target fund is closed")
-            if target_fund.currency != requisite.currency:
-                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Currency must match the target fund")
             target_fund_id = target_fund.id
+            credited_currency = target_fund.currency
         else:
-            # Ежемесячный тариф и долги считаются только в базовой валюте фонда
-            if requisite.currency != fund.base_currency:
-                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Monthly fee must be in base currency")
             billing_period = payload.billing_period or current_period()
+            # Ежемесячный тариф и долги считаются только в базовой валюте фонда
+            credited_currency = fund.base_currency
+
+        # Оплата в другой валюте: сколько зачесть, указывает сам участник — курс платформа не считает
+        if requisite.currency == credited_currency:
+            credited_amount = payload.amount
+        elif payload.credited_amount:
+            credited_amount = payload.credited_amount
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="credited_amount is required when paying in another currency",
+            )
 
         member = await self.member_repo.get_by_user(fund_id, user_id)
         contribution = await self.repo.create(
@@ -94,7 +112,10 @@ class ContributionService:
             user_unit=member.address_unit if member else None,
             amount=payload.amount,
             currency=requisite.currency,
+            credited_amount=credited_amount,
+            credited_currency=credited_currency,
             requisite_id=requisite.id,
+            requisite_label=requisite_label(requisite),
             category=payload.category.value,
             target_fund_id=target_fund_id,
             billing_period=billing_period,
@@ -115,15 +136,33 @@ class ContributionService:
         skip: int = 0,
         limit: int = 50,
     ) -> list[ContributionOut]:
-        items = await self.repo.list(
-            fund_id,
+        filters = ContributionFilters(
             user_id=user_id,
             status=status_filter.value if status_filter else None,
             category=category.value if category else None,
-            skip=skip,
-            limit=limit,
         )
+        items = await self.repo.list(fund_id, filters, skip=skip, limit=limit)
         return [contribution_out(item) for item in items]
+
+    async def history(
+        self,
+        fund_id: int,
+        filters: ContributionFilters,
+        skip: int = 0,
+        limit: int = 30,
+    ) -> ContributionHistoryOut:
+        """История чеков для совета: фильтры по статусу, реквизиту, валюте и участнику + итоги."""
+        if filters.search:
+            filters.search = filters.search.strip() or None
+        totals = await self.repo.totals(fund_id, filters)
+        items = await self.repo.list(fund_id, filters, skip=skip, limit=limit)
+        return ContributionHistoryOut(
+            items=[contribution_out(item) for item in items],
+            total_count=sum(count for _, _, count in totals),
+            totals=[
+                CurrencyTotalOut(currency=currency, amount=amount, count=count) for currency, amount, count in totals
+            ],
+        )
 
     async def approve(
         self,
@@ -131,8 +170,11 @@ class ContributionService:
         contribution_id: int,
         reviewer_id: int,
         comment: str | None = None,
+        credited_amount: int | None = None,
     ) -> ContributionOut:
-        return await self._review(fund_id, contribution_id, reviewer_id, ContributionStatusEnum.approved, comment)
+        return await self._review(
+            fund_id, contribution_id, reviewer_id, ContributionStatusEnum.approved, comment, credited_amount
+        )
 
     async def reject(self, fund_id: int, contribution_id: int, reviewer_id: int, reason: str) -> ContributionOut:
         return await self._review(fund_id, contribution_id, reviewer_id, ContributionStatusEnum.rejected, reason)
@@ -144,6 +186,7 @@ class ContributionService:
         reviewer_id: int,
         new_status: ContributionStatusEnum,
         comment: str | None,
+        credited_amount: int | None = None,
     ) -> ContributionOut:
         # Блокируем строку: два члена совета не должны проверить один чек одновременно
         contribution = await self.repo.get(fund_id, contribution_id, for_update=True)
@@ -153,6 +196,9 @@ class ContributionService:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Contribution already reviewed")
 
         contribution.status = new_status.value
+        # Поправка зачтённой суммы имеет смысл только для оплаты в другой валюте
+        if credited_amount and contribution.currency != contribution.credited_currency:
+            contribution.credited_amount = credited_amount
         contribution.comment_admin = comment
         contribution.reviewed_by_id = reviewer_id
         contribution.reviewed_at = datetime.now(timezone.utc)

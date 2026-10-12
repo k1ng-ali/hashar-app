@@ -1,25 +1,30 @@
 <script setup lang="ts">
-import { computed, type Component } from 'vue'
+import { computed, ref, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  LuChartPie,
+  LuBuilding2,
   LuHouse,
   LuMegaphone,
   LuPlus,
-  LuReceipt,
-  LuShieldCheck,
+  LuWallet,
 } from '@kalimahapps/vue-icons/lu'
 import { useContributionsStore } from '@/features/contributions/store.ts'
 import { useDashboardStore } from '@/features/dashboard/store.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
 import { useNavStore } from '@/shared/stores/useNavStore.ts'
+import QuickActionsSheet from './QuickActionsSheet.vue'
 
-interface NavItem {
+interface NavLink {
   path: string
   label: string
+  badge?: number
+}
+
+interface NavItem extends NavLink {
   icon: Component
   dot?: boolean
-  badge?: number
+  // Подразделы — в боковом меню на компьютере
+  children?: NavLink[]
 }
 
 const route = useRoute()
@@ -29,30 +34,61 @@ const dashboardStore = useDashboardStore()
 const fundsStore = useFundsStore()
 const contributionsStore = useContributionsStore()
 
-const items = computed<NavItem[]>(() => {
-  const list: NavItem[] = [
-    { path: '/', label: 'nav.home', icon: LuHouse },
-    { path: '/history', label: 'nav.history', icon: LuReceipt, dot: contributionsStore.hasDebt },
-    { path: '/news', label: 'nav.news', icon: LuMegaphone },
-    { path: '/reports', label: 'nav.reports', icon: LuChartPie },
-  ]
-  if (fundsStore.permissions.isCouncil) {
-    list.push({
-      path: '/admin',
-      label: 'nav.admin',
-      icon: LuShieldCheck,
-      badge: dashboardStore.summary?.pending_count ?? 0,
-    })
-  }
-  return list
-})
+const isActionsOpen = ref(false)
 
-// На мобильном кнопка «+» стоит по центру панели
-const leftItems = computed(() => items.value.slice(0, 2))
-const rightItems = computed(() => items.value.slice(2))
+// Что ждёт решения совета: чеки и заявки на вступление
+const pendingReceipts = computed(() => dashboardStore.summary?.pending_count ?? 0)
+const pendingMembers = computed(() => dashboardStore.summary?.pending_members_count ?? 0)
+const attentionCount = computed(() =>
+  fundsStore.permissions.isCouncil ? pendingReceipts.value + pendingMembers.value : 0,
+)
+
+const finance: NavItem = {
+  path: '/finance',
+  label: 'nav.finance',
+  icon: LuWallet,
+  children: [
+    { path: '/finance/my', label: 'finance.tabs.my' },
+    { path: '/finance/expenses', label: 'finance.tabs.expenses' },
+    { path: '/finance/funds', label: 'finance.tabs.funds' },
+    { path: '/finance/reports', label: 'finance.tabs.reports' },
+  ],
+}
+
+const fund = computed<NavItem>(() => ({
+  path: '/fund',
+  label: 'nav.fund',
+  icon: LuBuilding2,
+  badge: attentionCount.value,
+  children: fundsStore.permissions.isCouncil
+    ? [
+        { path: '/fund/receipts', label: 'fundMenu.receipts', badge: pendingReceipts.value },
+        { path: '/fund/members', label: 'fundMenu.members', badge: pendingMembers.value },
+        { path: '/fund/accounts', label: 'fundMenu.accounts' },
+        { path: '/fund/settings', label: 'fundMenu.settings' },
+      ]
+    : [],
+}))
+
+// Мобильная панель: две вкладки, «+», две вкладки
+const leftItems = computed<NavItem[]>(() => [
+  { path: '/', label: 'nav.home', icon: LuHouse },
+  { ...finance, dot: contributionsStore.hasDebt },
+])
+const rightItems = computed<NavItem[]>(() => [
+  { path: '/news', label: 'nav.news', icon: LuMegaphone },
+  fund.value,
+])
+const allItems = computed(() => [...leftItems.value, ...rightItems.value])
 
 function isActive(path: string) {
-  return path === '/' ? route.path === '/' : route.path.startsWith(path)
+  return path === '/' ? route.path === '/' : route.path === path || route.path.startsWith(`${path}/`)
+}
+
+// У жителя «+» сразу ведёт к взносу, у совета — меню действий
+function handlePlus() {
+  if (fundsStore.permissions.canManageFinance) isActionsOpen.value = true
+  else void router.push('/contribute')
 }
 </script>
 
@@ -70,12 +106,11 @@ function isActive(path: string) {
         <span class="tab-icon">
           <component :is="item.icon" />
           <span v-if="item.dot" class="tab-dot" />
-          <span v-if="item.badge" class="tab-badge">{{ item.badge }}</span>
         </span>
         <span class="tab-label">{{ $t(item.label) }}</span>
       </router-link>
 
-      <button class="center-btn" :aria-label="$t('nav.contribute')" @click="router.push('/contribute')">
+      <button class="plus-btn" :aria-label="$t('quickActions.title')" @click="handlePlus">
         <LuPlus />
       </button>
 
@@ -88,7 +123,6 @@ function isActive(path: string) {
       >
         <span class="tab-icon">
           <component :is="item.icon" />
-          <span v-if="item.dot" class="tab-dot" />
           <span v-if="item.badge" class="tab-badge">{{ item.badge }}</span>
         </span>
         <span class="tab-label">{{ $t(item.label) }}</span>
@@ -96,43 +130,56 @@ function isActive(path: string) {
     </nav>
   </Transition>
 
-  <!-- ═══ Десктоп: боковая панель ═══ -->
+  <!-- ═══ Компьютер: боковое меню ═══ -->
   <aside class="sidebar">
     <div class="sidebar-brand">
       <span class="brand-logo">🏠</span>
-      <div>
+      <div class="brand-text">
         <div class="brand-name">{{ $t('app.name') }}</div>
         <div class="brand-sub">{{ fundsStore.current?.name }}</div>
       </div>
     </div>
 
-    <button class="sidebar-cta" @click="router.push('/contribute')">
-      <LuPlus /> {{ $t('nav.contribute') }}
+    <button class="sidebar-cta" @click="handlePlus">
+      <LuPlus />
+      {{ fundsStore.permissions.canManageFinance ? $t('quickActions.title') : $t('nav.contribute') }}
     </button>
 
-    <router-link
-      v-for="item in items"
-      :key="item.path"
-      :to="item.path"
-      class="side-link"
-      :class="{ 'side-link--active': isActive(item.path) }"
-    >
-      <component :is="item.icon" class="side-icon" />
-      <span>{{ $t(item.label) }}</span>
-      <span v-if="item.dot" class="tab-dot tab-dot--inline" />
-      <span v-if="item.badge" class="tab-badge tab-badge--inline">{{ item.badge }}</span>
-    </router-link>
+    <nav class="side-nav">
+      <template v-for="item in allItems" :key="item.path">
+        <router-link :to="item.path" class="side-link" :class="{ 'side-link--active': isActive(item.path) }">
+          <component :is="item.icon" class="side-icon" />
+          <span>{{ $t(item.label) }}</span>
+          <span v-if="item.dot" class="tab-dot tab-dot--inline" />
+          <span v-if="item.badge" class="side-badge">{{ item.badge }}</span>
+        </router-link>
+
+        <div v-if="item.children?.length && isActive(item.path)" class="side-children">
+          <router-link
+            v-for="child in item.children"
+            :key="child.path"
+            :to="child.path"
+            class="side-child"
+            :class="{ 'side-child--active': isActive(child.path) }"
+          >
+            {{ $t(child.label) }}
+            <span v-if="child.badge" class="side-badge">{{ child.badge }}</span>
+          </router-link>
+        </div>
+      </template>
+    </nav>
 
     <div class="sidebar-footer">{{ $t('app.footer') }}</div>
   </aside>
+
+  <QuickActionsSheet :open="isActionsOpen" @close="isActionsOpen = false" />
 </template>
 
 <style scoped lang="scss">
 @use '@/shared/styles/mixins' as *;
 
-/* ═══ TABBAR ═══ */
+/* ═══ Мобильная панель ═══ */
 .tabbar {
-  @include glass-card(30px);
   position: fixed;
   left: 12px;
   right: 12px;
@@ -140,10 +187,15 @@ function isActive(path: string) {
   z-index: 100;
   display: flex;
   align-items: center;
-  justify-content: space-around;
+  gap: 2px;
   height: var(--nav-height);
-  padding: 0 6px;
-  background: rgba(255, 255, 255, 0.88);
+  padding: 6px;
+  border: 1px solid $hairline;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 8px 30px rgba(17, 24, 39, 0.08);
 }
 
 .tab {
@@ -151,19 +203,21 @@ function isActive(path: string) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  justify-content: center;
+  gap: 2px;
   flex: 1;
   min-width: 0;
-  padding: 6px 0;
+  height: 100%;
+  border-radius: 999px;
   color: $text-muted;
   text-decoration: none;
 
   &--active {
+    background: $surface-muted;
     color: $navy;
 
-    .tab-icon {
-      background: rgba(78, 190, 194, 0.16);
-      color: $teal;
+    .tab-label {
+      font-weight: 600;
     }
   }
 }
@@ -172,22 +226,37 @@ function isActive(path: string) {
   position: relative;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 30px;
-  border-radius: 15px;
-  font-size: 20px;
-  transition: all 0.2s ease;
+  font-size: 21px;
 }
 
 .tab-label {
-  font-size: 10px;
-  font-weight: 700;
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 11px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plus-btn {
+  @include pressable;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  margin: 0 6px;
+  border: none;
+  border-radius: 50%;
+  background: #111827;
+  color: #fff;
+  font-size: 20px;
 }
 
 .tab-dot {
   position: absolute;
-  top: 2px;
-  right: 6px;
+  top: -1px;
+  right: -4px;
   width: 8px;
   height: 8px;
   border: 2px solid #fff;
@@ -203,47 +272,21 @@ function isActive(path: string) {
 
 .tab-badge {
   position: absolute;
-  top: -4px;
-  right: 0;
-  min-width: 18px;
-  padding: 1px 5px;
+  top: -6px;
+  right: -10px;
+  min-width: 17px;
+  padding: 0 4px;
   border: 2px solid #fff;
-  border-radius: 10px;
+  border-radius: 9px;
   background: $danger;
   color: #fff;
   font-size: 10px;
-  font-weight: 800;
-  line-height: 1.2;
-
-  &--inline {
-    position: static;
-    margin-left: auto;
-    border: none;
-  }
+  font-weight: 700;
+  line-height: 13px;
+  text-align: center;
 }
 
-.center-btn {
-  @include pressable;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 56px;
-  height: 56px;
-  margin: 0 4px;
-  border: none;
-  border-radius: 50%;
-  background: $gradient;
-  color: #fff;
-  font-size: 26px;
-  box-shadow: 0 6px 18px rgba(78, 190, 194, 0.45);
-  transform: translateY(-12px);
-
-  &:active {
-    transform: translateY(-12px) scale(0.94);
-  }
-}
-
-/* ═══ SIDEBAR ═══ */
+/* ═══ Боковое меню ═══ */
 .sidebar {
   display: none;
 }
@@ -258,49 +301,58 @@ function isActive(path: string) {
     top: 0;
     bottom: 0;
     left: 0;
-    z-index: 110;
+    z-index: 100;
     display: flex;
     flex-direction: column;
     gap: 6px;
     width: var(--nav-width);
     padding: 20px 14px;
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(16px);
-    border-right: 1px solid rgba(35, 73, 112, 0.06);
+    border-right: 1px solid $hairline;
+    background: $surface;
   }
 
   .sidebar-brand {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 0 6px 18px;
+    padding: 4px 6px 14px;
   }
 
   .brand-logo {
-    display: grid;
-    place-items: center;
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
-    background: $gradient;
+    @include icon-circle(40px);
+    border-radius: 12px;
     font-size: 20px;
+  }
+
+  .brand-text {
+    min-width: 0;
   }
 
   .brand-name {
     font-size: 15px;
-    font-weight: 800;
+    font-weight: 700;
     color: $navy;
   }
 
   .brand-sub {
-    font-size: 11px;
+    overflow: hidden;
+    font-size: 12px;
     color: $text-muted;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .sidebar-cta {
     @include cta-button;
-    margin-bottom: 14px;
-    padding: 12px;
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+
+  .side-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
   }
 
   .side-link {
@@ -308,24 +360,21 @@ function isActive(path: string) {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 11px 14px;
+    padding: 11px 12px;
     border-radius: 14px;
     color: $text-secondary;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     text-decoration: none;
 
     &:hover {
-      background: rgba(78, 190, 194, 0.08);
+      background: $surface-muted;
     }
 
     &--active {
-      background: rgba(78, 190, 194, 0.16);
+      background: $surface-muted;
       color: $navy;
-
-      .side-icon {
-        color: $teal;
-      }
+      font-weight: 600;
     }
   }
 
@@ -333,9 +382,50 @@ function isActive(path: string) {
     font-size: 19px;
   }
 
+  .side-children {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 2px 0 6px 31px;
+    padding-left: 12px;
+    border-left: 1px solid $hairline;
+  }
+
+  .side-child {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 10px;
+    color: $text-secondary;
+    font-size: 13px;
+    text-decoration: none;
+
+    &:hover {
+      background: $surface-muted;
+    }
+
+    &--active {
+      color: $navy;
+      font-weight: 600;
+    }
+  }
+
+  .side-badge {
+    min-width: 20px;
+    margin-left: auto;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: $danger;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 20px;
+    text-align: center;
+  }
+
   .sidebar-footer {
     margin-top: auto;
-    padding: 0 8px;
+    padding: 0 6px;
     font-size: 11px;
     color: $text-muted;
   }

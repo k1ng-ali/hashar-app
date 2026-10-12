@@ -1,8 +1,11 @@
 from app.core.database import Base
+from app.models.accrual_pause import MemberAccrualPause
 from app.models.announcement import Announcement, AnnouncementComment, AnnouncementLike
 from app.models.contribution import Contribution
+from app.models.emergency_contact import EmergencyContact
 from app.models.expense import Expense
 from app.models.fund import Fund, FundAccount
+from app.models.fund_rate import FundRate
 from app.models.member import FundMember
 from app.models.plan_request import PlanRequest
 from app.models.requisite import PaymentRequisite
@@ -17,9 +20,12 @@ __all__ = [
     "AnnouncementComment",
     "AnnouncementLike",
     "Contribution",
+    "EmergencyContact",
     "Expense",
     "Fund",
     "FundAccount",
+    "FundRate",
+    "MemberAccrualPause",
     "FundMember",
     "PaymentRequisite",
     "PlanRequest",

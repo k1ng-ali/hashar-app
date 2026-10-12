@@ -1,27 +1,17 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import {
-  LuArrowUpRight,
-  LuEye,
-  LuEyeOff,
-  LuFlame,
-  LuPlus,
-  LuReceipt,
-} from '@kalimahapps/vue-icons/lu'
+import { LuEye, LuEyeOff } from '@kalimahapps/vue-icons/lu'
+import { CURRENCY_SYMBOLS } from '@/shared/lib/currency.ts'
 import { formatMoney } from '@/shared/lib/format.ts'
 import type { AccountSummary } from '../types.ts'
 
+/** Остаток фонда: тёмная акцентная карточка, базовый счёт крупно, остальные счета ниже. */
 defineProps<{
   baseAccount: AccountSummary
   otherAccounts: AccountSummary[]
   caption: string
-}>()
-
-const emit = defineEmits<{
-  (e: 'contribute'): void
-  (e: 'expenses'): void
-  (e: 'receipts'): void
-  (e: 'funds'): void
+  fundName: string
+  unit: string | null
 }>()
 
 const isVisible = ref(true)
@@ -29,54 +19,40 @@ const HIDDEN = '••••••'
 </script>
 
 <template>
-  <div class="balance-card">
-    <div class="glow" />
-
-    <div class="top-row">
-      <span class="caption-pill">
-        <span class="live-dot" />
-        {{ caption }}
-      </span>
+  <section class="balance-card">
+    <div class="top">
+      <span class="caption">{{ caption }} · {{ baseAccount.currency.toUpperCase() }}</span>
       <button class="eye-btn" :aria-label="$t('dashboard.toggleBalance')" @click="isVisible = !isVisible">
         <LuEye v-if="isVisible" />
         <LuEyeOff v-else />
       </button>
     </div>
 
-    <!-- Базовый счёт — крупно -->
-    <div class="label">
-      {{ $t('dashboard.balanceLabel') }} · {{ baseAccount.currency.toUpperCase() }}
+    <div class="amount">
+      <template v-if="isVisible">
+        {{ baseAccount.balance.toLocaleString('ru-RU') }}<span class="symbol">{{ CURRENCY_SYMBOLS[baseAccount.currency] }}</span>
+      </template>
+      <template v-else>{{ HIDDEN }}</template>
     </div>
-    <div class="value">{{ isVisible ? formatMoney(baseAccount.balance, baseAccount.currency) : HIDDEN }}</div>
 
-    <!-- Остальные валютные счета -->
-    <div v-if="otherAccounts.length" class="accounts">
-      <span v-for="account in otherAccounts" :key="account.currency" class="account-chip">
+    <div v-if="otherAccounts.length" class="others">
+      <span v-for="account in otherAccounts" :key="account.currency" class="other">
         {{ isVisible ? formatMoney(account.balance, account.currency) : HIDDEN }}
       </span>
     </div>
-    <div v-else class="sub">{{ $t('dashboard.balanceCaption') }}</div>
 
-    <!-- Быстрые действия -->
-    <div class="actions">
-      <button class="action" @click="emit('contribute')">
-        <span class="action-circle action-circle--primary"><LuPlus /></span>
-        <span>{{ $t('dashboard.actions.contribute') }}</span>
-      </button>
-      <button class="action" @click="emit('expenses')">
-        <span class="action-circle"><LuArrowUpRight /></span>
-        <span>{{ $t('dashboard.actions.expense') }}</span>
-      </button>
-      <button class="action" @click="emit('receipts')">
-        <span class="action-circle"><LuReceipt /></span>
-        <span>{{ $t('dashboard.actions.receipts') }}</span>
-      </button>
-      <button class="action" @click="emit('funds')">
-        <span class="action-circle"><LuFlame /></span>
-        <span>{{ $t('dashboard.actions.funds') }}</span>
-      </button>
+    <!-- Низ карточки — как «держатель» и «срок» у банковской карты -->
+    <div class="bottom">
+      <div class="meta">
+        <span class="meta-label">{{ $t('dashboard.card.fund') }}</span>
+        <span class="meta-value">{{ fundName }}</span>
+      </div>
+      <div v-if="unit" class="meta meta--right">
+        <span class="meta-label">{{ $t('dashboard.card.unit') }}</span>
+        <span class="meta-value">{{ unit }}</span>
+      </div>
     </div>
-  </div>
+  </section>
 </template>
 
 <style scoped lang="scss">
@@ -84,138 +60,105 @@ const HIDDEN = '••••••'
 
 .balance-card {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   overflow: hidden;
   padding: 20px;
-  border-radius: 28px;
-  background: $gradient;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 24px;
+  // Тёмная «карта»: зелёный отсвет сверху слева, синий — снизу справа
+  background:
+    radial-gradient(120% 90% at 0% 0%, rgba(52, 98, 74, 0.85) 0%, rgba(52, 98, 74, 0) 55%),
+    radial-gradient(110% 90% at 100% 100%, rgba(37, 66, 110, 0.9) 0%, rgba(37, 66, 110, 0) 55%),
+    linear-gradient(160deg, #1d2420 0%, #12161c 100%);
+  box-shadow: 0 12px 30px rgba(17, 24, 39, 0.22);
   color: #fff;
-  box-shadow: 0 14px 36px rgba(35, 73, 112, 0.3);
 }
 
-.glow {
-  position: absolute;
-  top: -60px;
-  right: -40px;
-  width: 200px;
-  height: 200px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.28), transparent 70%);
-  pointer-events: none;
-}
-
-/* ── Top ──────────────────────────────────────────────────────────────────── */
-.top-row {
+.top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 18px;
 }
 
-.caption-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  padding: 6px 12px;
-  overflow: hidden;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.18);
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.live-dot {
-  flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #6EE7B7;
-  box-shadow: 0 0 0 3px rgba(110, 231, 183, 0.3);
+.caption {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .eye-btn {
   @include pressable;
   display: grid;
   place-items: center;
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
   color: #fff;
-  font-size: 18px;
+  font-size: 16px;
 }
 
-/* ── Balance ──────────────────────────────────────────────────────────────── */
-.label {
-  font-size: 13px;
-  opacity: 0.85;
+.amount {
+  font-size: clamp(34px, 10vw, 42px);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
-.value {
-  margin: 4px 0 8px;
-  font-size: var(--fs-hero);
-  font-weight: 800;
-  letter-spacing: -0.5px;
+.symbol {
+  margin-left: 6px;
+  font-size: 0.45em;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.6);
 }
 
-.sub {
-  font-size: 12px;
-  opacity: 0.75;
-}
-
-.accounts {
+.others {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
-.account-chip {
-  padding: 5px 12px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.18);
+.other {
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
 }
 
-/* ── Actions ──────────────────────────────────────────────────────────────── */
-.actions {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-top: 22px;
+.bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 8px;
 }
 
-.action {
-  @include pressable;
+.meta {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 0;
-  border: none;
-  background: none;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
+  min-width: 0;
+
+  &--right {
+    flex-shrink: 0;
+    text-align: right;
+  }
 }
 
-.action-circle {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.18);
-  font-size: 20px;
+.meta-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+}
 
-  &--primary {
-    background: #fff;
-    color: $navy;
-  }
+.meta-value {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

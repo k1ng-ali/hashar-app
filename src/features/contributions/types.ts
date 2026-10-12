@@ -11,6 +11,12 @@ export interface Contribution {
   user_unit: string | null
   amount: number
   currency: Currency
+  /** Сколько зачтено в счёт назначения: в базовой валюте (взнос) или валюте сбора. */
+  credited_amount: number
+  credited_currency: Currency
+  requisite_id: number | null
+  /** Снимок реквизита: «банк · номер · получатель». */
+  requisite_label: string | null
   category: ContributionCategory
   target_fund_id: number | null
   target_fund_title: string | null
@@ -27,6 +33,8 @@ export interface Contribution {
 export interface ContributionCreate {
   requisite_id: number
   amount: number
+  /** Обязательно при оплате не в валюте назначения. */
+  credited_amount?: number | null
   category: ContributionCategory
   target_fund_id?: number | null
   billing_period?: string | null
@@ -38,6 +46,7 @@ export interface ResidentBalance {
   status: BalanceStatus
   currency: Currency
   rate: number
+  next_rate: number
   balance: number
   total_due: number
   total_paid: number

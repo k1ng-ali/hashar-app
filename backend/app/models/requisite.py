@@ -1,4 +1,9 @@
-"""Банковские реквизиты фонда, которые видят участники при оплате. Каждый реквизит — в своей валюте."""
+"""
+Банковские реквизиты фонда, которые видят участники при оплате. Каждый реквизит — в своей валюте.
+
+- kind: card — номер карты (16 цифр), account — номер счёта / IBAN
+- номер и телефон хранятся в едином формате (core/formatting.py)
+"""
 
 from sqlalchemy import TIMESTAMP, BigInteger, Boolean, Column, ForeignKey, String, Text, func
 
@@ -11,6 +16,7 @@ class PaymentRequisite(Base):
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     fund_id = Column(BigInteger, ForeignKey("funds.id", ondelete="CASCADE"), nullable=False, index=True)
     currency = Column(String(3), nullable=False)
+    kind = Column(String(10), nullable=False, default="card", server_default="card")
     bank_name = Column(String(100), nullable=False)
     card_or_account_number = Column(String(50), nullable=False)
     recipient_name = Column(String(120), nullable=False)

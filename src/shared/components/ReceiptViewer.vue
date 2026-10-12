@@ -16,6 +16,7 @@ function download() {
 
 <template>
   <BottomSheet
+    overlay
     :open="receiptStore.isOpen"
     :title="receiptStore.title || $t('receipt.viewerTitle')"
     @close="receiptStore.close()"

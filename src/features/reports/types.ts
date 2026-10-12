@@ -1,4 +1,4 @@
-import type { ExpenseCategory } from '@/features/admin/types.ts'
+import type { ExpenseCategory } from '@/features/expenses/types.ts'
 import type { Currency } from '@/shared/lib/currency.ts'
 
 export interface MonthlyLedgerRow {

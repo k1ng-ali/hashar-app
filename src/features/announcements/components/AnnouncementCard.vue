@@ -119,7 +119,7 @@ function sendComment(id: number) {
   padding: 16px;
 
   &--pinned {
-    border-color: rgba(78, 190, 194, 0.45);
+    border-color: rgba(17, 24, 39, 0.45);
   }
 }
 
@@ -152,7 +152,7 @@ function sendComment(id: number) {
 .category {
   padding: 3px 10px;
   border-radius: 20px;
-  background: rgba(35, 73, 112, 0.08);
+  background: rgba(17, 24, 39, 0.08);
   color: $navy;
   font-size: 11px;
   font-weight: 700;
@@ -191,7 +191,7 @@ function sendComment(id: number) {
   height: 30px;
   border: none;
   border-radius: 10px;
-  background: rgba(35, 73, 112, 0.06);
+  background: rgba(17, 24, 39, 0.06);
   color: $navy;
 
   &--danger {
@@ -202,7 +202,7 @@ function sendComment(id: number) {
 .title {
   margin: 0;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 }
 
@@ -221,7 +221,7 @@ function sendComment(id: number) {
   justify-content: space-between;
   gap: 8px;
   padding-top: 8px;
-  border-top: 1px solid rgba(35, 73, 112, 0.06);
+  border-top: 1px solid rgba(17, 24, 39, 0.06);
 }
 
 .transfer {
@@ -233,7 +233,7 @@ function sendComment(id: number) {
   border-radius: 14px;
   background: rgba(99, 102, 241, 0.08);
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
 
   .transfer-out {
     color: $danger;
@@ -264,8 +264,8 @@ function sendComment(id: number) {
 
   &--liked {
     border-color: transparent;
-    background: rgba(78, 190, 194, 0.16);
-    color: #0E7C80;
+    background: rgba(17, 24, 39, 0.16);
+    color: #111827;
   }
 }
 
@@ -276,7 +276,7 @@ function sendComment(id: number) {
   gap: 8px;
   padding: 12px;
   border-radius: 14px;
-  background: rgba(35, 73, 112, 0.04);
+  background: rgba(17, 24, 39, 0.04);
 }
 
 .comments-title {

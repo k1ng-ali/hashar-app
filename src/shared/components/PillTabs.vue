@@ -47,7 +47,7 @@ const emit = defineEmits<{
   gap: 6px;
   flex-shrink: 0;
   padding: 8px 14px;
-  border: 1px solid rgba(35, 73, 112, 0.1);
+  border: 1px solid rgba(17, 24, 39, 0.1);
   border-radius: 30px;
   background: rgba(255, 255, 255, 0.8);
   color: $text-secondary;
@@ -58,7 +58,7 @@ const emit = defineEmits<{
     border-color: transparent;
     background: $gradient;
     color: #fff;
-    box-shadow: 0 4px 12px rgba(78, 190, 194, 0.3);
+    box-shadow: none;
 
     .pill-badge {
       background: #fff;

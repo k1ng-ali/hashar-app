@@ -49,3 +49,15 @@ export interface AnnouncementCreate {
   category: AnnouncementCategory
   is_pinned: boolean
 }
+
+/** Экстренный телефон фонда (ведёт совет). */
+export interface EmergencyContact {
+  id: number
+  title: string
+  phone: string
+}
+
+export interface EmergencyContactCreate {
+  title: string
+  phone: string
+}

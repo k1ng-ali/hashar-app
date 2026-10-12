@@ -17,11 +17,12 @@
 | `base_repo.py` | `BaseRepository(db)` |
 | `user_repo.py` | `get`, `get_by_login`, `exists_login`, `list_all`, `create` |
 | `fund_repo.py` | `get(for_update)`, `get_by_code`, `code_exists`, `search`, `list_all`, `create`, `list_accounts`, `get_account`, `create_account` |
-| `member_repo.py` | `get(for_update)`, `get_by_user`, `get_chairman`, `list(status)`, `list_by_user`, `count_active`, `count_active_by_funds`, `units_by_users`, `create` |
+| `member_repo.py` | `get(for_update)`, `get_by_user`, `get_chairman`, `list(status)`, `list_council_by_funds`, `list_by_user`, `count_active`, `count_active_by_funds`, `units_by_users`, `create` |
 | `plan_request_repo.py` | `get(for_update)`, `list(status, fund_id)`, `has_pending`, `create` |
 | `requisite_repo.py` | `get`, `list(active_only, currencies)`, `create`, `delete` |
 | `transfer_repo.py` | `get`, `list`, `sums_by_currency` → `(зачислено, списано)`, `create` |
-| `contribution_repo.py` | `get(for_update)`, `list(фильтры)`, `monthly_sums_by_user(currency)`, `approved_sums_by_currency`, `count_pending`, `collected_by_target_funds`, `approved_monthly_sums`, `create` |
+| `fund_rate_repo.py` | `list`, `schedule` → `[(период, тариф)]`, `get`, `create`, `delete` |
+| `contribution_repo.py` | `get(for_update)`, `list(ContributionFilters)`, `totals(ContributionFilters)`, `monthly_sums_by_user(currency)`, `approved_sums_by_currency`, `count_pending`, `collected_by_target_funds`, `approved_monthly_sums`, `create` |
 | `expense_repo.py` | `get`, `list`, `sums_by_currency`, `sums_by_category(currency)`, `monthly_sums(currency)`, `create`, `delete` |
 | `target_fund_repo.py` | `get(for_update)`, `list(active_only)`, `create`, `delete` |
 | `announcement_repo.py` | `get`, `list`, `create`, `delete`, `create_comment`, `likes_count`, `liked_ids`, `add_like`, `remove_like` |

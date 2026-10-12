@@ -28,6 +28,7 @@ const emit = defineEmits<{
         <span class="top">
           <b>{{ requisite.bank_name }}</b>
           <span class="currency">{{ requisite.currency.toUpperCase() }}</span>
+            <span class="kind">{{ $t(`requisites.kind.${requisite.kind}`) }}</span>
         </span>
         <span class="number">{{ requisite.card_or_account_number }}</span>
         <span class="recipient">{{ requisite.recipient_name }}</span>
@@ -61,14 +62,14 @@ const emit = defineEmits<{
   align-items: flex-start;
   gap: 12px;
   padding: 12px;
-  border: 1.5px solid rgba(35, 73, 112, 0.1);
+  border: 1.5px solid rgba(17, 24, 39, 0.1);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.85);
   cursor: pointer;
 
   &--selected {
     border-color: $teal;
-    background: rgba(78, 190, 194, 0.08);
+    background: rgba(17, 24, 39, 0.08);
 
     .check {
       border-color: $teal;
@@ -90,7 +91,7 @@ const emit = defineEmits<{
   width: 20px;
   height: 20px;
   margin-top: 2px;
-  border: 2px solid rgba(35, 73, 112, 0.25);
+  border: 2px solid rgba(17, 24, 39, 0.25);
   border-radius: 50%;
 
   &::after {
@@ -125,8 +126,8 @@ const emit = defineEmits<{
 .currency {
   padding: 1px 8px;
   border-radius: 10px;
-  background: rgba(78, 190, 194, 0.14);
-  color: #0E7C80;
+  background: rgba(17, 24, 39, 0.14);
+  color: #111827;
   font-size: 11px;
   font-weight: 700;
 }
@@ -135,7 +136,7 @@ const emit = defineEmits<{
   font-family: 'SF Mono', 'Consolas', monospace;
   font-size: 15px;
   font-weight: 700;
-  color: #1F2937;
+  color: #111827;
 }
 
 .recipient,
@@ -153,7 +154,14 @@ const emit = defineEmits<{
   height: 34px;
   border: none;
   border-radius: 10px;
-  background: rgba(35, 73, 112, 0.06);
+  background: rgba(17, 24, 39, 0.06);
   color: $navy;
+}
+
+.kind {
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: $text-muted;
 }
 </style>

@@ -12,6 +12,7 @@ from app.repositories.member_repo import MemberRepository
 from app.repositories.plan_request_repo import PlanRequestRepository
 from app.schemas.fund import PlanInfoOut
 from app.schemas.plan import (
+    FundCouncilMemberOut,
     FundOutAdmin,
     FundPlanSetIn,
     PlanApproveIn,
@@ -32,6 +33,7 @@ def plan_request_out(request: PlanRequest) -> PlanRequestOut:
         plan=request.plan,
         months=request.months,
         status=request.status,
+        contact=request.contact,
         comment=request.comment,
         admin_comment=request.admin_comment,
         requested_by_name=request.requested_by.full_name if request.requested_by else None,
@@ -85,6 +87,7 @@ class PlanService:
             fund_id=fund_id,
             plan=payload.plan.value,
             months=payload.months,
+            contact=payload.contact.strip(),
             comment=payload.comment,
             requested_by_id=user_id,
         )
@@ -135,8 +138,7 @@ class PlanService:
 
     async def list_funds(self, skip: int = 0, limit: int = 50) -> list[FundOutAdmin]:
         funds = await self.fund_repo.list_all(skip=skip, limit=limit)
-        counts = await self.member_repo.count_active_by_funds([f.id for f in funds])
-        return [self._fund_admin_out(f, counts.get(f.id, 0)) for f in funds]
+        return await self._funds_admin_out(funds)
 
     async def set_plan(self, fund_id: int, payload: FundPlanSetIn) -> FundOutAdmin:
         fund = await self.fund_repo.get(fund_id, for_update=True)
@@ -147,7 +149,7 @@ class PlanService:
         fund.plan_expires_at = None if payload.plan == PlanEnum.free else payload.expires_at
         fund.member_limit = payload.member_limit if payload.plan == PlanEnum.individual else None
         await self.db.commit()
-        return self._fund_admin_out(fund, await self.member_repo.count_active(fund.id))
+        return (await self._funds_admin_out([fund]))[0]
 
     # ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -166,16 +168,33 @@ class PlanService:
         request.reviewed_by_id = admin_id
         request.reviewed_at = datetime.now(timezone.utc)
 
-    @staticmethod
-    def _fund_admin_out(fund: Fund, members_count: int) -> FundOutAdmin:
-        return FundOutAdmin(
-            id=fund.id,
-            name=fund.name,
-            code=fund.code,
-            plan=fund.plan,
-            effective_plan=effective_plan(fund),
-            plan_expires_at=fund.plan_expires_at,
-            member_limit=member_limit(fund),
-            members_count=members_count,
-            created_at=fund.created_at,
-        )
+    async def _funds_admin_out(self, funds: list[Fund]) -> list[FundOutAdmin]:
+        fund_ids = [f.id for f in funds]
+        counts = await self.member_repo.count_active_by_funds(fund_ids)
+        councils = await self.member_repo.list_council_by_funds(fund_ids)
+        return [
+            FundOutAdmin(
+                id=fund.id,
+                name=fund.name,
+                code=fund.code,
+                address=fund.address,
+                plan=fund.plan,
+                effective_plan=effective_plan(fund),
+                plan_expires_at=fund.plan_expires_at,
+                member_limit=member_limit(fund),
+                members_count=counts.get(fund.id, 0),
+                council=[
+                    FundCouncilMemberOut(
+                        user_id=m.user_id,
+                        full_name=m.user.full_name,
+                        role=m.role,
+                        phone=m.user.phone,
+                        email=m.user.email,
+                        address_unit=m.address_unit,
+                    )
+                    for m in councils.get(fund.id, [])
+                ],
+                created_at=fund.created_at,
+            )
+            for fund in funds
+        ]

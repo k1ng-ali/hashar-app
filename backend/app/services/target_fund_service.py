@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.finance import current_period, shift_period
 from app.enums import ContributionStatusEnum
 from app.models.target_fund import TargetFund
-from app.repositories.contribution_repo import ContributionRepository
+from app.repositories.contribution_repo import ContributionFilters, ContributionRepository
 from app.repositories.target_fund_repo import TargetFundRepository
 from app.schemas.target_fund import (
     MonthAmountOut,
@@ -60,7 +60,9 @@ class TargetFundService:
             target.id, (0, 0)
         )
 
-        contributions = await self.contribution_repo.list(fund_id, target_fund_id=target.id, limit=100)
+        contributions = await self.contribution_repo.list(
+            fund_id, ContributionFilters(target_fund_id=target.id), limit=100
+        )
         # Отклонённые чеки в публичной истории сбора не показываем
         visible = [c for c in contributions if c.status != ContributionStatusEnum.rejected.value]
         approved = [c for c in visible if c.status == ContributionStatusEnum.approved.value]
@@ -74,7 +76,7 @@ class TargetFundService:
 
         return TargetFundDetailOut(
             **_target_fund_out(target, collected, contributors).model_dump(),
-            average_contribution=round(sum(c.amount for c in approved) / len(approved)) if approved else 0,
+            average_contribution=round(sum(c.credited_amount for c in approved) / len(approved)) if approved else 0,
             monthly=monthly,
             contributions=[contribution_out(c) for c in visible],
         )

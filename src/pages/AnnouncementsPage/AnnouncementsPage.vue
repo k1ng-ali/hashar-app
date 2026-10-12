@@ -1,14 +1,21 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { LuPlus } from '@kalimahapps/vue-icons/lu'
 import AnnouncementCard from '@/features/announcements/components/AnnouncementCard.vue'
 import AnnouncementForm from '@/features/announcements/components/AnnouncementForm.vue'
 import EmergencyContacts from '@/features/announcements/components/EmergencyContacts.vue'
 import { useAnnouncementsStore, type AnnouncementsFilter } from '@/features/announcements/store.ts'
-import { ANNOUNCEMENT_FILTERS, type Announcement, type AnnouncementCreate } from '@/features/announcements/types.ts'
+import {
+  ANNOUNCEMENT_FILTERS,
+  type Announcement,
+  type AnnouncementCreate,
+  type EmergencyContactCreate,
+} from '@/features/announcements/types.ts'
 import { useAuthStore } from '@/features/auth/store.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
+import { errorDetail } from '@/shared/api/http.ts'
 import BottomSheet from '@/shared/components/BottomSheet.vue'
 import CardSkeleton from '@/shared/components/CardSkeleton.vue'
 import EmptyState from '@/shared/components/EmptyState.vue'
@@ -16,6 +23,8 @@ import PillTabs from '@/shared/components/PillTabs.vue'
 import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 const store = useAnnouncementsStore()
 const authStore = useAuthStore()
 const fundsStore = useFundsStore()
@@ -23,6 +32,7 @@ const headerStore = useHeaderStore()
 
 const isFormOpen = ref(false)
 const formRef = ref<InstanceType<typeof AnnouncementForm> | null>(null)
+const contactsRef = ref<InstanceType<typeof EmergencyContacts> | null>(null)
 
 const filterOptions = computed(() => [
   { value: 'all' as AnnouncementsFilter, label: t('common.all') },
@@ -34,7 +44,12 @@ const filterOptions = computed(() => [
 
 onMounted(async () => {
   headerStore.setTitle(t('announcements.title'))
-  await store.fetchItems('all')
+  // «+» → «Объявление» ведёт сюда с ?create=1
+  if (route.query.create) {
+    isFormOpen.value = true
+    void router.replace({ query: {} })
+  }
+  await Promise.all([store.fetchItems('all'), store.fetchContacts()])
 })
 
 onUnmounted(() => {
@@ -67,6 +82,26 @@ async function handleComment(id: number, text: string) {
   }
 }
 
+async function handleAddContact(payload: EmergencyContactCreate) {
+  try {
+    await store.addContact(payload)
+    contactsRef.value?.reset()
+    headerStore.showNotification(t('emergency.added'))
+  } catch (error) {
+    // Бэкенд мог отклонить номер — показываем его причину
+    headerStore.showNotification(errorDetail(error) ?? t('errors.generic'), 'error')
+  }
+}
+
+async function handleDeleteContact(id: number) {
+  if (!window.confirm(t('common.confirmDelete'))) return
+  try {
+    await store.removeContact(id)
+  } catch {
+    headerStore.showNotification(t('errors.generic'), 'error')
+  }
+}
+
 async function handleDelete(id: number) {
   if (!window.confirm(t('common.confirmDelete'))) return
   try {
@@ -85,7 +120,14 @@ async function handleDelete(id: number) {
       <button class="create-btn" @click="isFormOpen = true"><LuPlus /> {{ $t('announcements.create') }}</button>
     </div>
 
-    <EmergencyContacts />
+    <EmergencyContacts
+      ref="contactsRef"
+      :contacts="store.contacts"
+      :can-manage="fundsStore.permissions.isCouncil"
+      :is-submitting="store.isSubmitting"
+      @add="handleAddContact"
+      @delete="handleDeleteContact"
+    />
 
     <PillTabs :model-value="store.filter" :options="filterOptions" @update:model-value="store.fetchItems" />
 

@@ -20,7 +20,7 @@ const emit = defineEmits<{
       <div class="main">
         <div class="row">
           <span class="name">{{ contribution.user_name }}</span>
-          <span class="amount">{{ formatMoney(contribution.amount, contribution.currency, true) }}</span>
+          <span class="amount">{{ formatMoney(contribution.credited_amount, contribution.credited_currency, true) }}</span>
         </div>
         <div class="meta">
           <span>{{ contribution.user_unit }} · {{ formatDate(contribution.created_at) }}</span>
@@ -49,7 +49,7 @@ const emit = defineEmits<{
   padding: 12px 0;
 
   & + & {
-    border-top: 1px solid rgba(35, 73, 112, 0.06);
+    border-top: 1px solid rgba(17, 24, 39, 0.06);
   }
 }
 
@@ -60,9 +60,9 @@ const emit = defineEmits<{
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: rgba(78, 190, 194, 0.16);
+  background: rgba(17, 24, 39, 0.16);
   color: $navy;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .main {
@@ -84,7 +84,7 @@ const emit = defineEmits<{
 
 .amount {
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   color: $success;
 }
 
@@ -105,7 +105,7 @@ const emit = defineEmits<{
   height: 34px;
   border: none;
   border-radius: 10px;
-  background: rgba(35, 73, 112, 0.06);
+  background: rgba(17, 24, 39, 0.06);
   color: $navy;
   font-size: 16px;
 }

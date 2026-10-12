@@ -88,7 +88,7 @@ const CATEGORY_EMOJI: Record<TargetFundCategory, string> = {
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  background: rgba(78, 190, 194, 0.14);
+  background: rgba(17, 24, 39, 0.14);
   font-size: 22px;
 }
 
@@ -141,13 +141,13 @@ const CATEGORY_EMOJI: Record<TargetFundCategory, string> = {
 
 .collected {
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
   color: $navy;
 }
 
 .percent {
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   color: $teal;
 }
 

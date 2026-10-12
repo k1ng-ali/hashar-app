@@ -13,6 +13,7 @@ defineProps<{
   baseCurrency: Currency
   currency: Currency
   requiredCurrency: Currency | null
+  needsCredit: boolean
   funds: TargetFund[]
   requisites: Requisite[]
   presets: number[]
@@ -25,6 +26,7 @@ const category = defineModel<ContributionCategory>('category', { required: true 
 const targetFundId = defineModel<number | null>('targetFundId', { required: true })
 const requisiteId = defineModel<number | null>('requisiteId', { required: true })
 const amount = defineModel<number | null>('amount', { required: true })
+const creditedAmount = defineModel<number | null>('creditedAmount', { required: true })
 const receipt = defineModel<string>('receipt', { required: true })
 const comment = defineModel<string>('comment', { required: true })
 
@@ -79,16 +81,21 @@ const emit = defineEmits<{
         class="select"
         :placeholder="$t('contribution.selectFundPlaceholder')"
         :options="funds.map((f) => ({ value: f.id, label: `${f.title} · ${f.currency.toUpperCase()} · ${f.percent}%` }))"
-        @update:value="(value) => (targetFundId = typeof value === 'number' ? value : null)"
+        @update:value="(value: unknown) => (targetFundId = typeof value === 'number' ? value : null)"
       />
       <p v-else class="hint">{{ $t('contribution.noActiveFunds') }}</p>
     </div>
 
     <!-- 2. Куда переводите (реквизит определяет валюту) -->
     <div v-if="requiredCurrency" class="field">
-      <span class="label">{{ $t('contribution.toAccount', { currency: requiredCurrency.toUpperCase() }) }}</span>
+      <span class="label">{{ $t('contribution.toAccount') }}</span>
       <RequisitePicker v-if="requisites.length" v-model="requisiteId" :requisites="requisites" @copy="emit('copy', $event)" />
-      <p v-else class="hint hint--warn">{{ $t('contribution.noRequisites', { currency: requiredCurrency.toUpperCase() }) }}</p>
+      <p v-else class="hint hint--warn">{{ $t('contribution.noRequisites') }}</p>
+      <p v-if="requisites.length > 1" class="hint">
+        {{ $t(category === 'monthly_fee' ? 'contribution.anyCurrencyFee' : 'contribution.anyCurrencyFund', {
+          currency: requiredCurrency.toUpperCase(),
+        }) }}
+      </p>
     </div>
 
     <!-- 3. Сумма в валюте счёта -->
@@ -98,7 +105,7 @@ const emit = defineEmits<{
         <input v-model.number="amount" type="number" min="1" inputmode="numeric" placeholder="0" />
         <span class="currency">{{ currency.toUpperCase() }}</span>
       </div>
-      <div v-if="presets.length" class="chips">
+      <div v-if="presets.length && !needsCredit" class="chips">
         <button
           v-for="value in presets"
           :key="value"
@@ -110,6 +117,32 @@ const emit = defineEmits<{
           {{ formatMoney(value, baseCurrency) }}
         </button>
       </div>
+    </div>
+
+    <!-- 3a. Оплата в другой валюте: сколько зачесть (курс указывает сам участник) -->
+    <div v-if="needsCredit && requiredCurrency" class="field credit-box">
+      <span class="label">
+        {{ $t(category === 'monthly_fee' ? 'contribution.creditedFee' : 'contribution.creditedFund', {
+          currency: requiredCurrency.toUpperCase(),
+        }) }}
+      </span>
+      <div class="amount-box">
+        <input v-model.number="creditedAmount" type="number" min="1" inputmode="numeric" placeholder="0" />
+        <span class="currency">{{ requiredCurrency.toUpperCase() }}</span>
+      </div>
+      <div v-if="presets.length" class="chips">
+        <button
+          v-for="value in presets"
+          :key="value"
+          type="button"
+          class="chip"
+          :class="{ 'chip--active': creditedAmount === value }"
+          @click="creditedAmount = value"
+        >
+          {{ formatMoney(value, baseCurrency) }}
+        </button>
+      </div>
+      <p class="hint">{{ $t('contribution.creditedHint', { from: currency.toUpperCase(), to: requiredCurrency.toUpperCase() }) }}</p>
     </div>
 
     <!-- 4. Чек -->
@@ -183,7 +216,7 @@ textarea {
   gap: 4px;
   padding: 4px;
   border-radius: 16px;
-  background: rgba(35, 73, 112, 0.06);
+  background: rgba(17, 24, 39, 0.06);
 }
 
 .segment {
@@ -211,7 +244,7 @@ textarea {
     @include field-input;
     padding-right: 64px;
     font-size: 24px;
-    font-weight: 800;
+    font-weight: 700;
     color: $navy;
   }
 }
@@ -222,7 +255,7 @@ textarea {
   right: 16px;
   transform: translateY(-50%);
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   color: $text-muted;
 }
 
@@ -263,5 +296,15 @@ textarea {
   font-size: 12px;
   text-align: center;
   color: $text-muted;
+}
+
+.credit-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(17, 24, 39, 0.35);
+  border-radius: 16px;
+  background: rgba(17, 24, 39, 0.06);
 }
 </style>
