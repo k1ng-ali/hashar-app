@@ -35,6 +35,10 @@ class PlanRequestOut(BaseModel):
     requested_by_name: str | None = None
     reviewed_at: datetime | None = None
     created_at: datetime
+    # Для ожидающей заявки на другой тариф: остаток текущего и сколько дней нового он даст
+    # (дни — None, пока неизвестна цена individual)
+    carryover_tjs: float | None = None
+    carryover_days: int | None = None
 
 
 # ─── Админ платформы ──────────────────────────────────────────────────────────
@@ -43,6 +47,8 @@ class PlanRequestOut(BaseModel):
 class PlanApproveIn(BaseModel):
     months: int | None = Field(None, ge=1, le=36)  # по умолчанию — из заявки
     member_limit: int | None = Field(None, ge=1)  # только для individual
+    # Договорная цена individual за месяц — обязательна для него, по ней считается перенос остатка
+    monthly_price: int | None = Field(None, ge=1, le=1_000_000)
     admin_comment: str | None = Field(None, max_length=1000)
 
 
@@ -56,6 +62,7 @@ class FundPlanSetIn(BaseModel):
     plan: PlanEnum
     expires_at: datetime | None = None
     member_limit: int | None = Field(None, ge=1)
+    monthly_price: int | None = Field(None, ge=1, le=1_000_000)  # для individual
 
 
 class FundCouncilMemberOut(BaseModel):

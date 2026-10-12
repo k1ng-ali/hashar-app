@@ -16,17 +16,30 @@
 
 | Сервис | Методы | Правила |
 |---|---|---|
-| `AuthService` | `register`, `login`, `refresh`, `me`, `dev_login`, `list_demo_users` | Логин — телефон (нормализуется) или email |
+| `AuthService` | `register`, `login`, `refresh`, `logout`, `logout_all`, `me`, `dev_login`, `list_demo_users` | Логин — телефон (нормализуется) или email; refresh-токен указывает на сессию (`auth_sessions`), выход её отзывает; лимит попыток — `core/rate_limit.py` |
 | `FundService` | `create`, `search`, `get_by_code`, `join`, `cancel_request`, `leave`, `list_my`, `get`, `update` | Создатель — председатель; председатель не может выйти; финансовые настройки — только председатель |
 | `MemberService` | `list_members`, `approve`, `reject`, `set_status`, `set_role`, `transfer_chairman`, `get_balance`, `list_debtors` | Лимит тарифа при одобрении; председателя и себя менять нельзя |
-| `PlanService` | `catalog`, `info`, `ensure_capacity`, `create_request`, `list_requests`, `approve`, `reject`, `list_funds`, `set_plan` | Одна заявка в ожидании; продление — от текущей даты окончания |
+| `PlanService` | `catalog`, `info`, `ensure_capacity`, `create_request`, `list_requests`, `approve`, `reject`, `list_funds`, `set_plan` | Одна заявка в ожидании; продление того же тарифа по той же цене — от даты окончания; смена тарифа — остаток прежнего переводится в дни нового (`core/plans.carryover`) |
 | `AccountService` | `balances`, `list_accounts`, `enable_currency`, `disable_currency`, реквизиты, `create_transfer` | Базовый счёт не отключается; отключить можно только пустой счёт; перевод публикует объявление |
 | `DashboardService` | `summary`, `operations` | Остатки и метрики месяца по каждой валюте |
 | `ContributionService` | `list_my`, `create`, `list_all`, `history`, `approve`, `reject` | Валюта = валюта реквизита (любого активного); зачёт — в базовой валюте или валюте сбора, при оплате в другой валюте сумму зачёта вводит участник, совет может поправить при одобрении; снимок реквизита в `requisite_label` |
-| `ExpenseService` | `list(category, currency)`, `get`, `create`, `delete` | Расход со счёта включённой валюты; сверх остатка — 409, если не подтверждён `allow_overdraft` (`AccountService.ensure_sufficient`, с блокировкой строки фонда) |
-| `TargetFundService` | `list`, `get_detail`, `create`, `update`, `toggle`, `delete` | У сбора своя валюта |
+| `ExpenseService` | `list(category, currency)`, `get`, `create`, `delete` | Расход со счёта включённой валюты; сверх остатка — 409, если не подтверждён `allow_overdraft` (`AccountService.ensure_sufficient`, с блокировкой строки фонда); `delete` — отмена (`deleted_at`), запись остаётся |
+| `TargetFundService` | `list`, `get_detail(ctx)`, `create`, `update`, `toggle`, `delete` | У сбора своя валюта; удаляется только пустой сбор, сбор с деньгами — закрывается |
+| `AuditService` | `list` | Журнал действий фонда; записи добавляют сами сервисы через `AuditRepository.add` в той же транзакции |
 | `AnnouncementService` | `list`, `create`, `toggle_like`, `add_comment`, `delete` | Закреп — совет; объявления о переводах не удаляются |
 | `ReportService` | `financial(currency)`, `debtors`, `export_*` | Отчёт по одному валютному счёту; CSV с колонкой валюты |
+
+## Журнал и защита от ошибок
+
+- каждое действие совета с деньгами и доступом пишется в `audit_events` (`AuditRepository.add` до `commit`):
+  проверка чеков, расходы и их отмена, переводы, счета, реквизиты, финансовые настройки, участники и роли, тарифы
+- финансовые записи не удаляются: расход отменяется (`deleted_at`), сбор с операциями только закрывается
+- свой чек член совета не одобряет (кроме совета из одного человека)
+- базовая валюта и начало расчётов меняются только до первого ежемесячного взноса — иначе переписались бы долги
+- чек — только PNG / JPEG / WebP data URL до 3 МБ с проверкой сигнатуры (`core/receipts.py`), SVG — только в `DEV_MODE`
+- чек взноса — личный документ: в общих списках (карточка сбора, лента операций) участник получает только свои
+  чеки, чужие — `receipt_image = null` (`FundContext.can_see_receipt`); совет видит все. Акты расходов видят все
+- CSV-реестры с данными участников выгружает только совет (`api/council/reports.py`)
 
 ## Деньги и валюты
 
@@ -43,5 +56,7 @@
   разблокируется без выбора (→ `left`), решение — при его заявке на возвращение
 - тариф взноса хранится историей (`fund_rates`): месяц начисляется по тарифу, действовавшему в нём;
   смена тарифа вступает в силу с 1-го числа следующего месяца (`FundService._schedule_rate`)
-- тарифы платформы (`core/plans.py`): Free — 10, Pro — 100, Max — 500, Individual — лимит от админа;
-  после `plan_expires_at` действует Free; продление того же тарифа добавляет месяцы к текущей дате окончания
+- тарифы платформы (`core/plans.py`): Free — 10, Pro — 100, Max — 500, Individual — лимит и цена от админа;
+  после `plan_expires_at` действует Free; продление того же тарифа по той же цене добавляет месяцы к дате окончания.
+  При смене тарифа оплаченное не сгорает: остаток × цена прежнего (`funds.plan_price`) / цена нового = дни нового
+  (15 дней Max по 399 ≈ 199.5 смн → ≈ 30 дней Pro по 199), затем добавляются оплаченные месяцы

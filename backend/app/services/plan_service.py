@@ -1,12 +1,13 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.plans import effective_plan, member_limit, plan_price
+from app.core.plans import PLAN_MONTH, carryover, effective_plan, is_extension, member_limit, plan_price
 from app.enums import PLAN_MEMBER_LIMITS, PLAN_PRICES_TJS, PlanEnum, PlanRequestStatusEnum
 from app.models.fund import Fund
 from app.models.plan_request import PlanRequest
+from app.repositories.audit_repo import AuditRepository
 from app.repositories.fund_repo import FundRepository
 from app.repositories.member_repo import MemberRepository
 from app.repositories.plan_request_repo import PlanRequestRepository
@@ -21,11 +22,13 @@ from app.schemas.plan import (
     PlanRequestOut,
 )
 
-# Длина оплаченного месяца тарифа
-PLAN_MONTH = timedelta(days=30)
-
 
 def plan_request_out(request: PlanRequest) -> PlanRequestOut:
+    preview = None
+    if request.status == PlanRequestStatusEnum.pending.value:
+        new_price = plan_price(PlanEnum(request.plan))
+        if not is_extension(request.fund, PlanEnum(request.plan), new_price, datetime.now(timezone.utc)):
+            preview = carryover(request.fund, new_price)
     return PlanRequestOut(
         id=request.id,
         fund_id=request.fund_id,
@@ -39,7 +42,12 @@ def plan_request_out(request: PlanRequest) -> PlanRequestOut:
         requested_by_name=request.requested_by.full_name if request.requested_by else None,
         reviewed_at=request.reviewed_at,
         created_at=request.created_at,
+        carryover_tjs=preview.value_tjs if preview else None,
+        carryover_days=round(preview.extra / DAY) if preview and preview.extra is not None else None,
     )
+
+
+DAY = PLAN_MONTH / 30
 
 
 class PlanService:
@@ -50,6 +58,7 @@ class PlanService:
         self.repo = PlanRequestRepository(db=db)
         self.fund_repo = FundRepository(db=db)
         self.member_repo = MemberRepository(db=db)
+        self.audit = AuditRepository(db=db)
 
     # ─── Лимиты ────────────────────────────────────────────────────────────────
 
@@ -68,7 +77,8 @@ class PlanService:
             expires_at=fund.plan_expires_at,
             member_limit=member_limit(fund),
             members_count=await self.member_repo.count_active(fund.id),
-            price_tjs=plan_price(plan),
+            price_tjs=(fund.plan_price or plan_price(plan)) if plan != PlanEnum.free else 0,
+            remaining_tjs=remaining.value_tjs if (remaining := carryover(fund, None)) else None,
         )
 
     async def ensure_capacity(self, fund: Fund) -> None:
@@ -112,21 +122,30 @@ class PlanService:
         request = await self._get_pending_or_error(request_id)
         fund = await self.fund_repo.get(request.fund_id, for_update=True)
 
+        new_plan = PlanEnum(request.plan)
+        new_price = self._price_for(new_plan, payload.monthly_price)
         months = payload.months or request.months
         now = datetime.now(timezone.utc)
-        # Продление: считаем от текущей даты окончания, если тот же тариф ещё действует
-        start = (
-            fund.plan_expires_at
-            if fund.plan == request.plan and fund.plan_expires_at and fund.plan_expires_at > now
-            else now
-        )
 
-        fund.plan = request.plan
+        details = {"request_id": request.id, "months": months}
+        if is_extension(fund, new_plan, new_price, now):
+            # Продление того же тарифа — от текущей даты окончания
+            start = fund.plan_expires_at
+        else:
+            # Другой тариф: оплаченный остаток не сгорает, а докупает дни нового по его цене
+            rest = carryover(fund, new_price, now)
+            start = now + rest.extra if rest else now
+            if rest:
+                details.update(carryover_tjs=rest.value_tjs, carryover_days=round(rest.extra / DAY, 1))
+
+        fund.plan = new_plan.value
+        fund.plan_price = new_price
         fund.plan_expires_at = start + PLAN_MONTH * months
-        if request.plan == PlanEnum.individual.value:
+        if new_plan == PlanEnum.individual:
             fund.member_limit = payload.member_limit
 
         self._close(request, admin_id, PlanRequestStatusEnum.approved, payload.admin_comment)
+        self._audit_plan(fund, "plan.approve", admin_id, **details)
         await self.db.commit()
         return plan_request_out(await self.repo.get(request_id))
 
@@ -140,14 +159,18 @@ class PlanService:
         funds = await self.fund_repo.list_all(skip=skip, limit=limit)
         return await self._funds_admin_out(funds)
 
-    async def set_plan(self, fund_id: int, payload: FundPlanSetIn) -> FundOutAdmin:
+    async def set_plan(self, fund_id: int, payload: FundPlanSetIn, admin_id: int) -> FundOutAdmin:
         fund = await self.fund_repo.get(fund_id, for_update=True)
         if not fund:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fund not found")
 
         fund.plan = payload.plan.value
+        fund.plan_price = (
+            None if payload.plan == PlanEnum.free else self._price_for(payload.plan, payload.monthly_price)
+        )
         fund.plan_expires_at = None if payload.plan == PlanEnum.free else payload.expires_at
         fund.member_limit = payload.member_limit if payload.plan == PlanEnum.individual else None
+        self._audit_plan(fund, "plan.set", admin_id)
         await self.db.commit()
         return (await self._funds_admin_out([fund]))[0]
 
@@ -160,6 +183,34 @@ class PlanService:
         if request.status != PlanRequestStatusEnum.pending.value:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Plan request already reviewed")
         return request
+
+    def _audit_plan(self, fund: Fund, action: str, admin_id: int, **details) -> None:
+        self.audit.add(
+            fund_id=fund.id,
+            actor_id=admin_id,
+            action=action,
+            entity="fund",
+            entity_id=fund.id,
+            details={
+                "plan": fund.plan,
+                "expires_at": fund.plan_expires_at.isoformat() if fund.plan_expires_at else None,
+                "member_limit": fund.member_limit,
+                "price": fund.plan_price,
+                **details,
+            },
+        )
+
+    @staticmethod
+    def _price_for(plan: PlanEnum, monthly_price: int | None) -> int:
+        """Цена тарифа за месяц: из каталога, у individual — договорная от админа."""
+        price = plan_price(plan)
+        if price is not None:
+            return price
+        if not monthly_price:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="monthly_price is required for this plan"
+            )
+        return monthly_price
 
     @staticmethod
     def _close(request: PlanRequest, admin_id: int, new_status: PlanRequestStatusEnum, comment: str | None) -> None:

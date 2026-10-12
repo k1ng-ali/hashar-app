@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { LuCircleCheck, LuUpload, LuZap } from '@kalimahapps/vue-icons/lu'
 import { useI18n } from 'vue-i18n'
-import { readFileAsDataUrl } from '@/shared/lib/browser.ts'
+import { compressImage } from '@/shared/lib/browser.ts'
+import { IS_DEV_MODE } from '@/shared/lib/env.ts'
 import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 
-// Ограничение на размер чека — он хранится в БД как data URL
-const MAX_FILE_SIZE = 5 * 1024 * 1024
+// Исходный файл может быть большим фото с камеры — перед отправкой он сжимается
+const MAX_FILE_SIZE = 20 * 1024 * 1024
+// Предел после сжатия (backend принимает до 3 МБ, base64 длиннее на треть)
+const MAX_DATA_URL_LENGTH = 4 * 1024 * 1024
 
 defineProps<{
   modelValue: string
@@ -30,7 +33,16 @@ async function handleFile(event: Event) {
     headerStore.showNotification(t('receipt.tooLarge'), 'error')
     return
   }
-  emit('update:modelValue', await readFileAsDataUrl(file))
+  try {
+    const image = await compressImage(file)
+    if (image.length > MAX_DATA_URL_LENGTH) {
+      headerStore.showNotification(t('receipt.tooLarge'), 'error')
+      return
+    }
+    emit('update:modelValue', image)
+  } catch {
+    headerStore.showNotification(t('receipt.unsupported'), 'error')
+  }
 }
 </script>
 
@@ -48,14 +60,15 @@ async function handleFile(event: Event) {
 
   <!-- Выбор файла -->
   <div v-else class="receipt-dropzone">
-    <input :id="inputId" type="file" accept="image/*,.pdf" class="file-input" @change="handleFile" />
+    <input :id="inputId" type="file" accept="image/*" class="file-input" @change="handleFile" />
     <label :for="inputId" class="dropzone-label">
       <span class="upload-icon"><LuUpload /></span>
       <span class="dropzone-title">{{ $t('receipt.pick') }}</span>
       <span class="dropzone-hint">{{ $t('receipt.pickHint') }}</span>
     </label>
 
-    <div class="demo-row">
+    <!-- Тестовый чек — только в демо-режиме: в проде это был бы генератор поддельных чеков -->
+    <div v-if="IS_DEV_MODE" class="demo-row">
       <span>{{ $t('receipt.or') }}</span>
       <button type="button" class="demo-btn" @click="emit('generate')">
         <LuZap /> {{ $t('receipt.generate') }}

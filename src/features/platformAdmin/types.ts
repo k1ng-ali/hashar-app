@@ -31,5 +31,7 @@ export interface FundAdmin {
 export interface PlanApprove {
   months?: number | null
   member_limit?: number | null
+  /** Договорная цена individual за месяц — обязательна для него. */
+  monthly_price?: number | null
   admin_comment?: string | null
 }

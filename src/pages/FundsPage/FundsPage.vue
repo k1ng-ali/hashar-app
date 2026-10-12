@@ -7,6 +7,7 @@ import JoinForm from '@/features/funds/components/JoinForm.vue'
 import MyFundCard from '@/features/funds/components/MyFundCard.vue'
 import { useFundsHubFlow } from '@/features/funds/composables/useFundsHubFlow.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
+import AppLogo from '@/shared/components/AppLogo.vue'
 import BottomSheet from '@/shared/components/BottomSheet.vue'
 import CardSkeleton from '@/shared/components/CardSkeleton.vue'
 import EmptyState from '@/shared/components/EmptyState.vue'
@@ -27,7 +28,7 @@ onUnmounted(() => {
 <template>
   <div class="funds-page">
     <div class="hero">
-      <div class="hero-logo">🏘️</div>
+      <AppLogo :size="52" />
       <p>{{ $t('funds.subtitle') }}</p>
     </div>
 
@@ -140,18 +141,6 @@ onUnmounted(() => {
     font-size: 14px;
     color: $text-secondary;
   }
-}
-
-.hero-logo {
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  width: 52px;
-  height: 52px;
-  border-radius: 18px;
-  background: $gradient;
-  font-size: 26px;
-  box-shadow: none;
 }
 
 .section {

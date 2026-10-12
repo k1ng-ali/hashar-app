@@ -1,0 +1,61 @@
+# ─── Frontend: сборка Vite → GitHub Pages ─────────────────────────────────────
+# Push в release (изменения вне backend/ и deploy/) → https://hashar.app
+#
+# Один раз в репозитории: Settings → Pages → Source: GitHub Actions,
+# Custom domain: hashar.app, Enforce HTTPS — вкл.
+
+name: Frontend
+
+on:
+  push:
+    branches: [release]
+    paths-ignore:
+      - "backend/**"
+      - "deploy/**"
+      - ".github/workflows/backend.yml"
+      - "**.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      # Адрес API вшивается в сборку и в CSP (connect-src)
+      VITE_API_URL: https://api.hashar.app
+      VITE_DEV_MODE: "false"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      # SPA на Pages: неизвестный путь (/join/CODE, /fund/...) отдаёт 404.html — это тот же index.html
+      - run: cp dist/index.html dist/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

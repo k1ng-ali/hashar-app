@@ -1,3 +1,6 @@
+# Метод list() в классе затеняет встроенный list в аннотациях ниже (Python 3.12) — аннотации отложенные
+from __future__ import annotations
+
 from sqlalchemy import case, func, select
 from sqlalchemy.orm import selectinload
 
@@ -90,6 +93,20 @@ class MemberRepository(BaseRepository):
             .group_by(FundMember.fund_id)
         )
         return {fund_id: int(count) for fund_id, count in result.all()}
+
+    async def has_other_council(self, fund_id: int, user_id: int) -> bool:
+        """Есть ли в совете фонда кто-то ещё, кроме этого пользователя."""
+        result = await self.db.execute(
+            select(FundMember.id)
+            .where(
+                FundMember.fund_id == fund_id,
+                FundMember.user_id != user_id,
+                FundMember.status == ACTIVE,
+                FundMember.role.in_([FundRoleEnum.chairman.value, FundRoleEnum.admin.value]),
+            )
+            .limit(1)
+        )
+        return result.scalar_one_or_none() is not None
 
     async def count_by_status(self, fund_id: int, status: str) -> int:
         result = await self.db.execute(

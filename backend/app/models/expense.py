@@ -4,6 +4,8 @@
 - target_fund_id: если указан — расход списан за счёт целевого сбора
 - currency: счёт фонда, с которого списаны деньги
 - receipt_images: JSON-список data URL чеков / актов выполненных работ
+- deleted_at / deleted_by_id: расход отменён председателем. Запись не удаляется —
+  остаётся след для ревизии; в остатках, лентах и отчётах отменённые не участвуют
 """
 
 from sqlalchemy import TIMESTAMP, BigInteger, Column, ForeignKey, Integer, String, Text, func
@@ -26,7 +28,9 @@ class Expense(Base):
     receipt_images = Column(JSONB, nullable=False, default=list, server_default="[]")
     target_fund_id = Column(BigInteger, ForeignKey("target_funds.id", ondelete="SET NULL"), nullable=True, index=True)
     created_by_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_by_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
 
-    created_by = relationship("User", lazy="raise")
+    created_by = relationship("User", foreign_keys=[created_by_id], lazy="raise")
     target_fund = relationship("TargetFund", lazy="raise")

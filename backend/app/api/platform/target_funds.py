@@ -24,4 +24,4 @@ async def get_target_fund(
     ctx: FundContext = Depends(get_fund_context),
     service: TargetFundService = Depends(get_target_fund_service),
 ):
-    return await service.get_detail(fund_id=ctx.fund_id, target_fund_id=target_fund_id)
+    return await service.get_detail(ctx=ctx, target_fund_id=target_fund_id)

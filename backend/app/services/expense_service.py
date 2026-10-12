@@ -1,8 +1,14 @@
+# Метод list() в классе затеняет встроенный list в аннотациях ниже (Python 3.12) — аннотации отложенные
+from __future__ import annotations
+
+from datetime import datetime, timezone
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.enums import CurrencyEnum, ExpenseCategoryEnum
 from app.models.expense import Expense
+from app.repositories.audit_repo import AuditRepository
 from app.repositories.expense_repo import ExpenseRepository
 from app.repositories.target_fund_repo import TargetFundRepository
 from app.schemas.expense import ExpenseCreateIn, ExpenseOut
@@ -30,6 +36,7 @@ class ExpenseService:
         self.db = db
         self.repo = ExpenseRepository(db=db)
         self.target_fund_repo = TargetFundRepository(db=db)
+        self.audit = AuditRepository(db=db)
         self.accounts = AccountService(db=db)
 
     async def list(
@@ -78,12 +85,31 @@ class ExpenseService:
             target_fund_id=payload.target_fund_id,
             created_by_id=user_id,
         )
+        self.audit.add(
+            fund_id=fund_id,
+            actor_id=user_id,
+            action="expense.create",
+            entity="expense",
+            entity_id=expense.id,
+            details={"title": expense.title, "amount": expense.amount, "currency": expense.currency},
+        )
         await self.db.commit()
         return expense_out(expense)
 
-    async def delete(self, fund_id: int, expense_id: int) -> None:
+    async def delete(self, fund_id: int, expense_id: int, user_id: int) -> None:
+        """Отмена расхода: запись остаётся (deleted_at) и попадает в журнал, деньги возвращаются на счёт."""
         expense = await self.repo.get(fund_id, expense_id)
         if not expense:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Expense not found")
-        await self.repo.delete(expense)
+
+        expense.deleted_at = datetime.now(timezone.utc)
+        expense.deleted_by_id = user_id
+        self.audit.add(
+            fund_id=fund_id,
+            actor_id=user_id,
+            action="expense.delete",
+            entity="expense",
+            entity_id=expense.id,
+            details={"title": expense.title, "amount": expense.amount, "currency": expense.currency},
+        )
         await self.db.commit()

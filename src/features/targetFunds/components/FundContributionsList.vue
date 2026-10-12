@@ -27,7 +27,12 @@ const emit = defineEmits<{
           <StatusBadge v-if="contribution.status !== 'approved'" :status="contribution.status" />
         </div>
       </div>
-      <button class="receipt-btn" :aria-label="$t('receipt.view')" @click="emit('open-receipt', contribution)">
+      <button
+        v-if="contribution.receipt_image"
+        class="receipt-btn"
+        :aria-label="$t('receipt.view')"
+        @click="emit('open-receipt', contribution)"
+      >
         <LuFileSearch />
       </button>
     </div>

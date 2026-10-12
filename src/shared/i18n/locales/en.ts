@@ -16,9 +16,9 @@ export default {
 
   // ── App ──
   app: {
-    name: 'Building Fund',
+    name: 'Hashar',
     splash: 'Loading the fund…',
-    footer: 'Transparent building fund',
+    footer: 'Transparent community fund',
   },
 
   // ── Navigation ──
@@ -126,6 +126,7 @@ export default {
     submit: 'Sign in',
     register: 'Create account',
     invalid: 'Wrong login or password',
+    tooManyAttempts: 'Too many login attempts — wait 15 minutes',
     alreadyRegistered: 'This phone or email is already registered',
     fullName: 'Full name',
     fullNamePlaceholder: 'Alisher Rahimov',
@@ -245,6 +246,8 @@ export default {
     renewHint: 'The period will be added to the current end date ({date})',
     renewHintNoDate: 'The period will be added to the current plan',
     renewRequested: 'Renewal request sent ✅',
+    carryoverHint: 'The rest of the current plan (≈ {amount} TJS) moves to the new one: +{n} days',
+    carryoverHintIndividual: 'The rest of the current plan (≈ {amount} TJS) moves to the new one at the agreed price',
     contact: 'Contact',
     contactPlaceholder: 'Phone, Telegram or email',
     contactHint: 'The platform administrator will use it to arrange payment',
@@ -383,7 +386,7 @@ export default {
 
   // ── Receipt ──
   receipt: {
-    pick: 'Choose a photo or PDF',
+    pick: 'Choose a receipt photo',
     pickHint: 'Screenshot from your banking app',
     or: 'or for a quick test',
     generate: 'Generate a test receipt',
@@ -393,7 +396,8 @@ export default {
     view: 'Receipt',
     viewerTitle: 'Receipt',
     download: 'Download',
-    tooLarge: 'File is larger than 5 MB',
+    tooLarge: 'The file is too large',
+    unsupported: 'Could not read the image — save the receipt as JPG or PNG',
   },
 
   // ── History ──
@@ -511,6 +515,9 @@ export default {
       balanceNotZero: 'Move the remaining balance to another account first',
       baseCurrency: 'The base currency cannot be disabled',
       currencyDisabled: 'This currency account is disabled',
+      setupLocked: 'Currency and billing start cannot change after the first contribution',
+      ownContribution: 'Another council member must approve your own receipt',
+      targetFundHasOperations: 'The campaign already has contributions or expenses — close it instead',
     },
     verification: {
       title: 'Receipt review queue',
@@ -642,6 +649,7 @@ export default {
       rateUnit: 'Amount per month, {currency}',
       rateSave: 'Save rate',
       onlyChairman: 'Only the chairman can change it',
+      currencyLocked: 'The base currency is fixed: contributions were already accepted in it, changing it would rewrite debts',
       requisitesTitle: 'Payment details',
       requisitesSubtitle: 'Members see them when paying — each in its own currency',
       addRequisite: 'Add',
@@ -816,6 +824,9 @@ export default {
     },
     months: 'Months',
     memberLimit: 'Member limit',
+    monthlyPrice: 'Price per month, TJS',
+    carryover: 'Rest of the current plan ≈ {amount} TJS →',
+    carryoverDays: '+{n} days of the new plan',
     commentPlaceholder: 'Comment (required to reject)',
     approve: 'Enable plan',
     reject: 'Reject',

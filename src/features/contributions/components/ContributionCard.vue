@@ -43,7 +43,7 @@ const purpose = computed(() =>
     </div>
 
     <div class="footer">
-      <button class="receipt-btn" @click="emit('open-receipt', contribution)">
+      <button v-if="contribution.receipt_image" class="receipt-btn" @click="emit('open-receipt', contribution)">
         <LuEye /> {{ $t('receipt.view') }}
       </button>
       <span v-if="contribution.reviewed_at" class="reviewed">

@@ -3,7 +3,8 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { message } from 'ant-design-vue'
 import { i18n } from '@/shared/i18n/index.ts'
 
-export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+// Адрес API без /api/v1: в проде https://api.hashar.app (из сборки), локально — :8000. Пустая строка — тот же домен
+export const API_URL = import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:8000' : '')
 
 // ── Токен ───────────────────────────────────────────────────────────────────
 // Access-токен живёт только в памяти, refresh — в httpOnly cookie.

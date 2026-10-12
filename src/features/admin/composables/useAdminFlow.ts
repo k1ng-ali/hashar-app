@@ -94,6 +94,10 @@ export function useAdminFlow() {
       'Plan request is already pending': 'plans.pending',
       'Insufficient funds': 'overdraft.rejected',
       'Absence decision required': 'absence.chooseFirst',
+      'Financial setup is locked': 'admin.errors.setupLocked',
+      'Cannot approve your own contribution': 'admin.errors.ownContribution',
+      'Target fund has operations, close it': 'admin.errors.targetFundHasOperations',
+      'Request body is too large': 'receipt.tooLarge',
     }
     return detail && known[detail] ? t(known[detail]) : (detail ?? t('errors.generic'))
   }

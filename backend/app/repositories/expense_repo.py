@@ -1,3 +1,6 @@
+# Метод list() в классе затеняет встроенный list в аннотациях ниже (Python 3.12) — аннотации отложенные
+from __future__ import annotations
+
 from datetime import datetime
 
 from sqlalchemy import func, select
@@ -7,6 +10,11 @@ from app.models.expense import Expense
 from app.repositories.base_repo import BaseRepository
 
 
+def _not_deleted(stmt):
+    # Отменённые расходы видны только в журнале аудита
+    return stmt.where(Expense.deleted_at.is_(None))
+
+
 def _with_relations(stmt):
     return stmt.options(selectinload(Expense.created_by), selectinload(Expense.target_fund))
 
@@ -14,7 +22,9 @@ def _with_relations(stmt):
 class ExpenseRepository(BaseRepository):
 
     async def get(self, fund_id: int, expense_id: int) -> Expense | None:
-        stmt = _with_relations(select(Expense).where(Expense.id == expense_id, Expense.fund_id == fund_id))
+        stmt = _with_relations(
+            _not_deleted(select(Expense).where(Expense.id == expense_id, Expense.fund_id == fund_id))
+        )
         result = await self.db.execute(stmt.execution_options(populate_existing=True))
         return result.scalar_one_or_none()
 
@@ -26,7 +36,7 @@ class ExpenseRepository(BaseRepository):
         skip: int = 0,
         limit: int = 50,
     ) -> list[Expense]:
-        stmt = select(Expense).where(Expense.fund_id == fund_id)
+        stmt = _not_deleted(select(Expense).where(Expense.fund_id == fund_id))
         if category:
             stmt = stmt.where(Expense.category == category)
         if currency:
@@ -41,7 +51,7 @@ class ExpenseRepository(BaseRepository):
         start: datetime | None = None,
         end: datetime | None = None,
     ) -> dict[str, int]:
-        stmt = select(Expense.currency, func.sum(Expense.amount)).where(Expense.fund_id == fund_id)
+        stmt = _not_deleted(select(Expense.currency, func.sum(Expense.amount)).where(Expense.fund_id == fund_id))
         if start:
             stmt = stmt.where(Expense.created_at >= start)
         if end:
@@ -52,7 +62,7 @@ class ExpenseRepository(BaseRepository):
     async def sums_by_category(self, fund_id: int, currency: str) -> dict[str, int]:
         result = await self.db.execute(
             select(Expense.category, func.sum(Expense.amount))
-            .where(Expense.fund_id == fund_id, Expense.currency == currency)
+            .where(Expense.fund_id == fund_id, Expense.currency == currency, Expense.deleted_at.is_(None))
             .group_by(Expense.category)
         )
         return {category: int(total or 0) for category, total in result.all()}
@@ -61,7 +71,7 @@ class ExpenseRepository(BaseRepository):
         period = func.to_char(Expense.created_at, "YYYY-MM")
         result = await self.db.execute(
             select(period, func.sum(Expense.amount))
-            .where(Expense.fund_id == fund_id, Expense.currency == currency)
+            .where(Expense.fund_id == fund_id, Expense.currency == currency, Expense.deleted_at.is_(None))
             .group_by(period)
         )
         return {p: int(total or 0) for p, total in result.all()}
@@ -72,6 +82,10 @@ class ExpenseRepository(BaseRepository):
         await self.db.flush()
         return await self.get(expense.fund_id, expense.id)
 
-    async def delete(self, expense: Expense) -> None:
-        await self.db.delete(expense)
-        await self.db.flush()
+    async def exists_for_target_fund(self, fund_id: int, target_fund_id: int) -> bool:
+        result = await self.db.execute(
+            _not_deleted(
+                select(Expense.id).where(Expense.fund_id == fund_id, Expense.target_fund_id == target_fund_id)
+            ).limit(1)
+        )
+        return result.scalar_one_or_none() is not None

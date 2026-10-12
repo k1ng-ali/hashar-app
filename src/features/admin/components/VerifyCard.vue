@@ -18,7 +18,7 @@ const emit = defineEmits<{
 <template>
   <div class="verify-card">
     <button class="thumb" :aria-label="$t('admin.verification.check')" @click="emit('check', contribution)">
-      <img :src="contribution.receipt_image" alt="" />
+      <img :src="contribution.receipt_image ?? undefined" alt="" />
     </button>
 
     <div class="details">

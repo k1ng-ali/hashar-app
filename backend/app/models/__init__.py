@@ -1,6 +1,8 @@
 from app.core.database import Base
 from app.models.accrual_pause import MemberAccrualPause
 from app.models.announcement import Announcement, AnnouncementComment, AnnouncementLike
+from app.models.audit_event import AuditEvent
+from app.models.auth_session import AuthSession
 from app.models.contribution import Contribution
 from app.models.emergency_contact import EmergencyContact
 from app.models.expense import Expense
@@ -19,6 +21,8 @@ __all__ = [
     "Announcement",
     "AnnouncementComment",
     "AnnouncementLike",
+    "AuditEvent",
+    "AuthSession",
     "Contribution",
     "EmergencyContact",
     "Expense",

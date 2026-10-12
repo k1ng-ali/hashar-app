@@ -1,3 +1,6 @@
+# Метод list() в классе затеняет встроенный list в аннотациях ниже (Python 3.12) — аннотации отложенные
+from __future__ import annotations
+
 from sqlalchemy import func, select
 
 from app.models.emergency_contact import EmergencyContact

@@ -1,0 +1,7 @@
+# Разработка и тесты — в прод-образ не попадают
+-r requirements.txt
+pytest==9.1.1
+pytest-asyncio==1.4.0
+httpx==0.28.1
+black==26.10.0
+ruff==0.16.10

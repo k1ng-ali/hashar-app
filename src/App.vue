@@ -6,6 +6,7 @@ import { useDashboardStore } from '@/features/dashboard/store.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
 import Header from '@/features/header/Header.vue'
 import Navigator from '@/features/navigator/Navigator.vue'
+import AppLogo from '@/shared/components/AppLogo.vue'
 import ReceiptViewer from '@/shared/components/ReceiptViewer.vue'
 import { useNavStore } from '@/shared/stores/useNavStore.ts'
 
@@ -54,7 +55,7 @@ onMounted(async () => {
     <!-- ═══ SPLASH ═══ -->
     <Transition name="fade">
       <div v-if="!isReady" class="splash">
-        <div class="splash-logo">🏠</div>
+        <AppLogo class="splash-logo" :size="84" />
         <div class="splash-title">{{ $t('app.name') }}</div>
         <div class="splash-sub">{{ $t('app.splash') }}</div>
       </div>
@@ -105,15 +106,7 @@ onMounted(async () => {
 }
 
 .splash-logo {
-  display: grid;
-  place-items: center;
-  width: 84px;
-  height: 84px;
   margin-bottom: 12px;
-  border-radius: 26px;
-  background: $gradient;
-  font-size: 40px;
-  box-shadow: none;
   animation: pulse 1.4s ease-in-out infinite;
 }
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { formatDateTime } from '@/shared/lib/format.ts'
 import type { PlanApprove, PlanRequest } from '../types.ts'
 
@@ -15,6 +15,16 @@ const emit = defineEmits<{
 
 const months = ref(props.request.months)
 const memberLimit = ref<number | null>(null)
+const monthlyPrice = ref<number | null>(null)
+
+const isIndividual = computed(() => props.request.plan === 'individual')
+// У individual дни остатка считаем по введённой договорной цене (месяц тарифа — 30 дней)
+const carryoverDays = computed(() => {
+  const { carryover_tjs: value, carryover_days: days } = props.request
+  if (!isIndividual.value || value === null) return days
+  return monthlyPrice.value ? Math.round((value / monthlyPrice.value) * 30) : null
+})
+const canApprove = computed(() => !isIndividual.value || !!monthlyPrice.value)
 const comment = ref('')
 </script>
 
@@ -29,6 +39,10 @@ const comment = ref('')
     </div>
     <p class="contact">📞 {{ $t('platform.contact') }}: <b>{{ request.contact || '—' }}</b></p>
     <p v-if="request.comment" class="comment">«{{ request.comment }}»</p>
+    <p v-if="request.status === 'pending' && request.carryover_tjs" class="carryover">
+      🔁 {{ $t('platform.carryover', { amount: request.carryover_tjs }) }}
+      <b v-if="carryoverDays !== null">{{ $t('platform.carryoverDays', { n: carryoverDays }) }}</b>
+    </p>
 
     <!-- Решение админа -->
     <template v-if="request.status === 'pending'">
@@ -37,9 +51,13 @@ const comment = ref('')
           <span>{{ $t('platform.months') }}</span>
           <input v-model.number="months" type="number" min="1" max="36" />
         </label>
-        <label v-if="request.plan === 'individual'">
+        <label v-if="isIndividual">
           <span>{{ $t('platform.memberLimit') }}</span>
           <input v-model.number="memberLimit" type="number" min="1" :placeholder="$t('plans.unlimited')" />
+        </label>
+        <label v-if="isIndividual">
+          <span>{{ $t('platform.monthlyPrice') }} *</span>
+          <input v-model.number="monthlyPrice" type="number" min="1" />
         </label>
       </div>
       <input v-model="comment" class="comment-input" :placeholder="$t('platform.commentPlaceholder')" />
@@ -54,8 +72,15 @@ const comment = ref('')
         </button>
         <button
           class="cta-btn"
-          :disabled="isSubmitting"
-          @click="emit('approve', request, { months, member_limit: memberLimit || null, admin_comment: comment.trim() || null })"
+          :disabled="isSubmitting || !canApprove"
+          @click="
+            emit('approve', request, {
+              months,
+              member_limit: memberLimit || null,
+              monthly_price: monthlyPrice || null,
+              admin_comment: comment.trim() || null,
+            })
+          "
         >
           {{ $t('platform.approve') }}
         </button>
@@ -71,6 +96,20 @@ const comment = ref('')
 
 <style scoped lang="scss">
 @use '@/shared/styles/mixins' as *;
+
+.carryover {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f3f4f6;
+  font-size: 13px;
+  color: #374151;
+
+  b {
+    margin-left: 4px;
+    color: #111827;
+  }
+}
 
 .request {
   @include glass-card(18px);

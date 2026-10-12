@@ -31,7 +31,7 @@ async def enable_account(
     ctx: FundContext = Depends(require_fund_chairman),
     service: AccountService = Depends(get_account_service),
 ):
-    return await service.enable_currency(fund_id=ctx.fund_id, currency=payload.currency)
+    return await service.enable_currency(fund_id=ctx.fund_id, currency=payload.currency, user_id=ctx.user_id)
 
 
 @router.post("/accounts/{currency}/disable", response_model=list[AccountOut])
@@ -40,7 +40,7 @@ async def disable_account(
     ctx: FundContext = Depends(require_fund_chairman),
     service: AccountService = Depends(get_account_service),
 ):
-    return await service.disable_currency(fund_id=ctx.fund_id, currency=currency)
+    return await service.disable_currency(fund_id=ctx.fund_id, currency=currency, user_id=ctx.user_id)
 
 
 # ─── Реквизиты ────────────────────────────────────────────────────────────────
@@ -60,7 +60,7 @@ async def create_requisite(
     ctx: FundContext = Depends(require_fund_chairman),
     service: AccountService = Depends(get_account_service),
 ):
-    return await service.create_requisite(fund_id=ctx.fund_id, payload=payload)
+    return await service.create_requisite(fund_id=ctx.fund_id, payload=payload, user_id=ctx.user_id)
 
 
 @router.post("/requisites/{requisite_id}/toggle", response_model=RequisiteOut)
@@ -69,7 +69,7 @@ async def toggle_requisite(
     ctx: FundContext = Depends(require_fund_chairman),
     service: AccountService = Depends(get_account_service),
 ):
-    return await service.toggle_requisite(fund_id=ctx.fund_id, requisite_id=requisite_id)
+    return await service.toggle_requisite(fund_id=ctx.fund_id, requisite_id=requisite_id, user_id=ctx.user_id)
 
 
 @router.delete("/requisites/{requisite_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -78,4 +78,4 @@ async def delete_requisite(
     ctx: FundContext = Depends(require_fund_chairman),
     service: AccountService = Depends(get_account_service),
 ):
-    await service.delete_requisite(fund_id=ctx.fund_id, requisite_id=requisite_id)
+    await service.delete_requisite(fund_id=ctx.fund_id, requisite_id=requisite_id, user_id=ctx.user_id)

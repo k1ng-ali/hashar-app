@@ -161,7 +161,7 @@ async def test_cannot_disable_base_currency():
     service.fund_repo.get = AsyncMock(return_value=make_fund(base_currency="tjs"))
 
     with pytest.raises(HTTPException) as exc:
-        await service.disable_currency(fund_id=1, currency=CurrencyEnum.tjs)
+        await service.disable_currency(fund_id=1, currency=CurrencyEnum.tjs, user_id=1)
 
     assert exc.value.status_code == 409
 

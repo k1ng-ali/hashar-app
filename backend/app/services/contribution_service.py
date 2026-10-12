@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.finance import current_period
 from app.enums import ContributionCategoryEnum, ContributionStatusEnum
 from app.models.contribution import Contribution
-from app.models.requisite import PaymentRequisite
+from app.repositories.audit_repo import AuditRepository
 from app.repositories.contribution_repo import ContributionFilters, ContributionRepository
 from app.repositories.fund_repo import FundRepository
 from app.repositories.member_repo import MemberRepository
@@ -17,15 +17,11 @@ from app.schemas.contribution import (
     ContributionOut,
     CurrencyTotalOut,
 )
-from app.services.account_service import AccountService
+from app.services.account_service import AccountService, requisite_label
 
 
-def requisite_label(requisite: PaymentRequisite) -> str:
-    return f"{requisite.bank_name} · {requisite.card_or_account_number} · {requisite.recipient_name}"
-
-
-def contribution_out(contribution: Contribution) -> ContributionOut:
-    """ORM → схема с подтянутыми именами участника, сбора и проверяющего."""
+def contribution_out(contribution: Contribution, show_receipt: bool = True) -> ContributionOut:
+    """ORM → схема с подтянутыми именами участника, сбора и проверяющего. show_receipt=False — без чека."""
     return ContributionOut(
         id=contribution.id,
         user_id=contribution.user_id,
@@ -41,7 +37,7 @@ def contribution_out(contribution: Contribution) -> ContributionOut:
         target_fund_id=contribution.target_fund_id,
         target_fund_title=contribution.target_fund.title if contribution.target_fund else None,
         billing_period=contribution.billing_period,
-        receipt_image=contribution.receipt_image,
+        receipt_image=contribution.receipt_image if show_receipt else None,
         status=contribution.status,
         comment_user=contribution.comment_user,
         comment_admin=contribution.comment_admin,
@@ -58,6 +54,7 @@ class ContributionService:
         self.fund_repo = FundRepository(db=db)
         self.member_repo = MemberRepository(db=db)
         self.target_fund_repo = TargetFundRepository(db=db)
+        self.audit = AuditRepository(db=db)
         self.accounts = AccountService(db=db)
 
     # ─── Участник ──────────────────────────────────────────────────────────────
@@ -194,6 +191,14 @@ class ContributionService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Contribution not found")
         if contribution.status != ContributionStatusEnum.pending.value:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Contribution already reviewed")
+        # Свой чек одобряет другой член совета. Исключение — совет из одного человека,
+        # иначе его взносы не одобрил бы никто
+        if (
+            new_status == ContributionStatusEnum.approved
+            and contribution.user_id == reviewer_id
+            and await self.member_repo.has_other_council(fund_id, reviewer_id)
+        ):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot approve your own contribution")
 
         contribution.status = new_status.value
         # Поправка зачтённой суммы имеет смысл только для оплаты в другой валюте
@@ -202,6 +207,21 @@ class ContributionService:
         contribution.comment_admin = comment
         contribution.reviewed_by_id = reviewer_id
         contribution.reviewed_at = datetime.now(timezone.utc)
+        self.audit.add(
+            fund_id=fund_id,
+            actor_id=reviewer_id,
+            action=f"contribution.{new_status.value}",
+            entity="contribution",
+            entity_id=contribution.id,
+            details={
+                "user_id": contribution.user_id,
+                "amount": contribution.amount,
+                "currency": contribution.currency,
+                "credited_amount": contribution.credited_amount,
+                "credited_currency": contribution.credited_currency,
+                "comment": comment,
+            },
+        )
         await self.db.commit()
 
         return contribution_out(await self.repo.get(fund_id, contribution_id))

@@ -11,7 +11,7 @@
 - message: сообщение к заявке на вступление
 """
 
-from sqlalchemy import TIMESTAMP, BigInteger, Column, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import TIMESTAMP, BigInteger, Column, ForeignKey, Index, String, Text, UniqueConstraint, func, text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -19,7 +19,11 @@ from app.core.database import Base
 
 class FundMember(Base):
     __tablename__ = "fund_members"
-    __table_args__ = (UniqueConstraint("fund_id", "user_id", name="uq_fund_members_fund_id_user_id"),)
+    __table_args__ = (
+        UniqueConstraint("fund_id", "user_id", name="uq_fund_members_fund_id_user_id"),
+        # Председатель у фонда ровно один — гарантирует сама БД
+        Index("uq_fund_members_one_chairman", "fund_id", unique=True, postgresql_where=text("role = 'chairman'")),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     fund_id = Column(BigInteger, ForeignKey("funds.id", ondelete="CASCADE"), nullable=False, index=True)

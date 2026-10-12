@@ -93,13 +93,14 @@ function saveFinance() {
           type="button"
           class="chip"
           :class="{ 'chip--active': finance.base_currency === currency }"
-          :disabled="!isChairman"
+          :disabled="!isChairman || fund.setup_locked"
           @click="finance.base_currency = currency"
         >
           {{ currency.toUpperCase() }}
         </button>
       </div>
       <p class="hint">{{ $t('funds.create.baseCurrencyHint') }}</p>
+      <p v-if="fund.setup_locked" class="hint">🔒 {{ $t('admin.settings.currencyLocked') }}</p>
 
       <div class="rate-now">
         <span>{{ $t('admin.settings.rateCurrent') }}</span>

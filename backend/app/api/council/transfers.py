@@ -11,7 +11,7 @@ router = APIRouter(prefix="/funds/{fund_id}/transfers", tags=["Council • Trans
 
 @router.get("/", response_model=list[TransferOut])
 async def list_transfers(
-    skip: int = 0,
+    skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     ctx: FundContext = Depends(require_fund_council),
     service: AccountService = Depends(get_account_service),

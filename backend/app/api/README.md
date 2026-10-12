@@ -28,10 +28,11 @@
 
 | Метод | Путь | Описание |
 |---|---|---|
-| POST | `/auth/register` | Регистрация (имя, телефон и/или email, пароль) |
-| POST | `/auth/login` | Вход по телефону или email |
-| POST | `/auth/refresh` | Новый access-токен по refresh-cookie |
-| POST | `/auth/logout` | Удаляет refresh-cookie |
+| POST | `/auth/register` | Регистрация (имя, телефон и/или email, пароль); 10 в час с одного IP |
+| POST | `/auth/login` | Вход по телефону или email; после 10 неудач на логин (50 на IP) за 15 мин — 429 |
+| POST | `/auth/refresh` | Новый access-токен по живой сессии из refresh-cookie (срок сессии продлевается) |
+| POST | `/auth/logout` | Отзывает сессию и удаляет refresh-cookie |
+| POST | `/auth/logout-all` | Выход на всех устройствах (отзывает все сессии) |
 | GET | `/auth/me` | Текущий пользователь |
 | GET / POST | `/auth/dev-users`, `/auth/dev-login` | Быстрый вход (только `DEV_MODE`) |
 
@@ -60,7 +61,7 @@
 | GET | `/target-funds/`, `/target-funds/{id}` | Целевые сборы |
 | GET | `/expenses/?category=&currency=`, `/expenses/{id}` | Лента расходов и карточка расхода |
 | GET / POST / DELETE | `/announcements/...` | Доска объявлений, лайки, комментарии |
-| GET | `/reports/financial?currency=`, `/reports/debtors`, `/reports/export/*` | Отчёты и CSV |
+| GET | `/reports/financial?currency=`, `/reports/debtors` | Отчёты (CSV-выгрузки — только совет, см. ниже) |
 
 ### Council (`/council/funds/{fund_id}/...`, ⭐ — только председатель)
 
@@ -71,21 +72,23 @@
 | PATCH | `/members/{id}/status` | Блокировка / разблокировка |
 | PATCH ⭐ | `/members/{id}/role` | Житель ↔ ревизор |
 | POST ⭐ | `/members/transfer-chairman` | Передать права председателя |
-| GET / POST | `/contributions/`, `/{id}/approve`, `/{id}/reject` | Проверка чеков (при одобрении можно поправить `credited_amount`) |
+| GET / POST | `/contributions/`, `/{id}/approve`, `/{id}/reject` | Проверка чеков (при одобрении можно поправить `credited_amount`); свой чек одобряет другой член совета |
 | GET | `/contributions/history?status=&currency=&requisite_id=&q=` | История чеков с итогами по валютам |
-| POST / DELETE ⭐ | `/expenses/` | Расходы (валюта счёта списания); сверх остатка — только с `allow_overdraft` |
-| POST / PATCH / toggle / DELETE ⭐ | `/target-funds/...` | Целевые сборы (валюта цели) |
-| PATCH | `/settings` | Инфо фонда; ⭐ базовая валюта, тариф взноса (с 1-го числа следующего месяца), период |
+| POST / DELETE ⭐ | `/expenses/` | Расходы (валюта счёта списания); сверх остатка — только с `allow_overdraft`; DELETE — отмена (запись остаётся) |
+| POST / PATCH / toggle / DELETE ⭐ | `/target-funds/...` | Целевые сборы (валюта цели); удалить можно только сбор без взносов и расходов |
+| PATCH | `/settings` | Инфо фонда; ⭐ тариф взноса (с 1-го числа следующего месяца); ⭐ базовая валюта и начало расчётов — только до первого ежемесячного взноса |
 | POST ⭐ | `/accounts`, `/accounts/{currency}/disable` | Включить / отключить валютный счёт |
 | GET / POST ⭐ / toggle ⭐ / DELETE ⭐ | `/requisites` | Реквизиты с валютой |
 | GET / POST | `/transfers/` | Переводы и корректировки (+ объявление); списание сверх остатка — только с `allow_overdraft` |
 | GET / POST ⭐ | `/plan-requests/` | Заявки на тариф и продление (обязателен `contact`) |
+| GET | `/audit/` | Журнал действий совета и админа платформы |
+| GET | `/reports/export/contributions`, `/expenses`, `/debtors` | CSV-реестры (имена, помещения, телефоны) |
 
 ### Admin — админ платформы
 
 | Метод | Путь | Описание |
 |---|---|---|
 | GET | `/admin/plan-requests?status=` | Заявки на тарифы |
-| POST | `/admin/plan-requests/{id}/approve`, `/reject` | Включить тариф на N месяцев / отклонить |
+| POST | `/admin/plan-requests/{id}/approve`, `/reject` | Включить тариф на N месяцев / отклонить; для individual обязательна `monthly_price`; остаток прежнего тарифа переносится в дни нового |
 | GET | `/admin/funds` | Все фонды с тарифами, председателем и администраторами (контакты) |
 | PUT | `/admin/funds/{id}/plan` | Установить тариф вручную |

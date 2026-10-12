@@ -8,7 +8,7 @@ from app.schemas.contribution import ContributionOut
 
 class TargetFundCreateIn(BaseModel):
     title: str = Field(min_length=3, max_length=200)
-    description: str = Field(min_length=3)
+    description: str = Field(min_length=3, max_length=5000)
     target_amount: int = Field(ge=1, le=100_000_000)
     currency: CurrencyEnum
     category: TargetFundCategoryEnum = TargetFundCategoryEnum.landscaping
@@ -16,7 +16,7 @@ class TargetFundCreateIn(BaseModel):
 
 class TargetFundUpdateIn(BaseModel):
     title: str | None = Field(None, min_length=3, max_length=200)
-    description: str | None = Field(None, min_length=3)
+    description: str | None = Field(None, min_length=3, max_length=5000)
     target_amount: int | None = Field(None, ge=1, le=100_000_000)
     category: TargetFundCategoryEnum | None = None
     is_active: bool | None = None

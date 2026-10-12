@@ -132,4 +132,8 @@ export interface PlanRequest {
   requested_by_name: string | null
   reviewed_at: string | null
   created_at: string
+  /** Ожидающая заявка на другой тариф: остаток текущего и сколько дней нового он даст. */
+  carryover_tjs: number | null
+  /** null — у individual цену вводит админ, дни считаются по ней. */
+  carryover_days: number | null
 }

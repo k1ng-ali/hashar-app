@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Cookie, Depends, Response, status
+from fastapi import APIRouter, Cookie, Depends, Request, Response, status
 
 from app.core.config import REFRESH_TOKEN_EXPIRE, settings
 from app.core.security import REFRESH_COOKIE_NAME
@@ -10,6 +10,8 @@ from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
+COOKIE_PATH = "/api/v1/auth"
+
 
 def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
     response.set_cookie(
@@ -18,18 +20,26 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
         max_age=int(REFRESH_TOKEN_EXPIRE.total_seconds()),
         httponly=True,
         secure=settings.COOKIE_SECURE,
-        samesite="none" if settings.COOKIE_SECURE else "lax",
-        path="/api/v1/auth",
+        samesite=settings.COOKIE_SAMESITE,
+        path=COOKIE_PATH,
     )
+
+
+def _client_ip(request: Request) -> str | None:
+    # За Cloudflare и Caddy реальный адрес выставляет uvicorn --proxy-headers (см. deploy/Caddyfile)
+    return request.client.host if request.client else None
 
 
 @router.post("/register", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
 async def register(
     payload: RegisterIn,
+    request: Request,
     response: Response,
     service: AuthService = Depends(get_auth_service),
 ):
-    token, refresh_token = await service.register(payload=payload)
+    token, refresh_token = await service.register(
+        payload=payload, client_ip=_client_ip(request), user_agent=request.headers.get("user-agent")
+    )
     _set_refresh_cookie(response, refresh_token)
     return token
 
@@ -37,10 +47,13 @@ async def register(
 @router.post("/login", response_model=TokenOut)
 async def login(
     payload: LoginIn,
+    request: Request,
     response: Response,
     service: AuthService = Depends(get_auth_service),
 ):
-    token, refresh_token = await service.login(payload=payload)
+    token, refresh_token = await service.login(
+        payload=payload, client_ip=_client_ip(request), user_agent=request.headers.get("user-agent")
+    )
     _set_refresh_cookie(response, refresh_token)
     return token
 
@@ -57,8 +70,23 @@ async def refresh(
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(response: Response):
-    response.delete_cookie(key=REFRESH_COOKIE_NAME, path="/api/v1/auth")
+async def logout(
+    response: Response,
+    refresh_token: str | None = Cookie(None, alias=REFRESH_COOKIE_NAME),
+    service: AuthService = Depends(get_auth_service),
+):
+    await service.logout(refresh_token=refresh_token)
+    response.delete_cookie(key=REFRESH_COOKIE_NAME, path=COOKIE_PATH)
+
+
+@router.post("/logout-all", status_code=status.HTTP_204_NO_CONTENT)
+async def logout_all(
+    response: Response,
+    user: CurrentUser = Depends(get_current_user),
+    service: AuthService = Depends(get_auth_service),
+):
+    await service.logout_all(user_id=user.id)
+    response.delete_cookie(key=REFRESH_COOKIE_NAME, path=COOKIE_PATH)
 
 
 @router.get("/me", response_model=UserOut)
@@ -80,9 +108,12 @@ async def dev_users(service: AuthService = Depends(get_auth_service)):
 @router.post("/dev-login", response_model=TokenOut)
 async def dev_login(
     payload: DevLoginIn,
+    request: Request,
     response: Response,
     service: AuthService = Depends(get_auth_service),
 ):
-    token, refresh_token = await service.dev_login(user_id=payload.user_id)
+    token, refresh_token = await service.dev_login(
+        user_id=payload.user_id, user_agent=request.headers.get("user-agent")
+    )
     _set_refresh_cookie(response, refresh_token)
     return token

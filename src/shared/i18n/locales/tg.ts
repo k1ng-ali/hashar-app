@@ -16,9 +16,9 @@ export default {
 
   // ── App ──
   app: {
-    name: 'Хазинаи бино',
+    name: 'Ҳашар',
     splash: 'Хазина бор шуда истодааст…',
-    footer: 'Хазинаи шаффофи бино',
+    footer: 'Хазинаи шаффоф барои бино ва маҳалла',
   },
 
   // ── Navigation ──
@@ -126,6 +126,7 @@ export default {
     submit: 'Ворид шудан',
     register: 'Бақайдгирӣ',
     invalid: 'Логин ё рамз нодуруст аст',
+    tooManyAttempts: 'Кӯшишҳои воридшавӣ аз ҳад зиёд — 15 дақиқа интизор шавед',
     alreadyRegistered: 'Ин телефон ё email аллакай ба қайд гирифта шудааст',
     fullName: 'Ному насаб',
     fullNamePlaceholder: 'Алишер Раҳимов',
@@ -245,6 +246,8 @@ export default {
     renewHint: 'Мӯҳлат ба санаи анҷоми ҷорӣ илова мешавад ({date})',
     renewHintNoDate: 'Мӯҳлат ба тарифи ҷорӣ илова мешавад',
     renewRequested: 'Дархости тамдид фиристода шуд ✅',
+    carryoverHint: 'Бақияи тарифи ҷорӣ ≈ {amount} смн ба тарифи нав мегузарад: +{n} рӯз',
+    carryoverHintIndividual: 'Бақияи тарифи ҷорӣ ≈ {amount} смн бо нархи мувофиқашуда ба тарифи нав мегузарад',
     contact: 'Тамос барои алоқа',
     contactPlaceholder: 'Телефон, Telegram ё email',
     contactHint: 'Админи платформа тавассути он барои пардохт бо шумо тамос мегирад',
@@ -383,7 +386,7 @@ export default {
 
   // ── Receipt ──
   receipt: {
-    pick: 'Сурат ё PDF интихоб кунед',
+    pick: 'Сурати чекро интихоб кунед',
     pickHint: 'Скриншот аз барномаи бонкӣ',
     or: 'ё барои санҷиши зуд',
     generate: 'Чеки санҷишӣ сохтан',
@@ -393,7 +396,8 @@ export default {
     view: 'Чек',
     viewerTitle: 'Квитансия',
     download: 'Боргирӣ',
-    tooLarge: 'Файл аз 5 МБ калон аст',
+    tooLarge: 'Файл хеле калон аст',
+    unsupported: 'Суратро хондан нашуд — чекро ҳамчун JPG ё PNG нигоҳ доред',
   },
 
   // ── History ──
@@ -511,6 +515,9 @@ export default {
       balanceNotZero: 'Аввал бақияро ба ҳисоби дигар интиқол диҳед',
       baseCurrency: 'Асъори асосиро хомӯш кардан мумкин нест',
       currencyDisabled: 'Ин ҳисоби асъорӣ хомӯш аст',
+      setupLocked: 'Пас аз аввалин пардохт асъор ва оғози ҳисобро иваз кардан мумкин нест',
+      ownContribution: 'Чеки шуморо узви дигари шӯро тасдиқ мекунад',
+      targetFundHasOperations: 'Дар ҷамъоварӣ аллакай пардохт ё хароҷот ҳаст — онро бандед, на нест кунед',
     },
     verification: {
       title: 'Навбати санҷиши чекҳо',
@@ -642,6 +649,7 @@ export default {
       rateUnit: 'Маблағ дар як моҳ, {currency}',
       rateSave: 'Нигоҳ доштани тариф',
       onlyChairman: 'Танҳо раис тағйир дода метавонад',
+      currencyLocked: 'Асъори асосӣ собит аст: бо он аллакай пардохтҳо қабул шудаанд, ивази он қарзҳоро тағйир медод',
       requisitesTitle: 'Реквизитҳо барои пардохт',
       requisitesSubtitle: 'Аъзоён ҳангоми пардохт мебинанд — ҳар кадом бо асъори худ',
       addRequisite: 'Илова',
@@ -816,6 +824,9 @@ export default {
     },
     months: 'Моҳҳо',
     memberLimit: 'Ҳадди аъзоён',
+    monthlyPrice: 'Нарх дар як моҳ, смн',
+    carryover: 'Бақияи тарифи ҷорӣ ≈ {amount} смн →',
+    carryoverDays: '+{n} рӯзи тарифи нав',
     commentPlaceholder: 'Шарҳ (ҳангоми рад ҳатмист)',
     approve: 'Фаъол кардани тариф',
     reject: 'Рад кардан',

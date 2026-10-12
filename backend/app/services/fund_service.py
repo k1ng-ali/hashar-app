@@ -7,6 +7,8 @@ from app.core.codes import generate_fund_code
 from app.core.finance import current_period, next_rate_change, rate_at, shift_period
 from app.enums import FundRoleEnum, MemberStatusEnum
 from app.models.fund import Fund
+from app.repositories.audit_repo import AuditRepository
+from app.repositories.contribution_repo import ContributionRepository
 from app.repositories.fund_rate_repo import FundRateRepository
 from app.repositories.fund_repo import FundRepository
 from app.repositories.member_repo import MemberRepository
@@ -28,6 +30,8 @@ class FundService:
         self.repo = FundRepository(db=db)
         self.rate_repo = FundRateRepository(db=db)
         self.member_repo = MemberRepository(db=db)
+        self.contribution_repo = ContributionRepository(db=db)
+        self.audit = AuditRepository(db=db)
         self.accounts = AccountService(db=db)
         self.plans = PlanService(db=db)
 
@@ -169,11 +173,31 @@ class FundService:
         if financial & data.keys() and not ctx.is_chairman:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the chairman can do this")
 
+        # Валюта и начало расчётов — основа сальдо: сменить их после первого взноса значит
+        # переписать прошлые долги и авансы (оплаты в старой валюте выпали бы из расчёта)
+        changes_setup = (
+            data.get("base_currency", fund.base_currency) != fund.base_currency
+            or data.get("start_period", fund.start_period) != fund.start_period
+        )
+        if changes_setup and await self.contribution_repo.has_monthly_fees(fund.id):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Financial setup is locked")
+
         if "base_currency" in data:
             await self.accounts.ensure_active_currency(fund.id, payload.base_currency.value)
             data["base_currency"] = payload.base_currency.value
+        audit = {
+            field: {"from": getattr(fund, field), "to": data[field]}
+            for field in ("base_currency", "start_period")
+            if field in data and data[field] != getattr(fund, field)
+        }
         if "monthly_rate" in data:
+            audit["monthly_rate"] = {"to": data["monthly_rate"]}
             await self._schedule_rate(fund, data.pop("monthly_rate"), ctx.user_id)
+        if audit:
+            self.audit.add(
+                fund_id=fund.id, actor_id=ctx.user_id, action="fund.settings", entity="fund", entity_id=fund.id,
+                details=audit,
+            )  # fmt: skip
 
         for field, value in data.items():
             setattr(fund, field, value)
@@ -215,6 +239,7 @@ class FundService:
             next_rate_period=upcoming[0] if upcoming else None,
             rate_history=[RateOut(period=period, amount=amount) for period, amount in schedule],
             start_period=fund.start_period,
+            setup_locked=await self.contribution_repo.has_monthly_fees(fund.id),
             accounts=await self.accounts.list_accounts(fund.id),
             plan=await self.plans.info(fund),
             my_role=role,

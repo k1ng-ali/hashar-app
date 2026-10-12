@@ -15,7 +15,7 @@ router = APIRouter(prefix="/funds/{fund_id}/contributions", tags=["Platform • 
 @router.get("/my", response_model=list[ContributionOut])
 async def list_my_contributions(
     status_filter: ContributionStatusEnum | None = Query(None, alias="status"),
-    skip: int = 0,
+    skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     ctx: FundContext = Depends(get_fund_context),
     service: ContributionService = Depends(get_contribution_service),

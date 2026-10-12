@@ -34,7 +34,7 @@ async def toggle_target_fund(
     ctx: FundContext = Depends(require_fund_council),
     service: TargetFundService = Depends(get_target_fund_service),
 ):
-    return await service.toggle(fund_id=ctx.fund_id, target_fund_id=target_fund_id)
+    return await service.toggle(fund_id=ctx.fund_id, target_fund_id=target_fund_id, user_id=ctx.user_id)
 
 
 @router.delete("/{target_fund_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -43,4 +43,4 @@ async def delete_target_fund(
     ctx: FundContext = Depends(require_fund_chairman),
     service: TargetFundService = Depends(get_target_fund_service),
 ):
-    await service.delete(fund_id=ctx.fund_id, target_fund_id=target_fund_id)
+    await service.delete(fund_id=ctx.fund_id, target_fund_id=target_fund_id, user_id=ctx.user_id)

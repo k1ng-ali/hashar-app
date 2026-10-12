@@ -7,6 +7,8 @@
 - ежемесячный тариф хранится историей в fund_rates (см. models/fund_rate.py)
 - plan / plan_expires_at: тариф платформы; после истечения действует free
 - member_limit: лимит участников для тарифа individual (null — без ограничений)
+- plan_price: цена текущего тарифа в TJS за месяц на момент подключения (у individual — договорная);
+  по ней остаток тарифа переводится в дни нового при смене тарифа (core/plans.py)
 
 fund_accounts — по одному счёту на каждую включённую валюту.
 Баланс счёта не хранится: считается по взносам, расходам и переводам.
@@ -41,6 +43,7 @@ class Fund(Base):
     plan = Column(String(20), nullable=False, default="free", server_default="free")
     plan_expires_at = Column(TIMESTAMP(timezone=True), nullable=True)
     member_limit = Column(Integer, nullable=True)
+    plan_price = Column(Integer, nullable=True)
     created_by_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 

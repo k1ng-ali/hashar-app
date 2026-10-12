@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 120" width="420" height="120">
+  <rect width="120" height="120" rx="28" fill="#111827"/>
+  <path d="M34 30L80 82" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round"/>
+  <path d="M80 30L34 82" stroke="#111827" stroke-width="26"/>
+  <path d="M80 30L34 82" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="92" cy="94" r="7.5" fill="#16A34A"/>
+  <text x="146" y="72" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="62" font-weight="700" letter-spacing="-1.8" fill="#111827">Ҳашар</text>
+  <text x="149" y="102" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="19" font-weight="500" fill="#6B7280">hashar.app</text>
+</svg>

@@ -12,6 +12,7 @@ from app.repositories.fund_repo import FundRepository
 from app.repositories.member_repo import MemberRepository
 from app.repositories.transfer_repo import TransferRepository
 from app.schemas.fund import AccountSummaryOut, FundSummaryOut, OperationOut
+from app.schemas.member import FundContext
 from app.services.account_service import AccountService
 from app.services.member_service import MemberService
 
@@ -69,10 +70,11 @@ class DashboardService:
 
     async def operations(
         self,
-        fund_id: int,
+        ctx: FundContext,
         type_filter: OperationsFilter = "all",
         limit: int = 10,
     ) -> list[OperationOut]:
+        fund_id = ctx.fund_id
         operations: list[OperationOut] = []
 
         if type_filter in ("all", "income"):
@@ -89,7 +91,8 @@ class DashboardService:
                         amount=c.amount,
                         currency=c.currency,
                         status=c.status,
-                        receipt_image=c.receipt_image,
+                        # Чек взноса — только владельцу и совету; акты расходов фонда видят все
+                        receipt_image=c.receipt_image if ctx.can_see_receipt(c.user_id) else None,
                         created_at=c.created_at,
                     )
                 )

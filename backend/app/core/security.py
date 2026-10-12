@@ -2,7 +2,8 @@
 JWT и пароли.
 
 - access-токен живёт 15 минут, передаётся в заголовке Authorization
-- refresh-токен живёт 30 дней, лежит в httpOnly cookie
+- refresh-токен живёт 30 дней, лежит в httpOnly cookie и указывает на сессию (sid):
+  выход отзывает сессию, и токен сразу перестаёт работать (models/auth_session.py)
 """
 
 from datetime import datetime, timezone
@@ -37,9 +38,10 @@ def create_access_token(user_id: int, is_platform_admin: bool = False) -> str:
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
-def create_refresh_token(user_id: int) -> str:
+def create_refresh_token(user_id: int, session_id: int) -> str:
     payload = {
         "sub": str(user_id),
+        "sid": session_id,
         "type": "refresh",
         "exp": datetime.now(timezone.utc) + REFRESH_TOKEN_EXPIRE,
     }

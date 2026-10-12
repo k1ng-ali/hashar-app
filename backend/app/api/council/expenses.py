@@ -24,4 +24,4 @@ async def delete_expense(
     ctx: FundContext = Depends(require_fund_chairman),
     service: ExpenseService = Depends(get_expense_service),
 ):
-    await service.delete(fund_id=ctx.fund_id, expense_id=expense_id)
+    await service.delete(fund_id=ctx.fund_id, expense_id=expense_id, user_id=ctx.user_id)

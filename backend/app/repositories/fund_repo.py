@@ -1,7 +1,7 @@
 from sqlalchemy import func, or_, select
 
 from app.models.fund import Fund, FundAccount
-from app.repositories.base_repo import BaseRepository
+from app.repositories.base_repo import BaseRepository, like_pattern
 
 
 class FundRepository(BaseRepository):
@@ -27,7 +27,7 @@ class FundRepository(BaseRepository):
         """Точное совпадение по коду или подстрока в названии."""
         stmt = (
             select(Fund)
-            .where(or_(Fund.code == query.upper(), Fund.name.ilike(f"%{query}%")))
+            .where(or_(Fund.code == query.upper(), Fund.name.ilike(like_pattern(query), escape="\\")))
             .order_by(Fund.name)
             .limit(limit)
         )

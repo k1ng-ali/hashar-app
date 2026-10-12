@@ -21,7 +21,8 @@ export interface Contribution {
   target_fund_id: number | null
   target_fund_title: string | null
   billing_period: string | null
-  receipt_image: string
+  /** null — чек чужой: участник видит только свои чеки, совет — все. */
+  receipt_image: string | null
   status: ContributionStatus
   comment_user: string | null
   comment_admin: string | null

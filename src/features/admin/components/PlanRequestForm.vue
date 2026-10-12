@@ -8,6 +8,8 @@ const props = defineProps<{
   options: PlanOption[]
   isRenewal: boolean
   expiresAt: string | null
+  /** Стоимость неиспользованного остатка текущего тарифа (null — нечего переносить). */
+  remainingTjs: number | null
   defaultContact: string
   isSubmitting: boolean
 }>()
@@ -27,6 +29,12 @@ const isValid = computed(() => contact.value.trim().length >= MIN_CONTACT)
 
 const option = computed(() => props.options.find((o) => o.plan === props.plan) ?? null)
 const total = computed(() => (option.value?.price_tjs ? option.value.price_tjs * months.value : null))
+// Месяц тарифа — 30 дней: остаток в деньгах докупает дни нового тарифа по его цене
+const carryoverDays = computed(() =>
+  props.remainingTjs && option.value?.price_tjs
+    ? Math.round((props.remainingTjs / option.value.price_tjs) * 30)
+    : null,
+)
 </script>
 
 <template>
@@ -40,6 +48,15 @@ const total = computed(() => (option.value?.price_tjs ? option.value.price_tjs *
 
     <p v-if="isRenewal" class="renewal">
       🔄 {{ expiresAt ? $t('plans.renewHint', { date: formatDate(expiresAt) }) : $t('plans.renewHintNoDate') }}
+    </p>
+
+    <p v-if="!isRenewal && remainingTjs" class="renewal">
+      🔁
+      {{
+        carryoverDays !== null
+          ? $t('plans.carryoverHint', { amount: remainingTjs, n: carryoverDays })
+          : $t('plans.carryoverHintIndividual', { amount: remainingTjs })
+      }}
     </p>
 
     <div v-if="plan !== 'individual'">

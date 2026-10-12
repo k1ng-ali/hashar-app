@@ -6,6 +6,7 @@ import DebtorsList from '@/features/reports/components/DebtorsList.vue'
 import ExportButtons from '@/features/reports/components/ExportButtons.vue'
 import MonthlyLedger from '@/features/reports/components/MonthlyLedger.vue'
 import { useReportsStore } from '@/features/reports/store.ts'
+import { useFundsStore } from '@/features/funds/store.ts'
 import type { ExportKind } from '@/features/reports/types.ts'
 import CardSkeleton from '@/shared/components/CardSkeleton.vue'
 import EmptyState from '@/shared/components/EmptyState.vue'
@@ -16,6 +17,7 @@ import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 
 const { t } = useI18n()
 const store = useReportsStore()
+const fundsStore = useFundsStore()
 const headerStore = useHeaderStore()
 
 const currencyTabs = computed(() =>
@@ -45,7 +47,11 @@ function changeCurrency(currency: Currency) {
   <div class="reports-page">
     <p class="subtitle">{{ $t('reports.subtitle') }}</p>
 
-    <ExportButtons :exporting-kind="store.exportingKind" @export="handleExport" />
+    <ExportButtons
+      v-if="fundsStore.permissions.isCouncil"
+      :exporting-kind="store.exportingKind"
+      @export="handleExport"
+    />
 
     <template v-if="store.isLoading && !store.report">
       <CardSkeleton :lines="2" />

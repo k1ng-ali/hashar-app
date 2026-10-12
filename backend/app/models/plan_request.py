@@ -6,7 +6,7 @@
 - contact: как связаться с председателем по оплате (телефон, Telegram, email)
 """
 
-from sqlalchemy import TIMESTAMP, BigInteger, Column, ForeignKey, Integer, String, Text, func
+from sqlalchemy import TIMESTAMP, BigInteger, Column, ForeignKey, Index, Integer, String, Text, func, text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -14,6 +14,10 @@ from app.core.database import Base
 
 class PlanRequest(Base):
     __tablename__ = "plan_requests"
+    # Одна заявка в ожидании на фонд
+    __table_args__ = (
+        Index("uq_plan_requests_one_pending", "fund_id", unique=True, postgresql_where=text("status = 'pending'")),
+    )
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     fund_id = Column(BigInteger, ForeignKey("funds.id", ondelete="CASCADE"), nullable=False, index=True)

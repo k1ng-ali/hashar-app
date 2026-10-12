@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from app.enums import ContributionCategoryEnum
 from app.schemas.contribution import ContributionCreateIn
 from app.services.contribution_service import ContributionService
-from tests.unit.helpers import make_contribution, make_db, make_fund, make_member, make_requisite, make_user
+from tests.unit.helpers import RECEIPT, make_contribution, make_db, make_fund, make_member, make_requisite, make_user
 
 
 def make_service(requisite_currency: str = "tjs", base_currency: str = "tjs"):
@@ -25,7 +25,7 @@ def target_payload(target_fund_id: int = 1) -> ContributionCreateIn:
         amount=1000,
         category=ContributionCategoryEnum.target_fund,
         target_fund_id=target_fund_id,
-        receipt_image="data:image/png;base64,AAA",
+        receipt_image=RECEIPT,
     )
 
 
@@ -64,7 +64,7 @@ async def test_create_target_fund_in_other_currency_requires_credited_amount():
 async def test_create_monthly_fee_in_other_currency_requires_credited_amount():
     db, service = make_service(requisite_currency="usd", base_currency="tjs")
 
-    payload = ContributionCreateIn(requisite_id=1, amount=15, receipt_image="data:image/png;base64,AAA")
+    payload = ContributionCreateIn(requisite_id=1, amount=15, receipt_image=RECEIPT)
     with pytest.raises(HTTPException) as exc:
         await service.create(fund_id=1, user_id=1, payload=payload)
 
@@ -76,9 +76,7 @@ async def test_create_monthly_fee_in_other_currency_is_credited_in_base():
     db, service = make_service(requisite_currency="usd", base_currency="tjs")
     service.repo.create = AsyncMock(return_value=make_contribution())
 
-    payload = ContributionCreateIn(
-        requisite_id=1, amount=15, credited_amount=150, receipt_image="data:image/png;base64,AAA"
-    )
+    payload = ContributionCreateIn(requisite_id=1, amount=15, credited_amount=150, receipt_image=RECEIPT)
     await service.create(fund_id=1, user_id=1, payload=payload)
 
     kwargs = service.repo.create.call_args.kwargs
@@ -91,7 +89,7 @@ async def test_create_monthly_fee_takes_currency_and_unit():
     db, service = make_service()
     service.repo.create = AsyncMock(return_value=make_contribution())
 
-    payload = ContributionCreateIn(requisite_id=1, amount=150, receipt_image="data:image/png;base64,AAA")
+    payload = ContributionCreateIn(requisite_id=1, amount=150, receipt_image=RECEIPT)
     await service.create(fund_id=1, user_id=1, payload=payload)
 
     kwargs = service.repo.create.call_args.kwargs
@@ -108,7 +106,7 @@ def test_create_in_requires_target_fund_id():
             requisite_id=1,
             amount=1000,
             category=ContributionCategoryEnum.target_fund,
-            receipt_image="data:image/png;base64,AAA",
+            receipt_image=RECEIPT,
         )
 
 

@@ -2,12 +2,14 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { IS_DEV_MODE, useAuthStore } from '@/features/auth/store.ts'
+import { useAuthStore } from '@/features/auth/store.ts'
+import { IS_DEV_MODE } from '@/shared/lib/env.ts'
 import DemoUserList from '@/features/auth/components/DemoUserList.vue'
 import LoginForm from '@/features/auth/components/LoginForm.vue'
 import ProviderButtons from '@/features/auth/components/ProviderButtons.vue'
 import RegisterForm from '@/features/auth/components/RegisterForm.vue'
 import type { DemoUser, LoginPayload, RegisterPayload } from '@/features/auth/types.ts'
+import AppLogo from '@/shared/components/AppLogo.vue'
 import PillTabs from '@/shared/components/PillTabs.vue'
 import { errorDetail } from '@/shared/api/http.ts'
 
@@ -37,8 +39,9 @@ async function handleLogin(payload: LoginPayload) {
   try {
     await authStore.login(payload)
     await afterAuth()
-  } catch {
-    errorMessage.value = t('auth.invalid')
+  } catch (error) {
+    errorMessage.value =
+      errorDetail(error) === 'Too many attempts, try later' ? t('auth.tooManyAttempts') : t('auth.invalid')
   }
 }
 
@@ -67,7 +70,7 @@ async function handleDemo(user: DemoUser) {
 <template>
   <div class="login-page">
     <div class="hero">
-      <div class="logo">🏠</div>
+      <AppLogo class="logo" :size="76" />
       <h1>{{ $t('app.name') }}</h1>
       <p>{{ $t('auth.subtitle') }}</p>
     </div>
@@ -128,15 +131,7 @@ async function handleDemo(user: DemoUser) {
   text-align: center;
 
   .logo {
-    display: grid;
-    place-items: center;
-    width: 76px;
-    height: 76px;
     margin: 0 auto 14px;
-    border-radius: 24px;
-    background: $gradient;
-    font-size: 36px;
-    box-shadow: none;
   }
 
   h1 {

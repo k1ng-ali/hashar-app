@@ -10,7 +10,9 @@ export const useReceiptStore = defineStore('receipt', () => {
   const image = ref('')
 
   // ── Actions ───────────────────────────────────────────────────────────
-  function open(receiptTitle: string, receiptImage: string) {
+  function open(receiptTitle: string, receiptImage: string | null) {
+    // Чужой чек участнику не приходит — открывать нечего
+    if (!receiptImage) return
     title.value = receiptTitle
     image.value = receiptImage
     isOpen.value = true

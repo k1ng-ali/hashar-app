@@ -23,6 +23,10 @@ class FundContext(BaseModel):
     def is_chairman(self) -> bool:
         return self.role == FundRoleEnum.chairman
 
+    def can_see_receipt(self, owner_id: int) -> bool:
+        """Чек — личный документ (номер карты, банк): видят владелец и совет."""
+        return self.is_council or owner_id == self.user_id
+
 
 class JoinIn(BaseModel):
     address_unit: str = Field(min_length=1, max_length=50)

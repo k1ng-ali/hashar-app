@@ -2,12 +2,11 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { registerAuthHandlers, setAccessToken } from '@/shared/api/http.ts'
+import { IS_DEV_MODE } from '@/shared/lib/env.ts'
 import { router } from '@/app/router.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
 import * as api from './api.ts'
 import type { DemoUser, LoginPayload, RegisterPayload, TokenResponse, User } from './types.ts'
-
-export const IS_DEV_MODE = import.meta.env.VITE_DEV_MODE === 'true'
 
 export const useAuthStore = defineStore('auth', () => {
   // ── State ─────────────────────────────────────────────────────────────

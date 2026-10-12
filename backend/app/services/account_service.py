@@ -7,6 +7,7 @@ from app.enums import AnnouncementCategoryEnum, CurrencyEnum
 from app.models.requisite import PaymentRequisite
 from app.models.transfer import AccountTransfer
 from app.repositories.announcement_repo import AnnouncementRepository
+from app.repositories.audit_repo import AuditRepository
 from app.repositories.contribution_repo import ContributionRepository
 from app.repositories.expense_repo import ExpenseRepository
 from app.repositories.fund_repo import FundRepository
@@ -17,6 +18,11 @@ from app.schemas.fund import AccountOut
 
 # Заголовок автоматического объявления; на фронте подменяется переводом по transfer
 TRANSFER_ANNOUNCEMENT_TITLE = "Движение по счетам фонда"
+
+
+def requisite_label(requisite: PaymentRequisite) -> str:
+    """Снимок реквизита для взноса и журнала: «банк · номер · получатель»."""
+    return f"{requisite.bank_name} · {requisite.card_or_account_number} · {requisite.recipient_name}"
 
 
 def transfer_out(transfer: AccountTransfer) -> TransferOut:
@@ -43,6 +49,7 @@ class AccountService:
         self.contribution_repo = ContributionRepository(db=db)
         self.expense_repo = ExpenseRepository(db=db)
         self.announcement_repo = AnnouncementRepository(db=db)
+        self.audit = AuditRepository(db=db)
 
     # ─── Балансы ───────────────────────────────────────────────────────────────
 
@@ -95,17 +102,19 @@ class AccountService:
 
     # ─── Управление счетами ────────────────────────────────────────────────────
 
-    async def enable_currency(self, fund_id: int, currency: CurrencyEnum) -> list[AccountOut]:
+    async def enable_currency(self, fund_id: int, currency: CurrencyEnum, user_id: int) -> list[AccountOut]:
         account = await self.fund_repo.get_account(fund_id, currency.value)
         if account:
             account.is_active = True
         else:
             await self.fund_repo.create_account(fund_id, currency.value)
+        self._audit_account("account.enable", fund_id, currency, user_id)
         await self.db.commit()
         return await self.list_accounts(fund_id)
 
-    async def disable_currency(self, fund_id: int, currency: CurrencyEnum) -> list[AccountOut]:
-        fund = await self.fund_repo.get(fund_id)
+    async def disable_currency(self, fund_id: int, currency: CurrencyEnum, user_id: int) -> list[AccountOut]:
+        # Блокируем фонд: между проверкой нулевого остатка и отключением не должен пройти расход или перевод
+        fund = await self.fund_repo.get(fund_id, for_update=True)
         if fund.base_currency == currency.value:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Cannot disable the base currency")
 
@@ -117,6 +126,7 @@ class AccountService:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Account balance must be zero")
 
         account.is_active = False
+        self._audit_account("account.disable", fund_id, currency, user_id)
         await self.db.commit()
         return await self.list_accounts(fund_id)
 
@@ -128,22 +138,25 @@ class AccountService:
         items = await self.requisite_repo.list(fund_id, active_only=active_only, currencies=currencies)
         return [RequisiteOut.model_validate(item) for item in items]
 
-    async def create_requisite(self, fund_id: int, payload: RequisiteCreateIn) -> RequisiteOut:
+    async def create_requisite(self, fund_id: int, payload: RequisiteCreateIn, user_id: int) -> RequisiteOut:
         await self.ensure_active_currency(fund_id, payload.currency.value)
         data = payload.model_dump()
         data["currency"] = payload.currency.value
         requisite = await self.requisite_repo.create(fund_id=fund_id, **data)
+        self._audit_requisite("requisite.create", requisite, user_id)
         await self.db.commit()
         return RequisiteOut.model_validate(requisite)
 
-    async def toggle_requisite(self, fund_id: int, requisite_id: int) -> RequisiteOut:
+    async def toggle_requisite(self, fund_id: int, requisite_id: int, user_id: int) -> RequisiteOut:
         requisite = await self._get_requisite_or_404(fund_id, requisite_id)
         requisite.is_active = not requisite.is_active
+        self._audit_requisite("requisite.enable" if requisite.is_active else "requisite.disable", requisite, user_id)
         await self.db.commit()
         return RequisiteOut.model_validate(requisite)
 
-    async def delete_requisite(self, fund_id: int, requisite_id: int) -> None:
+    async def delete_requisite(self, fund_id: int, requisite_id: int, user_id: int) -> None:
         requisite = await self._get_requisite_or_404(fund_id, requisite_id)
+        self._audit_requisite("requisite.delete", requisite, user_id)
         await self.requisite_repo.delete(requisite)
         await self.db.commit()
 
@@ -187,10 +200,39 @@ class AccountService:
             author_id=user_id,
             transfer_id=transfer.id,
         )
+        self.audit.add(
+            fund_id=fund_id,
+            actor_id=user_id,
+            action="transfer.create",
+            entity="transfer",
+            entity_id=transfer.id,
+            details={
+                "from_currency": transfer.from_currency,
+                "from_amount": transfer.from_amount,
+                "to_currency": transfer.to_currency,
+                "to_amount": transfer.to_amount,
+            },
+        )
         await self.db.commit()
         return transfer_out(transfer)
 
     # ─── Helpers ───────────────────────────────────────────────────────────────
+
+    def _audit_account(self, action: str, fund_id: int, currency: CurrencyEnum, user_id: int) -> None:
+        self.audit.add(
+            fund_id=fund_id, actor_id=user_id, action=action, entity="account", details={"currency": currency.value}
+        )
+
+    def _audit_requisite(self, action: str, requisite: PaymentRequisite, user_id: int) -> None:
+        # Подмена реквизитов — самый вероятный путь увести деньги: каждое изменение в журнале
+        self.audit.add(
+            fund_id=requisite.fund_id,
+            actor_id=user_id,
+            action=action,
+            entity="requisite",
+            entity_id=requisite.id,
+            details={"label": requisite_label(requisite), "currency": requisite.currency},
+        )
 
     async def _get_requisite_or_404(self, fund_id: int, requisite_id: int) -> PaymentRequisite:
         requisite = await self.requisite_repo.get(fund_id, requisite_id)

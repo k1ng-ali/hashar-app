@@ -5,6 +5,12 @@ from unittest.mock import AsyncMock, MagicMock
 from app.enums import FundRoleEnum
 from app.schemas.member import FundContext
 
+# Настоящий PNG 1×1 — проходит проверку чеков (core/receipts.py)
+RECEIPT = (
+    "data:image/png;base64,"
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+)
+
 
 def make_db():
     db = AsyncMock()
@@ -41,6 +47,7 @@ def make_fund(id: int = 1, **extra):
         start_period="2026-07",
         plan="free",
         plan_expires_at=None,
+        plan_price=None,
         member_limit=None,
     )
     fields.update(extra)
@@ -103,7 +110,7 @@ def make_contribution(id: int = 1, status: str = "pending", user=None, **extra):
         target_fund_id=None,
         target_fund=None,
         billing_period="2026-09",
-        receipt_image="data:image/png;base64,AAA",
+        receipt_image=RECEIPT,
         status=status,
         comment_user=None,
         comment_admin=None,

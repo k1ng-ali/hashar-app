@@ -1,0 +1,53 @@
+# ─── Caddy: вход в API из Cloudflare ──────────────────────────────────────────
+# Схема: браузер ──HTTPS──▶ Cloudflare ──HTTPS (Origin-сертификат)──▶ Caddy ──▶ backend
+# Фронтенд (hashar.app) сюда не ходит — он на GitHub Pages.
+#
+# В Cloudflare: запись API_DOMAIN проксируется (оранжевое облако), SSL/TLS → Full (strict).
+# Сертификат — Cloudflare Origin CA (действует 15 лет, продлевать не нужно):
+# deploy/certs/origin.pem и deploy/certs/origin.key, см. README → «Продакшен».
+#
+# Список адресов Cloudflare: https://www.cloudflare.com/ips (сверено 2026-10-13).
+# Он повторяется ниже дважды — при обновлении менять оба места.
+{
+	# abort по умолчанию стоит после handle — поднимаем, чтобы прямой заход
+	# (не через Cloudflare) обрывался раньше любой обработки
+	order abort first
+
+	servers {
+		# Реальный IP посетителя берём из CF-Connecting-IP, но только если запрос
+		# пришёл с адреса Cloudflare — иначе заголовок мог подделать кто угодно
+		trusted_proxies static 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+		client_ip_headers CF-Connecting-IP
+	}
+}
+
+# Сервер отвечает только Cloudflare: прямой заход по IP сервера обходил бы его
+# защиту (WAF, DDoS). Если выключить проксирование в Cloudflare — убрать этот импорт
+(cloudflare_only) {
+	@direct not remote_ip 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+	abort @direct
+}
+
+{$API_DOMAIN} {
+	import cloudflare_only
+	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	# Только API и проверка здоровья; остальное — 404
+	@api path /api/* /health
+	handle @api {
+		reverse_proxy backend:8000 {
+			# Backend верит X-Forwarded-For полностью (uvicorn --forwarded-allow-ips '*'),
+			# поэтому передаём один проверенный адрес, а не цепочку от клиента
+			header_up X-Forwarded-For {client_ip}
+		}
+	}
+	handle {
+		respond 404
+	}
+}

@@ -28,7 +28,7 @@ async def list_operations(
     ctx: FundContext = Depends(get_fund_context),
     service: DashboardService = Depends(get_dashboard_service),
 ):
-    return await service.operations(fund_id=ctx.fund_id, type_filter=type, limit=limit)
+    return await service.operations(ctx=ctx, type_filter=type, limit=limit)
 
 
 @router.get("/accounts", response_model=list[AccountOut])

@@ -1,0 +1,87 @@
+# ─── Продакшен: API (api.hashar.app) ──────────────────────────────────────────
+# Фронтенд живёт на GitHub Pages (.github/workflows/frontend.yml), здесь только API.
+# Образ backend собирает GitHub Actions (.github/workflows/backend.yml) и кладёт в Docker Hub.
+#
+# Первый запуск (из папки deploy):
+#   cp .env.example .env   # заполнить BACKEND_IMAGE, SECRET_KEY, DB_PASSWORD
+#   # положить Origin-сертификат Cloudflare в certs/origin.pem и certs/origin.key
+#   ./update.sh
+#
+# Наружу открыт только Caddy (80/443) и только для Cloudflare. Backend и Postgres
+# доступны лишь внутри сети compose. Демо-данные (seed) здесь не запускаются.
+
+# Логи контейнеров с ротацией — без неё json-логи растут, пока не кончится диск
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    logging: *logging
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      retries: 5
+      timeout: 5s
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  backend:
+    logging: *logging
+    # BACKEND_TAG=sha-<коммит> — откат на конкретную сборку, по умолчанию latest
+    image: ${BACKEND_IMAGE}:${BACKEND_TAG:-latest}
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DEV_MODE: "false"
+      COOKIE_SECURE: "true"
+      # hashar.app и api.hashar.app — один сайт (общий домен), cookie с Lax доходит
+      COOKIE_SAMESITE: lax
+      CORS_ORIGINS: https://${DOMAIN}
+    # Миграции перед стартом. Backend слушает только внутреннюю сеть, а Caddy
+    # подставляет в X-Forwarded-For проверенный IP — поэтому доверять заголовку безопасно
+    command: >
+      sh -c "alembic upgrade head &&
+      exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips '*' --workers 2"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  caddy:
+    logging: *logging
+    image: caddy:2.11
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/etc/caddy/certs:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

@@ -21,6 +21,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, select
 
+from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.core.finance import current_period, shift_period
 from app.core.security import hash_password
@@ -41,7 +42,7 @@ from app.models import (
     TargetFund,
     User,
 )
-from app.services.contribution_service import requisite_label
+from app.services.account_service import requisite_label
 
 DEMO_PASSWORD = "password123"
 
@@ -78,6 +79,11 @@ def period(months_ago: int) -> str:
 
 
 async def seed() -> None:
+    if not settings.DEV_MODE:
+        raise SystemExit(
+            "Сидинг демо-данных доступен только при DEV_MODE=true (в проде он создал бы админа с известным паролем)."
+        )
+
     async with AsyncSessionLocal() as db:
         if (await db.execute(select(func.count(User.id)))).scalar():
             print("В базе уже есть пользователи — пропускаю сидинг.")
@@ -118,6 +124,7 @@ async def seed() -> None:
             base_currency="tjs",
             start_period=period(3),
             plan="pro",
+            plan_price=199,
             plan_expires_at=datetime.now(timezone.utc) + timedelta(days=25),
             created_by_id=alexey.id,
             created_at=at(4, 1),

@@ -6,10 +6,13 @@ import { useReceiptStore } from '@/shared/stores/useReceiptStore.ts'
 const receiptStore = useReceiptStore()
 
 function download() {
+  // В href попадает только картинка: ссылку вида javascript: клик бы выполнил
+  if (!receiptStore.image.startsWith('data:image/')) return
   const link = document.createElement('a')
   link.href = receiptStore.image
   const isSvg = receiptStore.image.startsWith('data:image/svg')
-  link.download = `receipt_${Date.now()}.${isSvg ? 'svg' : 'png'}`
+  const extension = isSvg ? 'svg' : receiptStore.image.startsWith('data:image/png') ? 'png' : 'jpg'
+  link.download = `receipt_${Date.now()}.${extension}`
   link.click()
 }
 </script>

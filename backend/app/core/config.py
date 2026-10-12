@@ -1,6 +1,8 @@
 from datetime import timedelta
+from typing import Annotated, Literal
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 ACCESS_TOKEN_EXPIRE = timedelta(minutes=15)
 REFRESH_TOKEN_EXPIRE = timedelta(days=30)
@@ -15,14 +17,36 @@ class Settings(BaseSettings):
 
     # Cookie с refresh-токеном (в проде только по https)
     COOKIE_SECURE: bool = True
-    # Включает /docs, /auth/dev-login и список демо-пользователей
+    # lax — фронт и API на одном сайте (hashar.app и api.hashar.app); none — API на чужом домене
+    COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
+    # Включает /docs, /auth/dev-login, список демо-пользователей и демо-чеки (svg)
     DEV_MODE: bool = False
+
+    # Откуда фронтенду можно ходить к API с cookie; через запятую
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+    # Максимальный размер тела запроса (чеки приходят data URL внутри JSON)
+    MAX_BODY_BYTES: int = 25 * 1024 * 1024
 
     DB_HOST: str
     DB_PORT: int
     DB_USER: str
     DB_PASSWORD: str
     DB_NAME: str
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def split_origins(cls, value):
+        if isinstance(value, str):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        return value
+
+    @model_validator(mode="after")
+    def check_production(self):
+        # В проде не стартуем с ключом-заглушкой: им можно подделать любой токен
+        if not self.DEV_MODE and (len(self.SECRET_KEY) < 32 or self.SECRET_KEY.startswith("change-me")):
+            raise ValueError("SECRET_KEY is too weak for production: use `openssl rand -hex 32`")
+        return self
 
     @property
     def get_db_url(self) -> str:

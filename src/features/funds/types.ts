@@ -17,6 +17,8 @@ export interface PlanInfo {
   member_limit: number | null
   members_count: number
   price_tjs: number | null
+  /** Стоимость неиспользованного остатка — при смене тарифа перейдёт в дни нового. */
+  remaining_tjs: number | null
 }
 
 /** Запись истории тарифа: действует с period до следующей записи. */
@@ -46,6 +48,8 @@ export interface FundInfo {
   next_rate_period: string | null
   rate_history: Rate[]
   start_period: string
+  /** Базовая валюта и начало расчётов заблокированы — уже есть ежемесячные взносы. */
+  setup_locked: boolean
   accounts: Account[]
   plan: PlanInfo
   my_role: FundRole

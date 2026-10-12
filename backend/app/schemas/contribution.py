@@ -1,10 +1,15 @@
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AfterValidator, BaseModel, Field, model_validator
 
+from app.core.receipts import MAX_RECEIPT_CHARS, validate_receipt
 from app.enums import ContributionCategoryEnum, ContributionStatusEnum, CurrencyEnum
 
 PERIOD_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
+
+# Чек: только картинка data URL ограниченного размера (core/receipts.py)
+ReceiptImage = Annotated[str, Field(min_length=10, max_length=MAX_RECEIPT_CHARS), AfterValidator(validate_receipt)]
 
 
 class ContributionCreateIn(BaseModel):
@@ -17,7 +22,7 @@ class ContributionCreateIn(BaseModel):
     category: ContributionCategoryEnum = ContributionCategoryEnum.monthly_fee
     target_fund_id: int | None = None
     billing_period: str | None = Field(None, pattern=PERIOD_PATTERN)
-    receipt_image: str = Field(min_length=10)
+    receipt_image: ReceiptImage
     comment_user: str | None = Field(None, max_length=1000)
 
     @model_validator(mode="after")
@@ -52,7 +57,8 @@ class ContributionOut(BaseModel):
     target_fund_id: int | None = None
     target_fund_title: str | None = None
     billing_period: str | None = None
-    receipt_image: str
+    # None — чек чужой: участник видит только свои чеки, совет — все
+    receipt_image: str | None = None
     status: ContributionStatusEnum
     comment_user: str | None = None
     comment_admin: str | None = None

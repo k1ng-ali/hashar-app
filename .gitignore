@@ -10,3 +10,6 @@ __pycache__/
 .venv/
 venv/
 *.zip
+deploy/.env
+deploy/backups/
+deploy/certs/

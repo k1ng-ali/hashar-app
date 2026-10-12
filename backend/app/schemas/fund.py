@@ -52,7 +52,9 @@ class PlanInfoOut(BaseModel):
     expires_at: datetime | None = None
     member_limit: int | None = None  # None — без ограничений
     members_count: int
-    price_tjs: int | None = None
+    price_tjs: int | None = None  # цена текущего тарифа за месяц
+    # Стоимость неиспользованного остатка — при смене тарифа перейдёт в дни нового
+    remaining_tjs: float | None = None
 
 
 class FundOut(BaseModel):
@@ -69,6 +71,8 @@ class FundOut(BaseModel):
     next_rate_period: str | None = None  # с какого месяца
     rate_history: list[RateOut]
     start_period: str
+    # Валюта и начало расчётов заблокированы: уже есть ежемесячные взносы
+    setup_locked: bool = False
     accounts: list[AccountOut]
     plan: PlanInfoOut
     my_role: FundRoleEnum

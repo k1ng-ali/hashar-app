@@ -13,7 +13,7 @@ router = APIRouter(prefix="/funds/{fund_id}/announcements", tags=["Platform • 
 @router.get("/", response_model=list[AnnouncementOut])
 async def list_announcements(
     category: AnnouncementCategoryEnum | None = None,
-    skip: int = 0,
+    skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     ctx: FundContext = Depends(get_fund_context),
     service: AnnouncementService = Depends(get_announcement_service),

@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.enums import CurrencyEnum, ExpenseCategoryEnum
+from app.schemas.contribution import ReceiptImage
 
 
 class ExpenseCreateIn(BaseModel):
@@ -10,8 +11,8 @@ class ExpenseCreateIn(BaseModel):
     category: ExpenseCategoryEnum
     amount: int = Field(ge=1, le=100_000_000)
     currency: CurrencyEnum  # счёт фонда, с которого списываем
-    description: str = Field(min_length=3)
-    receipt_images: list[str] = Field(default_factory=list, max_length=10)
+    description: str = Field(min_length=3, max_length=5000)
+    receipt_images: list[ReceiptImage] = Field(default_factory=list, max_length=6)
     target_fund_id: int | None = None
     # Расход больше остатка счёта проводится только с явным подтверждением
     allow_overdraft: bool = False

@@ -114,7 +114,7 @@ export function useContributionForm() {
       amount: amount.value ?? 0,
       currency: currency.value,
       senderName: authStore.user?.full_name ?? '—',
-      recipientName: requisite?.recipient_name ?? t('app.name'),
+      recipientName: requisite?.recipient_name ?? fundsStore.current?.name ?? t('app.name'),
       purpose:
         category.value === 'target_fund' && targetFund.value
           ? targetFund.value.title.slice(0, 32)

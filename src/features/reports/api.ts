@@ -7,5 +7,6 @@ export const getFinancialReport = (fundId: number, currency?: Currency, months =
 
 export const listDebtors = (fundId: number) => http.get<Debtor[]>(`/funds/${fundId}/reports/debtors`)
 
+// Реестры с именами и телефонами участников выгружает только совет
 export const exportCsv = (fundId: number, kind: ExportKind) =>
-  http.get<Blob>(`/funds/${fundId}/reports/export/${kind}`, { responseType: 'blob' })
+  http.get<Blob>(`/council/funds/${fundId}/reports/export/${kind}`, { responseType: 'blob' })

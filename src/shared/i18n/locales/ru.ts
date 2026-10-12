@@ -16,9 +16,9 @@ export default {
 
   // ── App ──
   app: {
-    name: 'Фонд дома',
+    name: 'Ҳашар',
     splash: 'Загружаем фонд…',
-    footer: 'Прозрачный фонд дома',
+    footer: 'Прозрачный фонд для дома и махалли',
   },
 
   // ── Navigation ──
@@ -126,6 +126,7 @@ export default {
     submit: 'Войти',
     register: 'Зарегистрироваться',
     invalid: 'Неверный логин или пароль',
+    tooManyAttempts: 'Слишком много попыток входа — подождите 15 минут',
     alreadyRegistered: 'Такой телефон или email уже зарегистрирован',
     fullName: 'Имя и фамилия',
     fullNamePlaceholder: 'Алишер Рахимов',
@@ -245,6 +246,8 @@ export default {
     renewHint: 'Срок добавится к текущей дате окончания ({date})',
     renewHintNoDate: 'Срок добавится к текущему тарифу',
     renewRequested: 'Заявка на продление отправлена ✅',
+    carryoverHint: 'Остаток текущего тарифа ≈ {amount} смн перейдёт в новый: +{n} дн.',
+    carryoverHintIndividual: 'Остаток текущего тарифа ≈ {amount} смн перейдёт в новый по договорной цене',
     contact: 'Контакт для связи',
     contactPlaceholder: 'Телефон, Telegram или email',
     contactHint: 'По нему администратор платформы свяжется с вами для оплаты',
@@ -383,7 +386,7 @@ export default {
 
   // ── Receipt ──
   receipt: {
-    pick: 'Выбрать фото или PDF',
+    pick: 'Выбрать фото чека',
     pickHint: 'Скриншот из банковского приложения',
     or: 'или для быстрого теста',
     generate: 'Сформировать тестовый чек',
@@ -393,7 +396,8 @@ export default {
     view: 'Чек',
     viewerTitle: 'Квитанция',
     download: 'Скачать',
-    tooLarge: 'Файл больше 5 МБ',
+    tooLarge: 'Файл слишком большой',
+    unsupported: 'Не удалось прочитать картинку — сохраните чек как JPG или PNG',
   },
 
   // ── History ──
@@ -511,6 +515,9 @@ export default {
       balanceNotZero: 'Сначала переведите остаток на другой счёт',
       baseCurrency: 'Базовую валюту отключить нельзя',
       currencyDisabled: 'Этот валютный счёт отключён',
+      setupLocked: 'Валюту и начало расчётов нельзя менять после первого взноса',
+      ownContribution: 'Свой чек одобряет другой член совета',
+      targetFundHasOperations: 'В сборе уже есть взносы или расходы — закройте его вместо удаления',
     },
     verification: {
       title: 'Очередь проверки чеков',
@@ -642,6 +649,7 @@ export default {
       rateUnit: 'Сумма в месяц, {currency}',
       rateSave: 'Сохранить тариф',
       onlyChairman: 'Изменять может только председатель',
+      currencyLocked: 'Базовая валюта зафиксирована: по ней уже приняты взносы, смена переписала бы долги',
       requisitesTitle: 'Реквизиты для оплаты',
       requisitesSubtitle: 'Их видят участники при оплате — у каждого своя валюта',
       addRequisite: 'Добавить',
@@ -816,6 +824,9 @@ export default {
     },
     months: 'Месяцев',
     memberLimit: 'Лимит участников',
+    monthlyPrice: 'Цена в месяц, смн',
+    carryover: 'Остаток текущего тарифа ≈ {amount} смн →',
+    carryoverDays: '+{n} дн. нового тарифа',
     commentPlaceholder: 'Комментарий (обязателен при отклонении)',
     approve: 'Включить тариф',
     reject: 'Отклонить',

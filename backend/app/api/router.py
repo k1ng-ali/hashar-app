@@ -23,6 +23,8 @@ from app.api.council.settings import router as council_settings_router
 from app.api.council.transfers import router as council_transfers_router
 from app.api.council.plan import router as council_plan_router
 from app.api.council.emergency_contacts import router as council_emergency_router
+from app.api.council.audit import router as council_audit_router
+from app.api.council.reports import router as council_reports_router
 
 # ─── Admin (админ платформы) ──────────────────────────────────────────────────
 from app.api.admin.plans import router as admin_plans_router
@@ -48,5 +50,7 @@ api_router.include_router(council_settings_router, prefix="/council")
 api_router.include_router(council_transfers_router, prefix="/council")
 api_router.include_router(council_plan_router, prefix="/council")
 api_router.include_router(council_emergency_router, prefix="/council")
+api_router.include_router(council_audit_router, prefix="/council")
+api_router.include_router(council_reports_router, prefix="/council")
 
 api_router.include_router(admin_plans_router, prefix="/admin")

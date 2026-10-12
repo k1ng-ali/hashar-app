@@ -11,6 +11,7 @@ import {
 import { useContributionsStore } from '@/features/contributions/store.ts'
 import { useDashboardStore } from '@/features/dashboard/store.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
+import AppLogo from '@/shared/components/AppLogo.vue'
 import { useNavStore } from '@/shared/stores/useNavStore.ts'
 import QuickActionsSheet from './QuickActionsSheet.vue'
 
@@ -133,7 +134,7 @@ function handlePlus() {
   <!-- ═══ Компьютер: боковое меню ═══ -->
   <aside class="sidebar">
     <div class="sidebar-brand">
-      <span class="brand-logo">🏠</span>
+      <AppLogo :size="40" />
       <div class="brand-text">
         <div class="brand-name">{{ $t('app.name') }}</div>
         <div class="brand-sub">{{ fundsStore.current?.name }}</div>
@@ -316,12 +317,6 @@ function handlePlus() {
     align-items: center;
     gap: 10px;
     padding: 4px 6px 14px;
-  }
-
-  .brand-logo {
-    @include icon-circle(40px);
-    border-radius: 12px;
-    font-size: 20px;
   }
 
   .brand-text {

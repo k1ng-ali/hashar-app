@@ -6,24 +6,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.router import api_router
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.middleware import BodySizeLimitMiddleware
 
 DEV_MODE = settings.DEV_MODE
 
 app = FastAPI(
-    title="Fund System API",
-    version="0.2.0",
+    title="Hashar API",
+    version="0.3.0",
     docs_url="/docs" if DEV_MODE else None,
     redoc_url="/redoc" if DEV_MODE else None,
     openapi_url="/openapi.json" if DEV_MODE else None,
 )
 
-# CORS (чтобы фронт на Vue мог ходить к API с cookie)
+# Чеки приходят data URL внутри JSON — режем слишком большие запросы до разбора тела
+app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.MAX_BODY_BYTES)
+
+# CORS (чтобы фронт на Vue мог ходить к API с cookie). В проде — домен из CORS_ORIGINS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

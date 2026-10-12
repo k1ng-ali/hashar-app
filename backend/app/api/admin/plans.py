@@ -13,7 +13,7 @@ router = APIRouter(tags=["Admin • Plans"])
 @router.get("/plan-requests", response_model=list[PlanRequestOut])
 async def list_plan_requests(
     status: PlanRequestStatusEnum | None = None,
-    skip: int = 0,
+    skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     user: CurrentUser = Depends(require_platform_admin),
     service: PlanService = Depends(get_plan_service),
@@ -46,7 +46,7 @@ async def reject_plan_request(
 
 @router.get("/funds", response_model=list[FundOutAdmin])
 async def list_funds(
-    skip: int = 0,
+    skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     user: CurrentUser = Depends(require_platform_admin),
     service: PlanService = Depends(get_plan_service),
@@ -61,4 +61,4 @@ async def set_fund_plan(
     user: CurrentUser = Depends(require_platform_admin),
     service: PlanService = Depends(get_plan_service),
 ):
-    return await service.set_plan(fund_id=fund_id, payload=payload)
+    return await service.set_plan(fund_id=fund_id, payload=payload, admin_id=user.id)

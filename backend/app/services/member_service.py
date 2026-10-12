@@ -16,6 +16,7 @@ from app.enums import BalanceStatusEnum, ContributionStatusEnum, FundRoleEnum, M
 from app.models.fund import Fund
 from app.models.member import FundMember
 from app.repositories.accrual_pause_repo import AccrualPauseRepository
+from app.repositories.audit_repo import AuditRepository
 from app.repositories.contribution_repo import ContributionRepository
 from app.repositories.fund_rate_repo import FundRateRepository
 from app.repositories.fund_repo import FundRepository
@@ -76,6 +77,7 @@ class MemberService:
         self.rate_repo = FundRateRepository(db=db)
         self.contribution_repo = ContributionRepository(db=db)
         self.pause_repo = AccrualPauseRepository(db=db)
+        self.audit = AuditRepository(db=db)
         self.plans = PlanService(db=db)
 
     # ─── Сальдо ────────────────────────────────────────────────────────────────
@@ -161,6 +163,7 @@ class MemberService:
         member.joined_at = member.joined_at or datetime.now(timezone.utc)
         member.left_at = None
         member.blocked_at = None
+        self._audit(member, "member.approve", reviewer_id, accrue_absence=accrue_absence)
         await self.db.commit()
         return member_out(member)
 
@@ -171,6 +174,7 @@ class MemberService:
 
         member.status = MemberStatusEnum.rejected.value
         member.reviewed_by_id = reviewer_id
+        self._audit(member, "member.reject", reviewer_id)
         await self.db.commit()
         return member_out(member)
 
@@ -206,6 +210,7 @@ class MemberService:
             member.status = ACTIVE
             member.blocked_at = None
 
+        self._audit(member, f"member.{new_status.value}", actor_id, accrue_absence=accrue_absence)
         await self.db.commit()
         return member_out(member)
 
@@ -215,6 +220,7 @@ class MemberService:
         if member.status != ACTIVE:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Member is not active")
 
+        self._audit(member, "member.role", actor_id, role_from=member.role, role_to=role.value)
         member.role = role.value
         await self.db.commit()
         return member_out(member)
@@ -229,8 +235,11 @@ class MemberService:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Member is not active")
         current = await self._get_or_404(fund_id, actor_member_id, for_update=True)
 
+        # Сначала снимаем старого председателя: в БД уникальный индекс «один председатель на фонд»
         current.role = FundRoleEnum.admin.value
+        await self.db.flush()
         target.role = FundRoleEnum.chairman.value
+        self._audit(target, "member.chairman", current.user_id, previous_chairman_user_id=current.user_id)
         await self.db.commit()
         return member_out(target)
 
@@ -307,6 +316,16 @@ class MemberService:
             to_period=periods[-1],
             reason=reason,
             decided_by_id=actor_id,
+        )
+
+    def _audit(self, member: FundMember, action: str, actor_id: int, **details) -> None:
+        self.audit.add(
+            fund_id=member.fund_id,
+            actor_id=actor_id,
+            action=action,
+            entity="member",
+            entity_id=member.id,
+            details={"user_id": member.user_id, **details},
         )
 
     async def _get_fund(self, fund_id: int) -> Fund:

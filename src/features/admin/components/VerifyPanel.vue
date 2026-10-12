@@ -81,7 +81,7 @@ function approve() {
     </label>
 
     <button class="receipt" @click="emit('zoom', contribution)">
-      <img :src="contribution.receipt_image" alt="" />
+      <img :src="contribution.receipt_image ?? undefined" alt="" />
       <span class="zoom-hint">🔍 {{ $t('admin.verification.zoom') }}</span>
     </button>
 

@@ -50,7 +50,7 @@ export function generateReceiptSvg(params: ReceiptParams): string {
   ${row(352, 'Получатель', params.recipientName)}
   ${row(386, 'Назначение', params.purpose)}
   ${row(420, 'Документ', transactionId)}
-  <text x='210' y='520' text-anchor='middle' ${font} font-size='10' fill='#9CA3AF'>Сформировано онлайн · Фонд дома</text>
+  <text x='210' y='520' text-anchor='middle' ${font} font-size='10' fill='#9CA3AF'>Сформировано онлайн · hashar.app</text>
 </svg>`.trim()
 
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`

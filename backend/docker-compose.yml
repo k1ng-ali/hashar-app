@@ -1,6 +1,7 @@
 # ─── Локальная разработка ──────────────────────────────────────────────────────
 # Запуск: docker compose up -d
 # Только база: docker compose up -d db
+# Для прода — deploy/docker-compose.prod.yml (без seed, без --reload, за HTTPS)
 
 services:
   db:

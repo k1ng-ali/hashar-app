@@ -1,3 +1,6 @@
+# Метод list() в классе затеняет встроенный list в аннотациях ниже (Python 3.12) — аннотации отложенные
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -7,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from app.enums import ContributionCategoryEnum, ContributionStatusEnum
 from app.models.contribution import Contribution
 from app.models.user import User
-from app.repositories.base_repo import BaseRepository
+from app.repositories.base_repo import BaseRepository, like_pattern
 
 APPROVED = ContributionStatusEnum.approved.value
 PENDING = ContributionStatusEnum.pending.value
@@ -40,9 +43,11 @@ def _filtered(stmt, fund_id: int, filters: ContributionFilters):
     if filters.target_fund_id is not None:
         stmt = stmt.where(Contribution.target_fund_id == filters.target_fund_id)
     if filters.search:
-        pattern = f"%{filters.search}%"
-        matching_users = select(User.id).where(User.full_name.ilike(pattern))
-        stmt = stmt.where(or_(Contribution.user_id.in_(matching_users), Contribution.user_unit.ilike(pattern)))
+        pattern = like_pattern(filters.search)
+        matching_users = select(User.id).where(User.full_name.ilike(pattern, escape="\\"))
+        stmt = stmt.where(
+            or_(Contribution.user_id.in_(matching_users), Contribution.user_unit.ilike(pattern, escape="\\"))
+        )
     return stmt
 
 
@@ -137,6 +142,27 @@ class ContributionRepository(BaseRepository):
             stmt = stmt.where(Contribution.created_at < end)
         result = await self.db.execute(stmt.group_by(Contribution.currency))
         return {currency: int(total or 0) for currency, total in result.all()}
+
+    async def has_monthly_fees(self, fund_id: int) -> bool:
+        """Есть ли ежемесячные взносы (на проверке или одобренные) — после них расчёты не перенастроить."""
+        result = await self.db.execute(
+            select(Contribution.id)
+            .where(
+                Contribution.fund_id == fund_id,
+                Contribution.category == MONTHLY_FEE,
+                Contribution.status.in_([APPROVED, PENDING]),
+            )
+            .limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def exists_for_target_fund(self, fund_id: int, target_fund_id: int) -> bool:
+        result = await self.db.execute(
+            select(Contribution.id)
+            .where(Contribution.fund_id == fund_id, Contribution.target_fund_id == target_fund_id)
+            .limit(1)
+        )
+        return result.scalar_one_or_none() is not None
 
     async def count_pending(self, fund_id: int) -> int:
         result = await self.db.execute(

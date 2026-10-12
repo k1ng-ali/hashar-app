@@ -14,7 +14,7 @@ router = APIRouter(prefix="/funds/{fund_id}/expenses", tags=["Platform • Expen
 async def list_expenses(
     category: ExpenseCategoryEnum | None = None,
     currency: CurrencyEnum | None = None,
-    skip: int = 0,
+    skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     ctx: FundContext = Depends(get_fund_context),
     service: ExpenseService = Depends(get_expense_service),
