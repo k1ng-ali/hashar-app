@@ -76,6 +76,13 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /** Удаление аккаунта с обезличиванием (подтверждение паролем). Сессия на сервере уже удалена. */
+  async function deleteAccount(password: string) {
+    await api.deleteAccount(password)
+    clear()
+    await router.replace('/login')
+  }
+
   // http-интерсептор сообщает о новом токене или о провале refresh
   registerAuthHandlers({
     onRefreshed: (token) => {
@@ -100,5 +107,6 @@ export const useAuthStore = defineStore('auth', () => {
     fetchDemoUsers,
     devLogin,
     logout,
+    deleteAccount,
   }
 })

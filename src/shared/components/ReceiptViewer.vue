@@ -2,18 +2,16 @@
 import { LuDownload } from '@kalimahapps/vue-icons/lu'
 import BottomSheet from '@/shared/components/BottomSheet.vue'
 import { useReceiptStore } from '@/shared/stores/useReceiptStore.ts'
+import { downloadDataUrl } from '@/shared/lib/browser.ts'
 
 const receiptStore = useReceiptStore()
 
 function download() {
-  // В href попадает только картинка: ссылку вида javascript: клик бы выполнил
+  // Скачиваем только картинку: ссылку вида javascript: клик бы выполнил
   if (!receiptStore.image.startsWith('data:image/')) return
-  const link = document.createElement('a')
-  link.href = receiptStore.image
   const isSvg = receiptStore.image.startsWith('data:image/svg')
   const extension = isSvg ? 'svg' : receiptStore.image.startsWith('data:image/png') ? 'png' : 'jpg'
-  link.download = `receipt_${Date.now()}.${extension}`
-  link.click()
+  void downloadDataUrl(receiptStore.image, `receipt_${Date.now()}.${extension}`)
 }
 </script>
 

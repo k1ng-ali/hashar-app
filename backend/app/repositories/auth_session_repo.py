@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 
 from app.models.auth_session import AuthSession
 from app.repositories.base_repo import BaseRepository
@@ -27,3 +27,7 @@ class AuthSessionRepository(BaseRepository):
             .where(AuthSession.user_id == user_id, AuthSession.revoked_at.is_(None))
             .values(revoked_at=now)
         )
+
+    async def delete_all(self, user_id: int) -> None:
+        """Все сессии пользователя вместе с User-Agent — при удалении аккаунта."""
+        await self.db.execute(delete(AuthSession).where(AuthSession.user_id == user_id))

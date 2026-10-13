@@ -11,6 +11,8 @@ export const logout = () => authHttp.post<void>('/auth/logout')
 
 export const getMe = () => http.get<User>('/auth/me')
 
+export const deleteAccount = (password: string) => http.post<void>('/auth/delete-account', { password })
+
 // ── DEV_MODE ──
 export const getDemoUsers = () => authHttp.get<DemoUser[]>('/auth/dev-users')
 

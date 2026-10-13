@@ -17,12 +17,12 @@
 | Файл | Методы |
 |---|---|
 | `base_repo.py` | `BaseRepository(db)`, `like_pattern` |
-| `auth_session_repo.py` | `get(for_update)`, `create`, `revoke_all` |
+| `auth_session_repo.py` | `get(for_update)`, `create`, `revoke_all`, `delete_all` |
 | `audit_repo.py` | `add` (без flush — уходит с commit сервиса), `list` |
-| `user_repo.py` | `get`, `get_by_login`, `exists_login`, `list_all`, `create` |
+| `user_repo.py` | `get(for_update)`, `get_by_login`, `exists_login`, `list_all` (без удалённых), `create`, `delete_auth_providers` |
 | `fund_repo.py` | `get(for_update)`, `get_by_code`, `code_exists`, `search`, `list_all`, `create`, `list_accounts`, `get_account`, `create_account` |
 | `member_repo.py` | `get(for_update)`, `get_by_user`, `get_chairman`, `list(status)`, `list_council_by_funds`, `list_by_user`, `count_active`, `count_active_by_funds`, `has_other_council`, `units_by_users`, `create` |
-| `plan_request_repo.py` | `get(for_update)`, `list(status, fund_id)`, `has_pending`, `create` |
+| `plan_request_repo.py` | `get(for_update)`, `list(status, fund_id)`, `has_pending`, `replace_contact`, `create` |
 | `requisite_repo.py` | `get`, `list(active_only, currencies)`, `create`, `delete` |
 | `transfer_repo.py` | `get`, `list`, `sums_by_currency` → `(зачислено, списано)`, `create` |
 | `fund_rate_repo.py` | `list`, `schedule` → `[(период, тариф)]`, `get`, `create`, `delete` |

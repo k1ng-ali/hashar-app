@@ -14,7 +14,7 @@
 
 | Файл | Схемы |
 |---|---|
-| `auth.py` | `RegisterIn`, `LoginIn`, `DevLoginIn`, `TokenOut` |
+| `auth.py` | `RegisterIn`, `LoginIn`, `DeleteAccountIn`, `DevLoginIn`, `TokenOut` |
 | `user.py` | `CurrentUser`, `UserOut`, `DemoUserOut` |
 | `fund.py` | `FundCreateIn`, `FundUpdateIn`, `RateOut`, `FundOut`, `FundPublicOut`, `MyFundOut`, `AccountOut`, `PlanInfoOut`, `FundSummaryOut`, `AccountSummaryOut`, `OperationOut` |
 | `member.py` | `FundContext`, `JoinIn`, `MemberOut`, `MemberOutCouncil`, `MemberStatusUpdateIn`, `MemberRoleUpdateIn`, `ChairmanTransferIn` |

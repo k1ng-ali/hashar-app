@@ -5,6 +5,7 @@ import './style.css'
 
 import App from './App.vue'
 import { router } from '@/app/router.ts'
+import { setupNative } from '@/app/native.ts'
 import { i18n } from '@/shared/i18n/index.ts'
 
 const app = createApp(App)
@@ -14,3 +15,4 @@ app.use(i18n)
 app.use(router)
 
 app.mount('#app')
+void setupNative(router)

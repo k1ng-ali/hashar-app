@@ -6,11 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import REFRESH_TOKEN_EXPIRE, settings
 from app.core.rate_limit import SlidingWindowLimiter
 from app.core.security import create_access_token, create_refresh_token, decode_token, hash_password, verify_password
+from app.enums import FundRoleEnum, MemberStatusEnum
 from app.models.user import User
+from app.repositories.audit_repo import AuditRepository
 from app.repositories.auth_session_repo import AuthSessionRepository
 from app.repositories.member_repo import MemberRepository
+from app.repositories.plan_request_repo import PlanRequestRepository
 from app.repositories.user_repo import UserRepository
-from app.schemas.auth import LoginIn, RegisterIn, TokenOut
+from app.schemas.auth import DeleteAccountIn, LoginIn, RegisterIn, TokenOut
 from app.schemas.user import DemoMembershipOut, DemoUserOut, UserOut
 
 # Неудачные входы: по логину — от перебора пароля одного человека,
@@ -21,6 +24,10 @@ REGISTRATIONS_BY_IP = SlidingWindowLimiter(limit=10, window_seconds=60 * 60)
 
 # Длина User-Agent, которую сохраняем в сессии
 USER_AGENT_LENGTH = 255
+
+# Чем заменяются имя удалённого пользователя и его контакт в заявках на тариф
+DELETED_USER_NAME = "Удалённый пользователь"
+DELETED_CONTACT = "—"
 
 
 def normalize_phone(phone: str | None) -> str | None:
@@ -41,6 +48,8 @@ class AuthService:
         self.repo = UserRepository(db=db)
         self.member_repo = MemberRepository(db=db)
         self.session_repo = AuthSessionRepository(db=db)
+        self.plan_request_repo = PlanRequestRepository(db=db)
+        self.audit = AuditRepository(db=db)
 
     async def register(
         self,
@@ -121,6 +130,74 @@ class AuthService:
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         return UserOut.model_validate(user)
+
+    # ─── Удаление аккаунта ─────────────────────────────────────────────────────
+
+    async def delete_account(self, user_id: int, payload: DeleteAccountIn) -> None:
+        """
+        Удаление аккаунта с обезличиванием: личные данные стираются, записи фондов остаются.
+
+        Взносы (с чеками), комментарии, объявления и журнал — это учёт фонда, его видят
+        и проверяют другие участники, поэтому строки не удаляются: они остаются за
+        «Удалённым пользователем» с помещением, а имя, телефон, email, пароль, аватар,
+        сессии входа и способы входа стираются. Войти в аккаунт больше нельзя, телефон
+        и email освобождаются для новой регистрации.
+
+        Председатель фонда, где есть другие участники, сначала передаёт права —
+        как при выходе из фонда. Если он в фонде один, фонд просто остаётся без участников.
+        """
+        user = await self.repo.get(user_id, for_update=True)
+        if not user or user.deleted_at is not None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+        # Пароль подтверждает, что это владелец, а не тот, кто взял разблокированный телефон.
+        # 403, а не 401: на 401 фронтенд пытается обновить токен
+        limiter_key = f"delete:{user_id}"
+        if LOGIN_FAILURES_BY_LOGIN.is_blocked(limiter_key):
+            raise _too_many_attempts()
+        if user.hashed_password and not verify_password(payload.password or "", user.hashed_password):
+            LOGIN_FAILURES_BY_LOGIN.hit(limiter_key)
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid password")
+
+        memberships = await self.member_repo.list_by_user(user_id)
+        for member in memberships:
+            if member.role == FundRoleEnum.chairman.value and await self.member_repo.count_active(member.fund_id) > 1:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Transfer chairman rights first")
+
+        now = datetime.now(timezone.utc)
+        for member in memberships:
+            if member.status in (MemberStatusEnum.active.value, MemberStatusEnum.blocked.value):
+                # Как выход из фонда: заблокированный остаётся заблокированным с датой выхода
+                member.left_at = now
+                if member.status == MemberStatusEnum.active.value:
+                    member.status = MemberStatusEnum.left.value
+                self.audit.add(
+                    fund_id=member.fund_id,
+                    actor_id=user_id,
+                    action="member.account_deleted",
+                    entity="member",
+                    entity_id=member.id,
+                    details={"unit": member.address_unit},
+                )
+            elif member.status == MemberStatusEnum.pending.value:
+                member.status = MemberStatusEnum.rejected.value
+            # Помещение остаётся: по нему совет сверяет взносы и долги
+            member.role = FundRoleEnum.resident.value
+            member.message = None
+
+        await self.plan_request_repo.replace_contact(user_id=user_id, contact=DELETED_CONTACT)
+        await self.session_repo.delete_all(user_id=user_id)
+        await self.repo.delete_auth_providers(user_id=user_id)
+
+        user.full_name = DELETED_USER_NAME
+        user.phone = None
+        user.email = None
+        user.avatar_url = None
+        user.hashed_password = None
+        user.is_platform_admin = False
+        user.deleted_at = now
+        self.audit.add(fund_id=None, actor_id=user_id, action="user.delete", entity="user", entity_id=user_id)
+        await self.db.commit()
 
     # ─── DEV_MODE ──────────────────────────────────────────────────────────────
 

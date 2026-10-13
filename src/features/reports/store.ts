@@ -41,7 +41,7 @@ export const useReportsStore = defineStore('reports', () => {
     try {
       const response = await api.exportCsv(funds.fundId, kind)
       const filename = filenameFromDisposition(response.headers['content-disposition'], `${kind}.csv`)
-      downloadBlob(response.data, filename)
+      await downloadBlob(response.data, filename)
       return filename
     } finally {
       exportingKind.value = null

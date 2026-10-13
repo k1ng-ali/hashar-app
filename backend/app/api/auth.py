@@ -4,7 +4,7 @@ from app.core.config import REFRESH_TOKEN_EXPIRE, settings
 from app.core.security import REFRESH_COOKIE_NAME
 from app.deps.auth import get_current_user
 from app.deps.services import get_auth_service
-from app.schemas.auth import DevLoginIn, LoginIn, RegisterIn, TokenOut
+from app.schemas.auth import DeleteAccountIn, DevLoginIn, LoginIn, RegisterIn, TokenOut
 from app.schemas.user import CurrentUser, DemoUserOut, UserOut
 from app.services.auth_service import AuthService
 
@@ -95,6 +95,17 @@ async def me(
     service: AuthService = Depends(get_auth_service),
 ):
     return await service.me(user_id=user.id)
+
+
+@router.post("/delete-account", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(
+    payload: DeleteAccountIn,
+    response: Response,
+    user: CurrentUser = Depends(get_current_user),
+    service: AuthService = Depends(get_auth_service),
+):
+    await service.delete_account(user_id=user.id, payload=payload)
+    response.delete_cookie(key=REFRESH_COOKIE_NAME, path=COOKIE_PATH)
 
 
 # ─── DEV_MODE ─────────────────────────────────────────────────────────────────

@@ -46,6 +46,15 @@ class Settings(BaseSettings):
         # В проде не стартуем с ключом-заглушкой: им можно подделать любой токен
         if not self.DEV_MODE and (len(self.SECRET_KEY) < 32 or self.SECRET_KEY.startswith("change-me")):
             raise ValueError("SECRET_KEY is too weak for production: use `openssl rand -hex 32`")
+        # В проде фронтенд только по https. Без CORS_ORIGINS остаются локальные адреса из дефолта,
+        # и браузер молча блокирует все запросы с настоящего домена — лучше не стартовать вовсе
+        if not self.DEV_MODE:
+            bad = [o for o in self.CORS_ORIGINS if not o.startswith("https://") or o == "https://"]
+            if bad or not self.CORS_ORIGINS:
+                raise ValueError(
+                    f"CORS_ORIGINS must list https origins in production (got {self.CORS_ORIGINS}), "
+                    "e.g. CORS_ORIGINS=https://hashar.app"
+                )
         return self
 
     @property

@@ -12,6 +12,7 @@ on:
     paths-ignore:
       - "backend/**"
       - "deploy/**"
+      - "android/**"
       - ".github/workflows/backend.yml"
       - "**.md"
   workflow_dispatch:
@@ -44,7 +45,13 @@ jobs:
       - run: npm run build
 
       # SPA на Pages: неизвестный путь (/join/CODE, /fund/...) отдаёт 404.html — это тот же index.html
-      - run: cp dist/index.html dist/404.html
+      # Ссылки из Google Play (политика, удаление аккаунта) должны отвечать 200, а не 404 —
+      # для них кладём копию index.html в папку с тем же именем
+      - run: |
+          cp dist/index.html dist/404.html
+          for page in privacy account-deletion; do
+            mkdir -p "dist/$page" && cp dist/index.html "dist/$page/index.html"
+          done
 
       - uses: actions/upload-pages-artifact@v3
         with:

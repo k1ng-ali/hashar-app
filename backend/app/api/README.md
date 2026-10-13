@@ -6,7 +6,7 @@
 
 | Папка | Префикс | Кто | Доступ |
 |---|---|---|---|
-| `auth.py` | `/api/v1/auth` | все | регистрация, вход, refresh-cookie, dev-login |
+| `auth.py` | `/api/v1/auth` | все | регистрация, вход, refresh-cookie, удаление аккаунта, dev-login |
 | `platform/` | `/api/v1/funds/...` | пользователи и участники фондов | `get_current_user`, `get_fund_context` |
 | `council/` | `/api/v1/council/funds/{fund_id}/...` | совет фонда | `require_fund_council`, `require_fund_chairman` |
 | `admin/` | `/api/v1/admin/...` | админ платформы | `require_platform_admin` |
@@ -34,6 +34,7 @@
 | POST | `/auth/logout` | Отзывает сессию и удаляет refresh-cookie |
 | POST | `/auth/logout-all` | Выход на всех устройствах (отзывает все сессии) |
 | GET | `/auth/me` | Текущий пользователь |
+| POST | `/auth/delete-account` | Удаление аккаунта с обезличиванием (подтверждение паролем; 403 — неверный пароль, 409 — председатель с участниками) |
 | GET / POST | `/auth/dev-users`, `/auth/dev-login` | Быстрый вход (только `DEV_MODE`) |
 
 ### Platform — фонды и вступление

@@ -20,6 +20,8 @@ const FundMembersPage = () => import('@/pages/FundMembersPage/FundMembersPage.vu
 const FundAccountsPage = () => import('@/pages/FundAccountsPage/FundAccountsPage.vue')
 const FundSettingsPage = () => import('@/pages/FundSettingsPage/FundSettingsPage.vue')
 const PlatformAdminPage = () => import('@/pages/PlatformAdminPage/PlatformAdminPage.vue')
+const PrivacyPage = () => import('@/pages/PrivacyPage/PrivacyPage.vue')
+const AccountDeletionPage = () => import('@/pages/AccountDeletionPage/AccountDeletionPage.vue')
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -45,6 +47,9 @@ export const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
   routes: [
     { path: '/login', component: LoginPage, meta: { public: true } },
+    // Документы — открываются и без входа (ссылки на них указаны в Google Play)
+    { path: '/privacy', component: PrivacyPage, meta: { public: true } },
+    { path: '/account-deletion', component: AccountDeletionPage, meta: { public: true } },
     { path: '/funds', component: FundsPage },
     { path: '/join/:code', component: JoinPage },
     { path: '/platform', component: PlatformAdminPage, meta: { platformAdmin: true } },

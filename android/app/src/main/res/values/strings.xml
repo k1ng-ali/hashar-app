@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Hashar</string>
+    <string name="title_activity_main">Hashar</string>
+    <string name="package_name">com.hashar.app</string>
+    <string name="custom_url_scheme">com.hashar.app</string>
+</resources>

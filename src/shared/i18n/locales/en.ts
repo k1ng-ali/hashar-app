@@ -849,4 +849,27 @@ export default {
     generic: 'Something went wrong',
     loadFailed: 'Failed to load data',
   },
+  // ── Documents: privacy policy and account deletion ──
+  legal: {
+    back: 'Back',
+    updated: 'Last updated {date}',
+    privacy: 'Privacy Policy',
+    deleteAccount: 'Delete account',
+    consent: 'By registering, you accept the {link}',
+    consentLink: 'privacy policy',
+    deletion: {
+      formTitle: 'Delete my account',
+      signedInAs: 'Signed in as {name}',
+      signInHint: 'Sign in to delete your account.',
+      signIn: 'Sign in',
+      password: 'Password to confirm',
+      confirm: 'I understand: deletion cannot be undone, fund records stay anonymised',
+      submit: 'Delete account permanently',
+      done: 'Account deleted',
+      errors: {
+        password: 'Wrong password',
+        chairman: 'First hand over the chairman role in the fund that has other members',
+      },
+    },
+  },
 }

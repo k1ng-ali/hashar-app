@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Передний слой иконки и значок сплэша: знак Ҳ (фон — @color/brand_dark) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Знак из public/logo-mark.svg (сетка 120×120) вписан в центральные 72dp:
+         так он целиком в безопасной зоне адаптивной иконки (круг 66dp) -->
+    <group
+        android:scaleX="0.6"
+        android:scaleY="0.6"
+        android:translateX="18"
+        android:translateY="18">
+        <!-- Левая черта Ҳ, прерванная зазором у пересечения -->
+        <path android:fillColor="#FFFFFF" android:pathData="M28.76,34.64 L43.65,51.47 L52.99,40.91 L39.24,25.36 Z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M27,30 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" />
+        <path android:fillColor="#FFFFFF" android:pathData="M74.76,86.64 L61.01,71.09 L70.35,60.53 L85.24,77.36 Z" />
+        <path android:fillColor="#FFFFFF" android:pathData="M73,82 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" />
+        <!-- Правая черта — сплошная -->
+        <path
+            android:pathData="M80,30 L34,82"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round"
+            android:strokeWidth="14" />
+        <!-- Монета -->
+        <path android:fillColor="#16A34A" android:pathData="M84.5,94 a7.5,7.5 0 1,0 15,0 a7.5,7.5 0 1,0 -15,0" />
+    </group>
+</vector>

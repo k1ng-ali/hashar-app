@@ -8,7 +8,7 @@
 Fund-system/
 ├── backend/      # FastAPI + async SQLAlchemy + PostgreSQL + Alembic   → backend/README.md
 ├── src/          # Vue 3 + TypeScript + Pinia + vue-router + vue-i18n
-├── deploy/       # прод API: docker-compose.prod.yml, Caddyfile, update.sh, backup.sh
+├── deploy/       # сервер API: setup.sh, update.sh, admin.sh, backup.sh, docker-compose.yml, Caddyfile
 └── .github/workflows/
     ├── frontend.yml  # release → сборка → GitHub Pages (hashar.app)
     └── backend.yml   # release → тесты → образ в Docker Hub (api.hashar.app)
@@ -64,22 +64,35 @@ release ─┬─ frontend.yml: npm run build ───────────�
 - **SSL/TLS → Overview:** режим **Full (strict)**. Не Flexible: с ним Cloudflare ходит на сервер по http, а Caddy отправляет обратно на https — бесконечный редирект
 - **SSL/TLS → Origin Server → Create Certificate:** RSA, хосты `hashar.app, *.hashar.app`, срок 15 лет. Сертификат сохранить на сервере в `deploy/certs/origin.pem`, ключ — в `deploy/certs/origin.key` (ключ показывается один раз; папка в `.gitignore`)
 - **SSL/TLS → Edge Certificates:** Always Use HTTPS — вкл., Minimum TLS — 1.2
+- **Если порт 443 на сервере занят другим проектом** (например, его nginx): в `deploy/.env` поставить `API_PORT=8443`, а в **Rules → Origin Rules → Create rule**: *Hostname equals* `api.hashar.app` → *Destination Port: Rewrite to* `8443`. Браузер по-прежнему ходит на `https://api.hashar.app`, Cloudflare сам ведёт запрос на 8443. Порт 8443 должен быть открыт в фаерволе хостинга
 
 ### 3. Сервер (один раз)
 
-Нужны Docker и папка `deploy/` — проще всего клон репозитория (тогда `update.sh` сам подтягивает изменения compose и Caddyfile):
+На сервер нужна только папка `deploy/`. Проще всего клон репозитория — тогда `update.sh` сам подтягивает изменения compose и Caddyfile (можно и просто скопировать папку через `scp`):
 
 ```bash
 git clone <repo> /opt/hashar && cd /opt/hashar/deploy
-cp .env.example .env        # BACKEND_IMAGE, SECRET_KEY (openssl rand -hex 32), DB_PASSWORD (openssl rand -hex 24)
-mkdir certs                 # сюда origin.pem и origin.key из Cloudflare
-chmod +x update.sh backup.sh
-./update.sh
+sh setup.sh
 ```
 
-Если репозиторий образа в Docker Hub приватный — перед этим `docker login`.
+`setup.sh` (Ubuntu/Debian, можно запускать повторно):
+1. ставит Docker, если его нет;
+2. создаёт `.env` со случайными `SECRET_KEY` и паролем БД, спрашивает образ (`<логин>/hashar-backend`);
+3. проверяет Origin-сертификат — если его нет, подскажет, куда положить `certs/origin.pem` и `certs/origin.key`, и остановится: положите и запустите снова;
+4. скачивает образ (если репозиторий в Docker Hub приватный — попросит `docker login`), запускает через `update.sh`;
+5. ставит ночной бэкап БД в cron.
 
 Проверка: `https://api.hashar.app/health` → `{"db":1}`, `https://hashar.app` — экран входа.
+
+| Файл в `deploy/` | Зачем |
+|---|---|
+| `setup.sh` | первый запуск сервера |
+| `update.sh` | новая версия backend; `BACKEND_TAG=sha-<коммит> ./update.sh` — откат |
+| `admin.sh` | `./admin.sh +992…` / `--revoke` / `--list` — админы платформы |
+| `backup.sh` | дамп БД в `backups/` (cron, хранит 14 дней) |
+| `docker-compose.yml` | Postgres + backend + Caddy; из этой папки работают обычные `docker compose ps / logs -f backend / restart` |
+| `Caddyfile` | HTTPS для `api.hashar.app`, только запросы от Cloudflare |
+| `.env` | секреты (создаёт `setup.sh`, в git не попадает) |
 
 ### Выпуск версии
 
@@ -98,11 +111,29 @@ ssh <сервер> /opt/hashar/deploy/update.sh             # когда backend
 - GitHub Pages не даёт ставить заголовки, поэтому CSP — `<meta>` в `index.html`, его добавляет плагин в `vite.config.ts` при сборке. Через `<meta>` нельзя запретить встраивание сайта во фрейм (`frame-ancestors`)
 - SPA на Pages: workflow копирует `index.html` в `404.html`, поэтому прямые ссылки вида `/join/CODE` открываются (со статусом 404 — для приложения это не важно)
 - backend при старте применяет миграции; `DEV_MODE=false`: нет `/docs`, демо-входа, демо-чеков и seed, а со слабым `SECRET_KEY` backend не запустится
-- логи контейнеров ротируются (5 × 10 МБ на сервис): `docker compose -f docker-compose.prod.yml logs -f backend`
-- первый админ платформы назначается вручную после регистрации:
-  `docker compose -f docker-compose.prod.yml exec db psql -U <DB_USER> <DB_NAME> -c "update users set is_platform_admin = true where phone = '+992...'"`
-- бэкап БД — `deploy/backup.sh` по cron (хранит 14 дней на этом же сервере — копии стоит регулярно уносить в другое место)
+- логи контейнеров ротируются (5 × 10 МБ на сервис): `docker compose logs -f backend` из `deploy/`
+- первый админ платформы: зарегистрироваться в приложении, затем `./admin.sh +992XXXXXXXXX` и перезайти
+- бэкап БД хранится на этом же сервере — копии стоит регулярно уносить в другое место. Восстановление: `gunzip -c backups/<файл>.sql.gz | docker compose exec -T db psql -U <DB_USER> <DB_NAME>`
 - проверить прод-сборку фронта локально: `VITE_API_URL=https://api.hashar.app npm run build && npm run preview`
+
+## Android
+
+Та же Vue-сборка, упакованная Capacitor в WebView (`android/`, `capacitor.config.ts`). Работает с продовым API.
+
+```bash
+npm run build:android            # сборка с .env.android (API https://api.hashar.app) → cap sync
+npx cap open android             # Android Studio: запуск на телефоне, Build → Generate Signed Bundle
+```
+
+Release-сборка из консоли: `cd android && ./gradlew bundleRelease` → `app/build/outputs/bundle/release/app-release.aab`. Подписывается ключом загрузки из `android/keystore.properties` (образец — `keystore.properties.example`; файл и `.jks` в git не попадают). Перед каждой загрузкой в Google Play увеличить `versionCode` в `android/app/build.gradle`.
+
+- приложение открывается как `https://hashar.app` (`server.hostname`), а файлы берутся из APK. Для API это тот же сайт, что и веб-версия: CORS и refresh-cookie работают без отдельной настройки backend
+- иконка — векторная адаптивная (`res/drawable/ic_launcher_foreground.xml`, фон `#111827`, монохромный слой для тематических значков Android 13+). PNG в `mipmap-*` нужны только Android 7.x
+- сплэш: светлый фон и знак на тёмном круге (`res/values/styles.xml`). Прячет его `src/app/native.ts` после первого экрана; там же системная кнопка «Назад»
+- скачивание (CSV-отчёты, чеки) в приложении открывает меню «Поделиться» (`src/shared/lib/browser.ts`): WebView не скачивает файлы по ссылке
+- картинки для Google Play: `android/store/` (значок 512×512, баннер 1024×500)
+- ссылки для Google Play: политика — `https://hashar.app/privacy`, удаление аккаунта — `https://hashar.app/account-deletion` (открываются без входа; `frontend.yml` кладёт для них копии `index.html`, чтобы ответ был 200, а не 404). Почта поддержки — `SUPPORT_EMAIL` в `src/shared/lib/legal.ts`
+- удаление аккаунта обезличивает, а не стирает: имя, контакты, пароль и сессии удаляются, взносы с чеками, комментарии и журнал остаются за «Удалённым пользователем» с помещением (`AuthService.delete_account`). Тексты политики и страницы удаления должны совпадать с тем, что делает backend
 
 ## Сценарии
 
@@ -121,6 +152,7 @@ src/
 ├── main.ts                    # createApp → pinia → i18n → router → mount
 ├── App.vue                    # splash, auth-гейт, <Header/> <router-view :key=fundId/> <Navigator/>
 ├── app/router.ts              # маршруты + guard: вход, выбранный фонд, совет, админ платформы
+├── app/native.ts              # Android: кнопка «Назад», сплэш
 ├── pages/<Name>Page/
 │   ├── LoginPage              # вход / регистрация / провайдеры (скоро)
 │   ├── FundsPage, JoinPage    # мои фонды, создать, найти, вступление по ссылке
@@ -129,9 +161,10 @@ src/
 │   ├── ContributePage, TargetFundPage, AnnouncementsPage
 │   ├── FundPage               # /fund: карточка фонда, меню управления и общее
 │   ├── FundReceiptsPage, FundMembersPage, FundAccountsPage, FundSettingsPage  # /fund/* — совет
-│   └── PlatformAdminPage      # админ платформы: заявки на тарифы, фонды
+│   ├── PlatformAdminPage      # админ платформы: заявки на тарифы, фонды
+│   └── PrivacyPage, AccountDeletionPage  # публичные документы (тексты ru/tg/en — content.ts рядом)
 ├── features/
-│   ├── auth/                  # регистрация, вход, refresh-cookie
+│   ├── auth/                  # регистрация, вход, refresh-cookie, удаление аккаунта
 │   ├── funds/                 # мои фонды, текущий фонд, права в фонде, создание/поиск/вступление, тариф
 │   ├── dashboard/             # сводка по валютам, лента операций, реквизиты
 │   ├── contributions/         # взносы, сальдо, форма (composables/useContributionForm)

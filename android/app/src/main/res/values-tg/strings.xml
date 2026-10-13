@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <!-- Подпись под иконкой: на русском и таджикском — как в интерфейсе (app.name) -->
+    <string name="app_name">Ҳашар</string>
+    <string name="title_activity_main">Ҳашар</string>
+</resources>

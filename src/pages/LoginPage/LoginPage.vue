@@ -106,6 +106,8 @@ async function handleDemo(user: DemoUser) {
       <ProviderButtons />
     </div>
 
+    <router-link class="privacy-link" to="/privacy">{{ $t('legal.privacy') }}</router-link>
+
     <!-- Быстрый вход для демо -->
     <section v-if="IS_DEV_MODE && authStore.demoUsers.length" class="demo">
       <h2>{{ $t('auth.demoTitle') }}</h2>
@@ -154,6 +156,13 @@ async function handleDemo(user: DemoUser) {
   flex-direction: column;
   gap: 16px;
   padding: 20px;
+}
+
+.privacy-link {
+  align-self: center;
+  font-size: 13px;
+  color: $text-secondary;
+  text-decoration: underline;
 }
 
 /* ── Demo ─────────────────────────────────────────────────────────────────── */

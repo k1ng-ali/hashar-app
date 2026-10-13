@@ -2,10 +2,9 @@
 # Фронтенд живёт на GitHub Pages (.github/workflows/frontend.yml), здесь только API.
 # Образ backend собирает GitHub Actions (.github/workflows/backend.yml) и кладёт в Docker Hub.
 #
-# Первый запуск (из папки deploy):
-#   cp .env.example .env   # заполнить BACKEND_IMAGE, SECRET_KEY, DB_PASSWORD
-#   # положить Origin-сертификат Cloudflare в certs/origin.pem и certs/origin.key
-#   ./update.sh
+# Первый запуск — ./setup.sh, обновление — ./update.sh (см. README.md рядом).
+# Обычные команды compose работают из этой папки без -f:
+#   docker compose ps | logs -f backend | restart backend | down
 #
 # Наружу открыт только Caddy (80/443) и только для Cloudflare. Backend и Postgres
 # доступны лишь внутри сети compose. Демо-данные (seed) здесь не запускаются.
@@ -72,9 +71,11 @@ services:
       - backend
     environment:
       API_DOMAIN: ${API_DOMAIN}
+    # Только HTTPS: на http Cloudflare сам перенаправляет (Always Use HTTPS).
+    # API_PORT=8443, если 443 на сервере занят другим проектом, — тогда в Cloudflare
+    # Origin Rule «api.hashar.app → порт 8443» (см. README → «Продакшен»)
     ports:
-      - "80:80"
-      - "443:443"
+      - "${API_PORT:-443}:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./certs:/etc/caddy/certs:ro

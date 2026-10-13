@@ -7,6 +7,8 @@
 - phone / email: логин для входа по паролю (хотя бы одно из двух)
 - hashed_password: null, если вход только через провайдера (Google / Telegram)
 - is_platform_admin: администратор платформы (подтверждает тарифы)
+- deleted_at: аккаунт удалён по просьбе пользователя. Строка не удаляется — на неё ссылаются
+  взносы, комментарии и журнал фонда, — но имя заменено, а телефон, email, пароль и аватар стёрты
 """
 
 from sqlalchemy import TIMESTAMP, BigInteger, Boolean, Column, ForeignKey, String, UniqueConstraint, func
@@ -24,6 +26,7 @@ class User(Base):
     avatar_url = Column(String(255), nullable=True)
     hashed_password = Column(String(255), nullable=True)
     is_platform_admin = Column(Boolean, nullable=False, default=False, server_default="false")
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
 

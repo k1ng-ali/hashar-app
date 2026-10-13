@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Сплэш для старого способа показа (если Android 12 Splash API недоступен):
+     светлый фон и знак на тёмном круге — так же, как системный сплэш Android 12+ -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_background" />
+    <item
+        android:width="160dp"
+        android:height="160dp"
+        android:gravity="center">
+        <shape android:shape="oval">
+            <solid android:color="@color/brand_dark" />
+        </shape>
+    </item>
+    <item
+        android:width="240dp"
+        android:height="240dp"
+        android:drawable="@drawable/ic_launcher_foreground"
+        android:gravity="center" />
+</layer-list>

@@ -68,6 +68,11 @@ async function handleLogout() {
       <LuLogOut />
       {{ $t('header.logout') }}
     </button>
+
+    <div class="legal-links">
+      <button @click="go('/privacy')">{{ $t('legal.privacy') }}</button>
+      <button class="legal-links__danger" @click="go('/account-deletion')">{{ $t('legal.deleteAccount') }}</button>
+    </div>
   </BottomSheet>
 </template>
 
@@ -155,5 +160,26 @@ async function handleLogout() {
   padding: 13px;
   color: $danger;
   border-color: rgba(239, 68, 68, 0.2);
+}
+
+.legal-links {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin-top: 14px;
+
+  button {
+    padding: 4px;
+    border: none;
+    background: none;
+    color: $text-secondary;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  &__danger {
+    color: $danger !important;
+  }
 }
 </style>

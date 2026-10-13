@@ -29,6 +29,12 @@ class LoginIn(BaseModel):
     password: str = Field(min_length=1, max_length=64)
 
 
+class DeleteAccountIn(BaseModel):
+    """Подтверждение удаления аккаунта паролем (у аккаунта без пароля — не нужен)."""
+
+    password: str | None = Field(None, max_length=64)
+
+
 class DevLoginIn(BaseModel):
     user_id: int
 

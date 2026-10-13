@@ -1,7 +1,7 @@
 # Метод list() в классе затеняет встроенный list в аннотациях ниже (Python 3.12) — аннотации отложенные
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
 from app.enums import PlanRequestStatusEnum
@@ -47,6 +47,10 @@ class PlanRequestRepository(BaseRepository):
             )
         )
         return result.first() is not None
+
+    async def replace_contact(self, user_id: int, contact: str) -> None:
+        """Контакт для связи во всех заявках пользователя — при удалении аккаунта."""
+        await self.db.execute(update(PlanRequest).where(PlanRequest.requested_by_id == user_id).values(contact=contact))
 
     async def create(self, **fields) -> PlanRequest:
         request = PlanRequest(**fields)

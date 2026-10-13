@@ -16,7 +16,7 @@
 
 | Сервис | Методы | Правила |
 |---|---|---|
-| `AuthService` | `register`, `login`, `refresh`, `logout`, `logout_all`, `me`, `dev_login`, `list_demo_users` | Логин — телефон (нормализуется) или email; refresh-токен указывает на сессию (`auth_sessions`), выход её отзывает; лимит попыток — `core/rate_limit.py` |
+| `AuthService` | `register`, `login`, `refresh`, `logout`, `logout_all`, `me`, `delete_account`, `dev_login`, `list_demo_users` | Логин — телефон (нормализуется) или email; refresh-токен указывает на сессию (`auth_sessions`), выход её отзывает; лимит попыток — `core/rate_limit.py`. `delete_account` стирает имя, контакты, пароль, сессии и способы входа, выводит из фондов; взносы, комментарии и журнал остаются за «Удалённым пользователем» с помещением |
 | `FundService` | `create`, `search`, `get_by_code`, `join`, `cancel_request`, `leave`, `list_my`, `get`, `update` | Создатель — председатель; председатель не может выйти; финансовые настройки — только председатель |
 | `MemberService` | `list_members`, `approve`, `reject`, `set_status`, `set_role`, `transfer_chairman`, `get_balance`, `list_debtors` | Лимит тарифа при одобрении; председателя и себя менять нельзя |
 | `PlanService` | `catalog`, `info`, `ensure_capacity`, `create_request`, `list_requests`, `approve`, `reject`, `list_funds`, `set_plan` | Одна заявка в ожидании; продление того же тарифа по той же цене — от даты окончания; смена тарифа — остаток прежнего переводится в дни нового (`core/plans.carryover`) |
