@@ -12,6 +12,7 @@ on:
     paths-ignore:
       - "backend/**"
       - "deploy/**"
+      - "android/**"
       - ".github/workflows/backend.yml"
       - "**.md"
   workflow_dispatch:
@@ -32,6 +33,9 @@ jobs:
       # Адрес API вшивается в сборку и в CSP (connect-src)
       VITE_API_URL: https://api.hashar.app
       VITE_DEV_MODE: "false"
+      # Вход через Google: Client ID веб-клиента OAuth (не секрет). Settings → Secrets and variables →
+      # Actions → Variables. Пусто — кнопка Google не показывается
+      VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v4
 
@@ -44,7 +48,13 @@ jobs:
       - run: npm run build
 
       # SPA на Pages: неизвестный путь (/join/CODE, /fund/...) отдаёт 404.html — это тот же index.html
-      - run: cp dist/index.html dist/404.html
+      # Ссылки из Google Play и Google Cloud (о проекте, политика, условия, удаление аккаунта) должны отвечать 200, а не 404 —
+      # для них кладём копию index.html в папку с тем же именем
+      - run: |
+          cp dist/index.html dist/404.html
+          for page in about privacy terms account-deletion; do
+            mkdir -p "dist/$page" && cp dist/index.html "dist/$page/index.html"
+          done
 
       - uses: actions/upload-pages-artifact@v3
         with:
