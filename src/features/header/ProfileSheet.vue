@@ -72,6 +72,8 @@ async function handleLogout() {
     </button>
 
     <div class="legal-links">
+      <button @click="go('/about')">{{ $t('legal.about') }}</button>
+      <button @click="go('/terms')">{{ $t('legal.terms') }}</button>
       <button @click="go('/privacy')">{{ $t('legal.privacy') }}</button>
       <button class="legal-links__danger" @click="go('/account-deletion')">{{ $t('legal.deleteAccount') }}</button>
     </div>

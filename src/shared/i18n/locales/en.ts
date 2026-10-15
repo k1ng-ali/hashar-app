@@ -871,7 +871,10 @@ export default {
     updated: 'Last updated {date}',
     privacy: 'Privacy Policy',
     deleteAccount: 'Delete account',
-    consent: 'By registering, you accept the {link}',
+    consent: 'By continuing, you accept the {terms} and the {link}',
+    termsLink: 'terms of use',
+    terms: 'Terms of use',
+    about: 'About',
     consentLink: 'privacy policy',
     deletion: {
       formTitle: 'Delete my account',

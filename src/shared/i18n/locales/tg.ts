@@ -871,7 +871,10 @@ export default {
     updated: 'Таҳрир аз {date}',
     privacy: 'Сиёсати махфият',
     deleteAccount: 'Нест кардани аккаунт',
-    consent: 'Бо сабти ном шумо {link}-ро қабул мекунед',
+    consent: 'Идома дода, шумо {terms} ва {link}-ро қабул мекунед',
+    termsLink: 'шартҳои истифода',
+    terms: 'Шартҳои истифода',
+    about: 'Дар бораи лоиҳа',
     consentLink: 'сиёсати махфият',
     deletion: {
       formTitle: 'Аккаунти маро нест кунед',

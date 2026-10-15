@@ -119,9 +119,23 @@ async function handleDemo(user: DemoUser) {
       </Transition>
 
       <ProviderButtons :disabled="authStore.isSubmitting" @google="handleGoogle" @error="handleGoogleError" />
+
+      <!-- Касается и регистрации, и входа через Google (там аккаунт создаётся сразу) -->
+      <i18n-t keypath="legal.consent" tag="p" class="consent">
+        <template #terms>
+          <router-link to="/terms">{{ $t('legal.termsLink') }}</router-link>
+        </template>
+        <template #link>
+          <router-link to="/privacy">{{ $t('legal.consentLink') }}</router-link>
+        </template>
+      </i18n-t>
     </div>
 
-    <router-link class="privacy-link" to="/privacy">{{ $t('legal.privacy') }}</router-link>
+    <nav class="legal-links">
+      <router-link to="/about">{{ $t('legal.about') }}</router-link>
+      <router-link to="/terms">{{ $t('legal.terms') }}</router-link>
+      <router-link to="/privacy">{{ $t('legal.privacy') }}</router-link>
+    </nav>
 
     <!-- Быстрый вход для демо -->
     <section v-if="IS_DEV_MODE && authStore.demoUsers.length" class="demo">
@@ -173,11 +187,29 @@ async function handleDemo(user: DemoUser) {
   padding: 20px;
 }
 
-.privacy-link {
-  align-self: center;
-  font-size: 13px;
+.consent {
+  margin: 0;
+  font-size: 12px;
+  text-align: center;
   color: $text-secondary;
-  text-decoration: underline;
+
+  a {
+    color: $navy;
+    text-decoration: underline;
+  }
+}
+
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 18px;
+
+  a {
+    font-size: 13px;
+    color: $text-secondary;
+    text-decoration: underline;
+  }
 }
 
 /* ── Demo ─────────────────────────────────────────────────────────────────── */

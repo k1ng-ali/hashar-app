@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { Capacitor } from '@capacitor/core'
 import { useAuthStore } from '@/features/auth/store.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
 
@@ -20,7 +21,9 @@ const FundMembersPage = () => import('@/pages/FundMembersPage/FundMembersPage.vu
 const FundAccountsPage = () => import('@/pages/FundAccountsPage/FundAccountsPage.vue')
 const FundSettingsPage = () => import('@/pages/FundSettingsPage/FundSettingsPage.vue')
 const PlatformAdminPage = () => import('@/pages/PlatformAdminPage/PlatformAdminPage.vue')
+const AboutPage = () => import('@/pages/AboutPage/AboutPage.vue')
 const PrivacyPage = () => import('@/pages/PrivacyPage/PrivacyPage.vue')
+const TermsPage = () => import('@/pages/TermsPage/TermsPage.vue')
 const AccountDeletionPage = () => import('@/pages/AccountDeletionPage/AccountDeletionPage.vue')
 
 declare module 'vue-router' {
@@ -47,8 +50,10 @@ export const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
   routes: [
     { path: '/login', component: LoginPage, meta: { public: true } },
-    // Документы — открываются и без входа (ссылки на них указаны в Google Play)
+    // О проекте и документы — открываются и без входа (ссылки указаны в Google Play и Google Cloud)
+    { path: '/about', component: AboutPage, meta: { public: true } },
     { path: '/privacy', component: PrivacyPage, meta: { public: true } },
+    { path: '/terms', component: TermsPage, meta: { public: true } },
     { path: '/account-deletion', component: AccountDeletionPage, meta: { public: true } },
     { path: '/funds', component: FundsPage },
     { path: '/join/:code', component: JoinPage },
@@ -97,6 +102,8 @@ router.beforeEach(async (to) => {
     return to.path === '/login' && auth.isAuthenticated ? { path: '/' } : true
   }
   if (!auth.isAuthenticated) {
+    // Гость на сайте видит страницу о проекте; в приложении её нет смысла показывать — сразу вход
+    if (to.path === '/' && !Capacitor.isNativePlatform()) return { path: '/about' }
     // Сохраняем цель (например, ссылку-приглашение), чтобы вернуться после входа
     return { path: '/login', query: to.fullPath !== '/' ? { redirect: to.fullPath } : undefined }
   }

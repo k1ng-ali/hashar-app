@@ -871,7 +871,10 @@ export default {
     updated: 'Редакция от {date}',
     privacy: 'Политика конфиденциальности',
     deleteAccount: 'Удалить аккаунт',
-    consent: 'Регистрируясь, вы принимаете {link}',
+    consent: 'Продолжая, вы принимаете {terms} и {link}',
+    termsLink: 'условия использования',
+    terms: 'Условия использования',
+    about: 'О проекте',
     consentLink: 'политику конфиденциальности',
     deletion: {
       formTitle: 'Удалить мой аккаунт',

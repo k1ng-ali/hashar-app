@@ -82,12 +82,6 @@ function handleSubmit() {
     <p v-if="localError || errorMessage" class="error">{{ localError || errorMessage }}</p>
 
     <button type="submit" class="submit-btn" :disabled="isSubmitting">{{ $t('auth.register') }}</button>
-
-    <i18n-t keypath="legal.consent" tag="p" class="consent">
-      <template #link>
-        <router-link to="/privacy">{{ $t('legal.consentLink') }}</router-link>
-      </template>
-    </i18n-t>
   </form>
 </template>
 
@@ -127,15 +121,4 @@ input {
   margin-top: 4px;
 }
 
-.consent {
-  margin: 0;
-  font-size: 12px;
-  text-align: center;
-  color: $text-secondary;
-
-  a {
-    color: $navy;
-    text-decoration: underline;
-  }
-}
 </style>

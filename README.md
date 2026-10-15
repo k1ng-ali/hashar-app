@@ -120,7 +120,7 @@ ssh <сервер> /opt/hashar/deploy/update.sh             # когда backend
 
 [Google Cloud Console](https://console.cloud.google.com/) → проект → **APIs & Services**:
 
-1. **OAuth consent screen:** тип External, название «Ҳашар», почта поддержки, домен `hashar.app`, ссылка на политику `https://hashar.app/privacy`; scopes — только `email`, `profile`, `openid`. Опубликовать (Publish app), иначе войти смогут только тестовые пользователи
+1. **OAuth consent screen:** тип External, название «Ҳашар», почта поддержки, главная страница `https://hashar.app` (гость видит страницу о проекте `/about`), политика `https://hashar.app/privacy`, условия `https://hashar.app/terms`, авторизованный домен `hashar.app`; scopes — только `email`, `profile`, `openid`. Опубликовать (Publish app), иначе войти смогут только тестовые пользователи. С логотипом Google проверяет бренд (2–5 рабочих дней): до этого домен `hashar.app` должен быть подтверждён в [Google Search Console](https://search.google.com/search-console) тем же аккаунтом — TXT-запись в DNS Cloudflare
 2. **Credentials → Create OAuth client ID → Web application:** Authorized JavaScript origins — `https://hashar.app` и для разработки `http://localhost:5173`, `http://localhost`. Redirect URI не нужны. Его Client ID:
    - GitHub → **Settings → Secrets and variables → Actions → Variables:** `GOOGLE_CLIENT_ID` (фронтенд, вшивается в сборку);
    - `deploy/.env` на сервере: `GOOGLE_CLIENT_IDS=<тот же ID>`, затем `./update.sh` (backend проверяет, что токен выпущен для этого клиента);

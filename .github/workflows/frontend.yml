@@ -48,11 +48,11 @@ jobs:
       - run: npm run build
 
       # SPA на Pages: неизвестный путь (/join/CODE, /fund/...) отдаёт 404.html — это тот же index.html
-      # Ссылки из Google Play (политика, удаление аккаунта) должны отвечать 200, а не 404 —
+      # Ссылки из Google Play и Google Cloud (о проекте, политика, условия, удаление аккаунта) должны отвечать 200, а не 404 —
       # для них кладём копию index.html в папку с тем же именем
       - run: |
           cp dist/index.html dist/404.html
-          for page in privacy account-deletion; do
+          for page in about privacy terms account-deletion; do
             mkdir -p "dist/$page" && cp dist/index.html "dist/$page/index.html"
           done
 
