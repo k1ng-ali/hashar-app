@@ -20,6 +20,26 @@ class UserRepository(BaseRepository):
         )
         return result.scalar_one_or_none()
 
+    async def get_by_email(self, email: str) -> User | None:
+        result = await self.db.execute(select(User).where(User.email == email.lower()).limit(1))
+        return result.scalar_one_or_none()
+
+    async def get_by_provider(self, provider: str, provider_user_id: str) -> User | None:
+        result = await self.db.execute(
+            select(User)
+            .join(UserAuthProvider, UserAuthProvider.user_id == User.id)
+            .where(UserAuthProvider.provider == provider, UserAuthProvider.provider_user_id == provider_user_id)
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
+
+    async def has_auth_provider(self, user_id: int) -> bool:
+        result = await self.db.execute(select(UserAuthProvider.id).where(UserAuthProvider.user_id == user_id).limit(1))
+        return result.scalar_one_or_none() is not None
+
+    def add_auth_provider(self, user_id: int, provider: str, provider_user_id: str) -> None:
+        self.db.add(UserAuthProvider(user_id=user_id, provider=provider, provider_user_id=provider_user_id))
+
     async def exists_login(self, phone: str | None, email: str | None) -> bool:
         conditions = []
         if phone:
@@ -43,8 +63,11 @@ class UserRepository(BaseRepository):
         phone: str | None,
         email: str | None,
         hashed_password: str | None,
+        avatar_url: str | None = None,
     ) -> User:
-        user = User(full_name=full_name, phone=phone, email=email, hashed_password=hashed_password)
+        user = User(
+            full_name=full_name, phone=phone, email=email, hashed_password=hashed_password, avatar_url=avatar_url
+        )
         self.db.add(user)
         await self.db.flush()
         await self.db.refresh(user)

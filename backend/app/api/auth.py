@@ -4,7 +4,7 @@ from app.core.config import REFRESH_TOKEN_EXPIRE, settings
 from app.core.security import REFRESH_COOKIE_NAME
 from app.deps.auth import get_current_user
 from app.deps.services import get_auth_service
-from app.schemas.auth import DeleteAccountIn, DevLoginIn, LoginIn, RegisterIn, TokenOut
+from app.schemas.auth import DeleteAccountIn, DevLoginIn, GoogleLoginIn, LoginIn, RegisterIn, TokenOut, UpdateProfileIn
 from app.schemas.user import CurrentUser, DemoUserOut, UserOut
 from app.services.auth_service import AuthService
 
@@ -58,6 +58,20 @@ async def login(
     return token
 
 
+@router.post("/google", response_model=TokenOut)
+async def google_login(
+    payload: GoogleLoginIn,
+    request: Request,
+    response: Response,
+    service: AuthService = Depends(get_auth_service),
+):
+    token, refresh_token = await service.google_login(
+        payload=payload, client_ip=_client_ip(request), user_agent=request.headers.get("user-agent")
+    )
+    _set_refresh_cookie(response, refresh_token)
+    return token
+
+
 @router.post("/refresh", response_model=TokenOut)
 async def refresh(
     response: Response,
@@ -95,6 +109,15 @@ async def me(
     service: AuthService = Depends(get_auth_service),
 ):
     return await service.me(user_id=user.id)
+
+
+@router.patch("/me", response_model=UserOut)
+async def update_me(
+    payload: UpdateProfileIn,
+    user: CurrentUser = Depends(get_current_user),
+    service: AuthService = Depends(get_auth_service),
+):
+    return await service.update_profile(user_id=user.id, payload=payload)
 
 
 @router.post("/delete-account", status_code=status.HTTP_204_NO_CONTENT)

@@ -6,6 +6,11 @@ def keystorePropertiesFile = rootProject.file("keystore.properties")
 def keystoreProperties = new Properties()
 if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+    def missing = ["storeFile", "storePassword", "keyAlias", "keyPassword"].findAll { !keystoreProperties[it] }
+    if (missing) {
+        throw new GradleException("android/keystore.properties: не заполнено ${missing.join(', ')}. " +
+            "Это текстовый файл по образцу keystore.properties.example, а сам ключ — отдельный .jks")
+    }
 }
 
 android {

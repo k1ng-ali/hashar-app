@@ -29,6 +29,26 @@ class LoginIn(BaseModel):
     password: str = Field(min_length=1, max_length=64)
 
 
+class GoogleLoginIn(BaseModel):
+    """ID-токен от Google Identity Services (сайт) или нативного входа (Android)."""
+
+    id_token: str = Field(min_length=20, max_length=4096)
+
+
+class UpdateProfileIn(BaseModel):
+    """Смена телефона в профиле. Пустая строка или null — убрать телефон."""
+
+    phone: str | None = Field(None, max_length=30)
+
+    @model_validator(mode="after")
+    def check_phone(self):
+        if self.phone is not None and not self.phone.strip():
+            self.phone = None
+        if self.phone:
+            format_phone(self.phone)
+        return self
+
+
 class DeleteAccountIn(BaseModel):
     """Подтверждение удаления аккаунта паролем (у аккаунта без пароля — не нужен)."""
 

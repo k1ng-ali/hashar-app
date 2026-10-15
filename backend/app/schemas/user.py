@@ -19,6 +19,8 @@ class UserOut(BaseModel):
     email: str | None = None
     avatar_url: str | None = None
     is_platform_admin: bool
+    # Есть ли пароль: без него вход только через Google, и удаление аккаунта не спрашивает пароль
+    has_password: bool = False
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

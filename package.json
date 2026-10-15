@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
     "build:android": "vue-tsc -b && vite build --mode android && cap sync android",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "capacitor:copy:before": "node scripts/check-android-build.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
@@ -16,6 +17,7 @@
     "@capacitor/filesystem": "^8.1.4",
     "@capacitor/share": "^8.0.3",
     "@capacitor/splash-screen": "^8.0.2",
+    "@capgo/capacitor-social-login": "8.5.12",
     "@kalimahapps/vue-icons": "^1.7.1",
     "ant-design-vue": "^4.2.6",
     "axios": "^1.7.9",

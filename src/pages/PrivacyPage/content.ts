@@ -15,6 +15,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
         heading: 'Какие данные мы собираем',
         items: [
           'Аккаунт: имя, телефон и/или email, пароль (храним только в виде хеша — сам пароль не знает никто).',
+          'При входе через Google: идентификатор аккаунта Google, имя, email и ссылка на фото профиля — их передаёт Google с вашего согласия. Пароль Google мы не получаем.',
           'Участие в фондах: в каких фондах вы состоите, ваше помещение (например, «кв. 12»), роль, сообщение к заявке на вступление.',
           'Взносы: сумма, валюта, период, выбранный реквизит, фото или скриншот чека, комментарий.',
           'То, что вы публикуете в фонде: объявления, комментарии, отметки «нравится»; для совета — расходы с документами, переводы между счетами, экстренные контакты.',
@@ -50,6 +51,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
           'GitHub Pages — хостинг сайта hashar.app.',
           'Google Fonts — загрузка шрифта; Google видит IP-адрес устройства при загрузке.',
           'Google Play — распространение Android-приложения.',
+          'Google (вход через Google) — подтверждает вашу личность, если вы выбрали этот способ входа; на сайте кнопка загружается с серверов Google.',
         ],
         paragraphs: [
           'Эти компании обрабатывают данные только для того, чтобы сервис работал, по своим политикам конфиденциальности. Данные могут обрабатываться за пределами вашей страны.',
@@ -119,6 +121,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
         heading: 'Мо кадом маълумотро ҷамъ мекунем',
         items: [
           'Аккаунт: ном, телефон ва/ё email, парол (танҳо ҳамчун хеш нигоҳ дошта мешавад — худи паролро ҳеҷ кас намедонад).',
+          'Ҳангоми воридшавӣ тавассути Google: идентификатори аккаунти Google, ном, email ва пайванд ба акси профил — онҳоро Google бо розигии шумо медиҳад. Пароли Google-ро мо намегирем.',
           'Иштирок дар фондҳо: шумо дар кадом фондҳо ҳастед, ҷои истиқомататон (масалан, «ҳуҷраи 12»), нақш, паём ба аризаи узвият.',
           'Саҳмҳо: маблағ, асъор, давра, реквизити интихобшуда, акс ё скриншоти чек, шарҳ.',
           'Он чи шумо дар фонд нашр мекунед: эълонҳо, шарҳҳо, «писанд»-ҳо; барои шӯро — хароҷот бо ҳуҷҷатҳо, интиқолҳо байни ҳисобҳо, тамосҳои фаврӣ.',
@@ -154,6 +157,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
           'GitHub Pages — хостинги сайти hashar.app.',
           'Google Fonts — боркунии шрифт; Google ҳангоми боркунӣ суроғаи IP-и дастгоҳро мебинад.',
           'Google Play — паҳн кардани барномаи Android.',
+          'Google (воридшавӣ тавассути Google) — шахсияти шуморо тасдиқ мекунад, агар шумо ин усулро интихоб кунед; дар сайт тугма аз серверҳои Google бор мешавад.',
         ],
         paragraphs: [
           'Ин ширкатҳо маълумотро танҳо барои кори хизмат, мувофиқи сиёсатҳои махфияти худ коркард мекунанд. Маълумот метавонад берун аз кишвари шумо коркард шавад.',
@@ -223,6 +227,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
         heading: 'What we collect',
         items: [
           'Account: name, phone number and/or email, password (stored only as a hash — nobody knows the password itself).',
+          'When you sign in with Google: your Google account ID, name, email and profile photo link — Google shares them with your consent. We never receive your Google password.',
           'Fund membership: which funds you belong to, your unit (e.g. "apt. 12"), your role, the message attached to your join request.',
           'Contributions: amount, currency, period, chosen payment details, a photo or screenshot of the receipt, a comment.',
           'What you post in a fund: announcements, comments, likes; for the council — expenses with documents, transfers between accounts, emergency contacts.',
@@ -258,6 +263,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
           'GitHub Pages — hosting for the hashar.app website.',
           'Google Fonts — font loading; Google sees the device IP address when the font is loaded.',
           'Google Play — distribution of the Android app.',
+          'Google (Sign in with Google) — confirms your identity if you choose this sign-in method; on the website the button is loaded from Google servers.',
         ],
         paragraphs: [
           'These companies process data only to keep the service running, under their own privacy policies. Data may be processed outside your country.',

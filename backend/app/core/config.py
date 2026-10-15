@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     # Откуда фронтенду можно ходить к API с cookie; через запятую
     CORS_ORIGINS: Annotated[list[str], NoDecode] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
+    # OAuth-клиенты Google, чьи ID-токены принимает /auth/google (веб и Android), через запятую.
+    # Пусто — вход через Google выключен
+    GOOGLE_CLIENT_IDS: Annotated[list[str], NoDecode] = []
+
     # Максимальный размер тела запроса (чеки приходят data URL внутри JSON)
     MAX_BODY_BYTES: int = 25 * 1024 * 1024
 
@@ -34,7 +38,7 @@ class Settings(BaseSettings):
     DB_PASSWORD: str
     DB_NAME: str
 
-    @field_validator("CORS_ORIGINS", mode="before")
+    @field_validator("CORS_ORIGINS", "GOOGLE_CLIENT_IDS", mode="before")
     @classmethod
     def split_origins(cls, value):
         if isinstance(value, str):

@@ -6,7 +6,7 @@ import { IS_DEV_MODE } from '@/shared/lib/env.ts'
 import { router } from '@/app/router.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
 import * as api from './api.ts'
-import type { DemoUser, LoginPayload, RegisterPayload, TokenResponse, User } from './types.ts'
+import type { DemoUser, LoginPayload, RegisterPayload, TokenResponse, UpdateProfilePayload, User } from './types.ts'
 
 export const useAuthStore = defineStore('auth', () => {
   // ── State ─────────────────────────────────────────────────────────────
@@ -59,7 +59,13 @@ export const useAuthStore = defineStore('auth', () => {
 
   const login = (payload: LoginPayload) => withSubmitting(() => api.login(payload))
   const register = (payload: RegisterPayload) => withSubmitting(() => api.register(payload))
+  const googleLogin = (idToken: string) => withSubmitting(() => api.googleLogin(idToken))
   const devLogin = (userId: number) => withSubmitting(() => api.devLogin(userId))
+
+  async function updateProfile(payload: UpdateProfilePayload) {
+    const { data } = await api.updateProfile(payload)
+    user.value = data
+  }
 
   async function fetchDemoUsers() {
     if (!IS_DEV_MODE) return
@@ -76,8 +82,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /** Удаление аккаунта с обезличиванием (подтверждение паролем). Сессия на сервере уже удалена. */
-  async function deleteAccount(password: string) {
+  /** Удаление аккаунта с обезличиванием (подтверждение паролем, если он есть). Сессия на сервере уже удалена. */
+  async function deleteAccount(password: string | null) {
     await api.deleteAccount(password)
     clear()
     await router.replace('/login')
@@ -104,6 +110,8 @@ export const useAuthStore = defineStore('auth', () => {
     bootstrap,
     login,
     register,
+    googleLogin,
+    updateProfile,
     fetchDemoUsers,
     devLogin,
     logout,

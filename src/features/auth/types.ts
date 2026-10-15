@@ -7,6 +7,8 @@ export interface User {
   email: string | null
   avatar_url: string | null
   is_platform_admin: boolean
+  // Без пароля — аккаунт только с входом через Google
+  has_password: boolean
   created_at: string
 }
 
@@ -36,5 +38,6 @@ export interface RegisterPayload {
   password: string
 }
 
-// Провайдеры входа, которые подключим позже (бэкенд: user_auth_providers)
-export type AuthProvider = 'google' | 'telegram'
+export interface UpdateProfilePayload {
+  phone: string | null // null — убрать телефон
+}

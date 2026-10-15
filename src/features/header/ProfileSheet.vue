@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { formatPhone } from '@/shared/lib/formatters.ts'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { LuLogOut } from '@kalimahapps/vue-icons/lu'
 import { useAuthStore } from '@/features/auth/store.ts'
+import PhoneEditor from '@/features/auth/components/PhoneEditor.vue'
 import { useFundsStore } from '@/features/funds/store.ts'
 import BottomSheet from '@/shared/components/BottomSheet.vue'
 import { LOCALES, setLocale } from '@/shared/i18n/index.ts'
@@ -36,12 +36,14 @@ async function handleLogout() {
   <BottomSheet :open="open" :title="$t('header.profile')" @close="emit('close')">
     <div v-if="authStore.user" class="profile-card">
       <div class="name">{{ authStore.user.full_name }}</div>
-      <div class="meta">{{ authStore.user.phone ? formatPhone(authStore.user.phone) : authStore.user.email }}</div>
+      <div v-if="authStore.user.email" class="meta">{{ authStore.user.email }}</div>
       <div v-if="fundsStore.current" class="fund-line">
         <span class="role-badge">{{ $t(`roles.${fundsStore.current.my_role}`) }}</span>
         <span>{{ fundsStore.current.name }} · {{ fundsStore.currentMembership?.address_unit }}</span>
       </div>
     </div>
+
+    <PhoneEditor v-if="authStore.user" />
 
     <div class="links">
       <button class="link-btn" @click="go('/funds')">🏘️ {{ $t('header.myFunds') }}</button>

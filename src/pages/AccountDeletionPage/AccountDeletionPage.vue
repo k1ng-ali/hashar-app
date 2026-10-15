@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { message } from 'ant-design-vue'
 import { useAuthStore } from '@/features/auth/store.ts'
@@ -14,6 +14,8 @@ const password = ref('')
 const confirmed = ref(false)
 const isDeleting = ref(false)
 const errorMessage = ref('')
+// Аккаунт только с Google — пароля нет, подтверждение одной галочкой
+const needsPassword = computed(() => !!authStore.user?.has_password)
 
 // Ошибки backend (AuthService.delete_account) → понятный текст
 const ERRORS: Record<string, string> = {
@@ -26,7 +28,7 @@ async function handleDelete() {
   errorMessage.value = ''
   isDeleting.value = true
   try {
-    await authStore.deleteAccount(password.value)
+    await authStore.deleteAccount(needsPassword.value ? password.value : null)
     message.success(t('legal.deletion.done'))
   } catch (error) {
     const key = ERRORS[errorDetail(error) ?? '']
@@ -45,7 +47,7 @@ async function handleDelete() {
         <p class="who">{{ $t('legal.deletion.signedInAs', { name: authStore.user.full_name }) }}</p>
 
         <form @submit.prevent="handleDelete">
-          <label>
+          <label v-if="needsPassword">
             <span class="label">{{ $t('legal.deletion.password') }}</span>
             <input v-model="password" type="password" autocomplete="current-password" />
           </label>
@@ -56,7 +58,7 @@ async function handleDelete() {
 
           <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
-          <button type="submit" class="danger-btn" :disabled="!confirmed || !password || isDeleting">
+          <button type="submit" class="danger-btn" :disabled="!confirmed || (needsPassword && !password) || isDeleting">
             {{ $t('legal.deletion.submit') }}
           </button>
         </form>

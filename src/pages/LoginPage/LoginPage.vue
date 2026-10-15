@@ -56,6 +56,21 @@ async function handleRegister(payload: RegisterPayload) {
   }
 }
 
+async function handleGoogle(idToken: string) {
+  errorMessage.value = ''
+  try {
+    await authStore.googleLogin(idToken)
+    await afterAuth()
+  } catch (error) {
+    errorMessage.value =
+      errorDetail(error) === 'Too many attempts, try later' ? t('auth.tooManyAttempts') : t('auth.googleFailed')
+  }
+}
+
+function handleGoogleError() {
+  errorMessage.value = t('auth.googleFailed')
+}
+
 async function handleDemo(user: DemoUser) {
   errorMessage.value = ''
   try {
@@ -103,7 +118,7 @@ async function handleDemo(user: DemoUser) {
         />
       </Transition>
 
-      <ProviderButtons />
+      <ProviderButtons :disabled="authStore.isSubmitting" @google="handleGoogle" @error="handleGoogleError" />
     </div>
 
     <router-link class="privacy-link" to="/privacy">{{ $t('legal.privacy') }}</router-link>

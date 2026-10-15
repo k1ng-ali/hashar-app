@@ -14,6 +14,10 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
   },
   plugins: {
+    SocialLogin: {
+      // Вход через Google (Credential Manager); остальные провайдеры не попадают в APK
+      providers: { google: true, facebook: false, apple: false, twitter: false },
+    },
     SplashScreen: {
       // Сплэш прячет src/app/native.ts, когда отрисован первый экран — без белой вспышки
       launchAutoHide: false,

@@ -2,6 +2,7 @@ export default {
   // ── Common ──
   common: {
     cancel: 'Cancel',
+    save: 'Save',
     loading: 'Loading…',
     close: 'Close',
     delete: 'Delete',
@@ -141,10 +142,25 @@ export default {
     },
     or: 'or',
     soon: 'soon',
+    google: 'Continue with Google',
+    googleUnavailable: 'Google is unavailable right now',
+    googleFailed: 'Could not sign in with Google — please try again',
     demoTitle: 'Quick sign-in (demo)',
     demoHint: 'Pick a user to see the platform through their eyes',
     platformAdmin: 'Platform administrator',
     noFunds: 'No funds yet',
+  },
+
+  // ── Profile (телефон в профиле) ──
+  profile: {
+    noPhone: 'Not set',
+    add: 'Add',
+    change: 'Change',
+    removePhone: 'Remove phone',
+    phoneHint: 'Add your number so the fund council can reach you',
+    phoneSaved: 'Phone saved',
+    phoneTaken: 'This number is already linked to another account',
+    phoneOnlyLogin: 'Phone is your only way to sign in, so it cannot be removed',
   },
 
   // ── Funds ──

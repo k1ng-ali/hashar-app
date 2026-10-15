@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import REFRESH_TOKEN_EXPIRE, settings
+from app.core.google_auth import GoogleTokenError, verify_google_id_token
 from app.core.rate_limit import SlidingWindowLimiter
 from app.core.security import create_access_token, create_refresh_token, decode_token, hash_password, verify_password
 from app.enums import FundRoleEnum, MemberStatusEnum
@@ -13,7 +14,7 @@ from app.repositories.auth_session_repo import AuthSessionRepository
 from app.repositories.member_repo import MemberRepository
 from app.repositories.plan_request_repo import PlanRequestRepository
 from app.repositories.user_repo import UserRepository
-from app.schemas.auth import DeleteAccountIn, LoginIn, RegisterIn, TokenOut
+from app.schemas.auth import DeleteAccountIn, GoogleLoginIn, LoginIn, RegisterIn, TokenOut, UpdateProfileIn
 from app.schemas.user import DemoMembershipOut, DemoUserOut, UserOut
 
 # Неудачные входы: по логину — от перебора пароля одного человека,
@@ -24,6 +25,11 @@ REGISTRATIONS_BY_IP = SlidingWindowLimiter(limit=10, window_seconds=60 * 60)
 
 # Длина User-Agent, которую сохраняем в сессии
 USER_AGENT_LENGTH = 255
+
+GOOGLE_PROVIDER = "google"
+# Ограничения колонок users: имя и ссылка на аватар от Google длиннее не сохраняются
+FULL_NAME_LENGTH = 120
+AVATAR_URL_LENGTH = 255
 
 # Чем заменяются имя удалённого пользователя и его контакт в заявках на тариф
 DELETED_USER_NAME = "Удалённый пользователь"
@@ -101,6 +107,66 @@ class AuthService:
         await self.db.commit()
         return result
 
+    async def google_login(
+        self,
+        payload: GoogleLoginIn,
+        client_ip: str | None = None,
+        user_agent: str | None = None,
+    ) -> tuple[TokenOut, str]:
+        """
+        Вход через Google, он же регистрация.
+
+        1. Аккаунт, уже привязанный к этому Google-аккаунту (sub), — входим в него.
+        2. Иначе аккаунт с тем же email — Google подтвердил, что почта принадлежит этому человеку,
+           привязываем Google к нему (вход по паролю тоже остаётся).
+        3. Иначе создаём новый аккаунт без пароля и телефона: телефон добавляется в профиле.
+        """
+        if not settings.GOOGLE_CLIENT_IDS:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Google sign-in is disabled")
+        ip_key = client_ip or "unknown"
+        if LOGIN_FAILURES_BY_IP.is_blocked(ip_key):
+            raise _too_many_attempts()
+
+        try:
+            claims = await verify_google_id_token(payload.id_token)
+        except GoogleTokenError:
+            LOGIN_FAILURES_BY_IP.hit(ip_key)
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Google token")
+        except OSError:
+            # Не скачались открытые ключи Google — проблема сети, а не токена
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Google is unavailable")
+
+        google_id = str(claims["sub"])
+        # Неподтверждённому email не доверяем: по нему нельзя ни привязать, ни занять почту
+        email = str(claims["email"]).strip().lower() if claims.get("email") and claims.get("email_verified") else None
+        picture = claims.get("picture")
+        picture = picture if isinstance(picture, str) and len(picture) <= AVATAR_URL_LENGTH else None
+
+        user = await self.repo.get_by_provider(GOOGLE_PROVIDER, google_id)
+        if not user and email:
+            user = await self.repo.get_by_email(email)
+            if user:
+                self.repo.add_auth_provider(user_id=user.id, provider=GOOGLE_PROVIDER, provider_user_id=google_id)
+                if not user.avatar_url:
+                    user.avatar_url = picture
+        if not user:
+            if REGISTRATIONS_BY_IP.is_blocked(ip_key):
+                raise _too_many_attempts()
+            REGISTRATIONS_BY_IP.hit(ip_key)
+            name = str(claims.get("name") or "").strip() or (email.split("@")[0] if email else "Google")
+            user = await self.repo.create(
+                full_name=name[:FULL_NAME_LENGTH],
+                phone=None,
+                email=email,
+                hashed_password=None,
+                avatar_url=picture,
+            )
+            self.repo.add_auth_provider(user_id=user.id, provider=GOOGLE_PROVIDER, provider_user_id=google_id)
+
+        result = await self._start_session(user, user_agent)
+        await self.db.commit()
+        return result
+
     async def refresh(self, refresh_token: str | None) -> tuple[TokenOut, str]:
         """Новый access-токен по живой сессии; срок сессии продлевается (скользящий)."""
         session, user = await self._active_session(refresh_token)
@@ -129,6 +195,26 @@ class AuthService:
         user = await self.repo.get(user_id)
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        return UserOut.model_validate(user)
+
+    async def update_profile(self, user_id: int, payload: UpdateProfileIn) -> UserOut:
+        """Смена телефона. Он же логин для входа по паролю, поэтому должен быть свободен."""
+        user = await self.repo.get(user_id, for_update=True)
+        if not user or user.deleted_at is not None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+        phone = normalize_phone(payload.phone)
+        if phone == user.phone:
+            return UserOut.model_validate(user)
+        if phone and await self.repo.exists_login(phone=phone, email=None):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Phone is already registered")
+        # Без телефона должен остаться способ войти: email с паролем или Google
+        if not phone and not (user.email and user.hashed_password) and not await self.repo.has_auth_provider(user_id):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Phone is the only way to sign in")
+
+        user.phone = phone
+        self.audit.add(fund_id=None, actor_id=user_id, action="user.phone_change", entity="user", entity_id=user_id)
+        await self.db.commit()
         return UserOut.model_validate(user)
 
     # ─── Удаление аккаунта ─────────────────────────────────────────────────────

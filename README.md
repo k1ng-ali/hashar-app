@@ -116,6 +116,19 @@ ssh <сервер> /opt/hashar/deploy/update.sh             # когда backend
 - бэкап БД хранится на этом же сервере — копии стоит регулярно уносить в другое место. Восстановление: `gunzip -c backups/<файл>.sql.gz | docker compose exec -T db psql -U <DB_USER> <DB_NAME>`
 - проверить прод-сборку фронта локально: `VITE_API_URL=https://api.hashar.app npm run build && npm run preview`
 
+### Вход через Google (один раз)
+
+[Google Cloud Console](https://console.cloud.google.com/) → проект → **APIs & Services**:
+
+1. **OAuth consent screen:** тип External, название «Ҳашар», почта поддержки, домен `hashar.app`, ссылка на политику `https://hashar.app/privacy`; scopes — только `email`, `profile`, `openid`. Опубликовать (Publish app), иначе войти смогут только тестовые пользователи
+2. **Credentials → Create OAuth client ID → Web application:** Authorized JavaScript origins — `https://hashar.app` и для разработки `http://localhost:5173`, `http://localhost`. Redirect URI не нужны. Его Client ID:
+   - GitHub → **Settings → Secrets and variables → Actions → Variables:** `GOOGLE_CLIENT_ID` (фронтенд, вшивается в сборку);
+   - `deploy/.env` на сервере: `GOOGLE_CLIENT_IDS=<тот же ID>`, затем `./update.sh` (backend проверяет, что токен выпущен для этого клиента);
+   - `.env.android` → `VITE_GOOGLE_CLIENT_ID` и локально `.env` / `backend/.env`.
+3. **Credentials → Create OAuth client ID → Android** — по одному на каждый ключ подписи: package `com.hashar.app` + SHA-1. Нужны SHA-1 ключа загрузки (`cd android && ./gradlew signingReport`) и **ключа подписи приложения из Google Play** (Play Console → Test and release → App integrity), иначе вход не заработает в версии из магазина. Этот Client ID никуда вписывать не надо — Android сам сверяет пакет и подпись, а приложение просит токен для веб-клиента
+
+Как устроено: сайт получает ID-токен через Google Identity Services (кнопку рисует Google), Android — через системный Credential Manager (`@capgo/capacitor-social-login`; в WebView Google запрещает OAuth-окна). Backend (`POST /auth/google`, `app/core/google_auth.py`) проверяет подпись токена по ключам Google, издателя, срок и `aud`. Аккаунт ищется по Google ID, затем по **подтверждённому** email (тогда Google привязывается к существующему аккаунту), иначе создаётся новый — без пароля и телефона. Телефон добавляется и меняется в профиле (`PATCH /auth/me`). Пустой `GOOGLE_CLIENT_ID` — кнопка Google неактивна, пустой `GOOGLE_CLIENT_IDS` — `/auth/google` отвечает 404.
+
 ## Android
 
 Та же Vue-сборка, упакованная Capacitor в WebView (`android/`, `capacitor.config.ts`). Работает с продовым API.
@@ -127,6 +140,7 @@ npx cap open android             # Android Studio: запуск на телеф�
 
 Release-сборка из консоли: `cd android && ./gradlew bundleRelease` → `app/build/outputs/bundle/release/app-release.aab`. Подписывается ключом загрузки из `android/keystore.properties` (образец — `keystore.properties.example`; файл и `.jks` в git не попадают). Перед каждой загрузкой в Google Play увеличить `versionCode` в `android/app/build.gradle`.
 
+- собирать только через `npm run build:android`: обычный `npm run build` берёт API из `.env` (`localhost:8000`), и с телефона запросы до сервера не доходят. `cap copy`/`cap sync` такую сборку не пропустят — проверяет `scripts/check-android-build.mjs` (npm-хук `capacitor:copy:before`)
 - приложение открывается как `https://hashar.app` (`server.hostname`), а файлы берутся из APK. Для API это тот же сайт, что и веб-версия: CORS и refresh-cookie работают без отдельной настройки backend
 - иконка — векторная адаптивная (`res/drawable/ic_launcher_foreground.xml`, фон `#111827`, монохромный слой для тематических значков Android 13+). PNG в `mipmap-*` нужны только Android 7.x
 - сплэш: светлый фон и знак на тёмном круге (`res/values/styles.xml`). Прячет его `src/app/native.ts` после первого экрана; там же системная кнопка «Назад»

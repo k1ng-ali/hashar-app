@@ -29,12 +29,16 @@ class User(Base):
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
+    @property
+    def has_password(self) -> bool:
+        return self.hashed_password is not None
+
 
 class UserAuthProvider(Base):
     """
     Внешний способ входа (google / telegram).
 
-    Заготовка под OAuth: одна запись на связку провайдер + id пользователя у провайдера.
+    Одна запись на связку провайдер + id пользователя у провайдера (для Google — claim sub).
     """
 
     __tablename__ = "user_auth_providers"

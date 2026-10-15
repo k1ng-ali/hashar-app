@@ -33,6 +33,9 @@ jobs:
       # Адрес API вшивается в сборку и в CSP (connect-src)
       VITE_API_URL: https://api.hashar.app
       VITE_DEV_MODE: "false"
+      # Вход через Google: Client ID веб-клиента OAuth (не секрет). Settings → Secrets and variables →
+      # Actions → Variables. Пусто — кнопка Google не показывается
+      VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v4
 

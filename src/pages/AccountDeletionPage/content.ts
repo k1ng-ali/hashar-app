@@ -14,7 +14,7 @@ export const ACCOUNT_DELETION: Record<AppLocale, LegalDocument> = {
       {
         heading: 'Как удалить',
         items: [
-          'В приложении или на сайте: Профиль → «Удалить аккаунт», затем подтвердите паролем.',
+          'В приложении или на сайте: Профиль → «Удалить аккаунт», затем подтвердите паролем (аккаунт со входом только через Google пароль не спрашивает).',
           'Или войдите на этой странице и нажмите «Удалить аккаунт» ниже.',
           `Не можете войти — напишите на ${SUPPORT_EMAIL} с телефона или email аккаунта. Удалим в течение 30 дней и сообщим об этом.`,
         ],
@@ -60,7 +60,7 @@ export const ACCOUNT_DELETION: Record<AppLocale, LegalDocument> = {
       {
         heading: 'Чӣ тавр нест кардан',
         items: [
-          'Дар барнома ё сайт: Профил → «Нест кардани аккаунт», сипас бо парол тасдиқ кунед.',
+          'Дар барнома ё сайт: Профил → «Нест кардани аккаунт», сипас бо парол тасдиқ кунед (аккаунте, ки танҳо тавассути Google ворид мешавад, парол намепурсад).',
           'Ё дар ҳамин саҳифа ворид шавед ва дар поён «Нест кардани аккаунт»-ро пахш кунед.',
           `Ворид шуда наметавонед — аз телефон ё email-и аккаунт ба ${SUPPORT_EMAIL} нависед. Дар давоми 30 рӯз нест мекунем ва хабар медиҳем.`,
         ],
@@ -106,7 +106,7 @@ export const ACCOUNT_DELETION: Record<AppLocale, LegalDocument> = {
       {
         heading: 'How to delete',
         items: [
-          'In the app or on the website: Profile → "Delete account", then confirm with your password.',
+          'In the app or on the website: Profile → "Delete account", then confirm with your password (accounts that only sign in with Google are not asked for one).',
           'Or sign in on this page and press "Delete account" below.',
           `Can’t sign in? Write to ${SUPPORT_EMAIL} from your account’s phone or email. We will delete the account within 30 days and let you know.`,
         ],

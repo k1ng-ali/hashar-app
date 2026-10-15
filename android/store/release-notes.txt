@@ -1,0 +1,16 @@
+<ru-RU>
+Первый выпуск Ҳашар — учёт взносов дома, подъезда или любого общего фонда.
+• Взносы с фото чека — совет фонда их подтверждает
+• Расходы, целевые сборы и отчёты открыты всем участникам
+• Объявления фонда
+• Вступление по ссылке-приглашению, несколько фондов в одном аккаунте
+• Русский, тоҷикӣ и English
+</ru-RU>
+<en-US>
+First release of Hashar — track contributions for your building, entrance or any shared fund.
+• Contributions with a receipt photo, confirmed by the fund council
+• Expenses, fundraisers and reports open to all members
+• Fund announcements
+• Join by invite link; several funds in one account
+• Русский, тоҷикӣ and English
+</en-US>

@@ -100,7 +100,7 @@ app/src/main/assets/capacitor.config.json
 app/src/main/assets/capacitor.plugins.json
 app/src/main/res/xml/config.xml
 
-# Ключ подписи и пароли к нему — только локально (см. keystore.properties.example)
+# Ключ подписи и пароли к нему — только локально (см. keystore.properties)
 keystore.properties
 *.jks
 *.keystore
