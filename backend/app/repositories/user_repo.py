@@ -75,3 +75,11 @@ class UserRepository(BaseRepository):
 
     async def delete_auth_providers(self, user_id: int) -> None:
         await self.db.execute(delete(UserAuthProvider).where(UserAuthProvider.user_id == user_id))
+
+    async def get_provider_user_id(self, user_id: int, provider: str) -> str | None:
+        result = await self.db.execute(
+            select(UserAuthProvider.provider_user_id)
+            .where(UserAuthProvider.user_id == user_id, UserAuthProvider.provider == provider)
+            .limit(1)
+        )
+        return result.scalar_one_or_none()

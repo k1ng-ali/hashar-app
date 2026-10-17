@@ -32,6 +32,8 @@ def make_user(id: int = 1, **extra):
         avatar_url=None,
         hashed_password=None,
         is_platform_admin=False,
+        verified_at=datetime.now(timezone.utc),
+        deleted_at=None,
         created_at=datetime.now(timezone.utc),
     )
     fields.update(extra)

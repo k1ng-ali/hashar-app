@@ -6,6 +6,10 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 ACCESS_TOKEN_EXPIRE = timedelta(minutes=15)
 REFRESH_TOKEN_EXPIRE = timedelta(days=30)
+# Пароль принят — столько есть на подтверждение личности (SMS или Google)
+CHALLENGE_TOKEN_EXPIRE = timedelta(minutes=15)
+# Подтверждённое устройство не спрашивает подтверждение при входе по паролю
+TRUSTED_DEVICE_EXPIRE = timedelta(days=365)
 
 
 class Settings(BaseSettings):
@@ -28,6 +32,11 @@ class Settings(BaseSettings):
     # OAuth-клиенты Google, чьи ID-токены принимает /auth/google (веб и Android), через запятую.
     # Пусто — вход через Google выключен
     GOOGLE_CLIENT_IDS: Annotated[list[str], NoDecode] = []
+
+    # SMS с кодами подтверждения (Payomchi, только номера +992). Пусто — подтверждение по SMS выключено,
+    # в DEV_MODE коды пишутся в лог. Sender ID — имя отправителя, одобренное в Payomchi; пусто — по умолчанию
+    PAYOMCHI_API_KEY: str = ""
+    PAYOMCHI_SENDER_ID: str = ""
 
     # Максимальный размер тела запроса (чеки приходят data URL внутри JSON)
     MAX_BODY_BYTES: int = 25 * 1024 * 1024

@@ -100,6 +100,7 @@ async def seed() -> None:
                 avatar_url=avatar,
                 hashed_password=password,
                 is_platform_admin=platform_admin,
+                verified_at=datetime.now(timezone.utc),
             )
 
         admin = user("Админ платформы", "+79990000000", "admin@fund.local", platform_admin=True)

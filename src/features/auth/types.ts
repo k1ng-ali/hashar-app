@@ -33,11 +33,29 @@ export interface LoginPayload {
 
 export interface RegisterPayload {
   full_name: string
-  phone: string | null
+  phone: string // по нему подтверждается личность
   email: string | null
   password: string
 }
 
+// ── Подтверждение личности ──
+export type VerificationMethod = 'sms' | 'google'
+
+/** Сессии ещё нет: нужно подтвердить личность (новое устройство, новый аккаунт, смена пароля). */
+export interface ChallengeResponse {
+  challenge: string
+  purpose: 'login' | 'password' // password — вместе с подтверждением задаётся новый пароль
+  methods: VerificationMethod[]
+  phone_hint: string | null // «+992 ••• •• 67» — куда уйдёт SMS
+}
+
+export interface SmsSentResponse {
+  phone_hint: string
+  resend_after: number // секунд до повторной отправки
+  expires_in: number
+}
+
 export interface UpdateProfilePayload {
   phone: string | null // null — убрать телефон
+  code?: string // код из SMS — обязателен для нового номера +992
 }

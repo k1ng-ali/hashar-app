@@ -23,7 +23,7 @@ export const ACCOUNT_DELETION: Record<AppLocale, LegalDocument> = {
         heading: 'Что удаляется сразу',
         items: [
           'Имя, телефон, email, пароль и фото профиля.',
-          'Все сессии входа на всех устройствах и привязанные способы входа.',
+          'Все сессии входа на всех устройствах, подтверждённые устройства, коды из SMS и привязанные способы входа.',
           'Сообщения к заявкам на вступление и ваш контакт в заявках на тариф.',
           'Вы выходите из всех фондов, заявки на вступление отзываются. Войти в этот аккаунт больше нельзя.',
         ],
@@ -69,7 +69,7 @@ export const ACCOUNT_DELETION: Record<AppLocale, LegalDocument> = {
         heading: 'Чӣ фавран нест мешавад',
         items: [
           'Ном, телефон, email, парол ва акси профил.',
-          'Ҳамаи сессияҳои воридшавӣ дар ҳамаи дастгоҳҳо ва усулҳои пайвасташудаи воридшавӣ.',
+          'Ҳамаи сессияҳои воридшавӣ дар ҳамаи дастгоҳҳо, дастгоҳҳои тасдиқшуда, рамзҳои SMS ва усулҳои пайвасташудаи воридшавӣ.',
           'Паёмҳо ба аризаҳои узвият ва тамоси шумо дар аризаҳо ба тариф.',
           'Шумо аз ҳамаи фондҳо мебароед, аризаҳои узвият бозхонда мешаванд. Ба ин аккаунт дигар ворид шудан мумкин нест.',
         ],
@@ -115,7 +115,7 @@ export const ACCOUNT_DELETION: Record<AppLocale, LegalDocument> = {
         heading: 'Deleted immediately',
         items: [
           'Name, phone, email, password and profile photo.',
-          'All sign-in sessions on all devices and linked sign-in methods.',
+          'All sign-in sessions on all devices, confirmed devices, SMS codes and linked sign-in methods.',
           'Messages attached to join requests and your contact in plan requests.',
           'You leave all funds and pending join requests are withdrawn. The account can no longer be signed in to.',
         ],

@@ -16,6 +16,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
         items: [
           'Аккаунт: имя, телефон и/или email, пароль (храним только в виде хеша — сам пароль не знает никто).',
           'При входе через Google: идентификатор аккаунта Google, имя, email и ссылка на фото профиля — их передаёт Google с вашего согласия. Пароль Google мы не получаем.',
+          'Подтверждение личности: одноразовые коды из SMS (храним только их хеш, код действует 5 минут) и список подтверждённых устройств (тип браузера и даты входа) — чтобы вход с нового устройства и смена пароля требовали подтверждения.',
           'Участие в фондах: в каких фондах вы состоите, ваше помещение (например, «кв. 12»), роль, сообщение к заявке на вступление.',
           'Взносы: сумма, валюта, период, выбранный реквизит, фото или скриншот чека, комментарий.',
           'То, что вы публикуете в фонде: объявления, комментарии, отметки «нравится»; для совета — расходы с документами, переводы между счетами, экстренные контакты.',
@@ -52,6 +53,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
           'Google Fonts — загрузка шрифта; Google видит IP-адрес устройства при загрузке.',
           'Google Play — распространение Android-приложения.',
           'Google (вход через Google) — подтверждает вашу личность, если вы выбрали этот способ входа; на сайте кнопка загружается с серверов Google.',
+          'Payomchi (payomchi.tj, Таджикистан) — отправляет SMS с кодом подтверждения на номера +992; получает только номер телефона и текст SMS с кодом.',
         ],
         paragraphs: [
           'Эти компании обрабатывают данные только для того, чтобы сервис работал, по своим политикам конфиденциальности. Данные могут обрабатываться за пределами вашей страны.',
@@ -60,7 +62,8 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
       {
         heading: 'Cookie и хранилище браузера',
         paragraphs: [
-          'Мы используем одну cookie — refresh_token: она нужна, чтобы вы оставались в аккаунте (до 30 дней, недоступна скриптам). ' +
+          'Мы используем две cookie, обе недоступны скриптам: refresh_token — чтобы вы оставались в аккаунте (до 30 дней), ' +
+            'и device_token — отметка, что вы уже подтвердили личность на этом устройстве (до года). ' +
             'В хранилище браузера сохраняются только выбранный язык и текущий фонд. Рекламных и аналитических cookie нет.',
         ],
       },
@@ -122,6 +125,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
         items: [
           'Аккаунт: ном, телефон ва/ё email, парол (танҳо ҳамчун хеш нигоҳ дошта мешавад — худи паролро ҳеҷ кас намедонад).',
           'Ҳангоми воридшавӣ тавассути Google: идентификатори аккаунти Google, ном, email ва пайванд ба акси профил — онҳоро Google бо розигии шумо медиҳад. Пароли Google-ро мо намегирем.',
+          'Тасдиқи шахсият: рамзҳои якдафъаинаи SMS (танҳо хеши онҳоро нигоҳ медорем, рамз 5 дақиқа амал мекунад) ва рӯйхати дастгоҳҳои тасдиқшуда (навъи браузер ва санаҳои воридшавӣ) — то воридшавӣ аз дастгоҳи нав ва иваз кардани рамз тасдиқро талаб кунад.',
           'Иштирок дар фондҳо: шумо дар кадом фондҳо ҳастед, ҷои истиқомататон (масалан, «ҳуҷраи 12»), нақш, паём ба аризаи узвият.',
           'Саҳмҳо: маблағ, асъор, давра, реквизити интихобшуда, акс ё скриншоти чек, шарҳ.',
           'Он чи шумо дар фонд нашр мекунед: эълонҳо, шарҳҳо, «писанд»-ҳо; барои шӯро — хароҷот бо ҳуҷҷатҳо, интиқолҳо байни ҳисобҳо, тамосҳои фаврӣ.',
@@ -158,6 +162,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
           'Google Fonts — боркунии шрифт; Google ҳангоми боркунӣ суроғаи IP-и дастгоҳро мебинад.',
           'Google Play — паҳн кардани барномаи Android.',
           'Google (воридшавӣ тавассути Google) — шахсияти шуморо тасдиқ мекунад, агар шумо ин усулро интихоб кунед; дар сайт тугма аз серверҳои Google бор мешавад.',
+          'Payomchi (payomchi.tj, Тоҷикистон) — SMS бо рамзи тасдиқро ба рақамҳои +992 мефиристад; танҳо рақами телефон ва матни SMS бо рамзро мегирад.',
         ],
         paragraphs: [
           'Ин ширкатҳо маълумотро танҳо барои кори хизмат, мувофиқи сиёсатҳои махфияти худ коркард мекунанд. Маълумот метавонад берун аз кишвари шумо коркард шавад.',
@@ -166,7 +171,8 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
       {
         heading: 'Cookie ва хотираи браузер',
         paragraphs: [
-          'Мо як cookie истифода мебарем — refresh_token: он лозим аст, то шумо дар аккаунт бимонед (то 30 рӯз, барои скриптҳо дастнорас). ' +
+          'Мо ду cookie истифода мебарем, ҳарду барои скриптҳо дастнорасанд: refresh_token — то шумо дар аккаунт бимонед (то 30 рӯз), ' +
+            'ва device_token — нишона, ки шумо дар ин дастгоҳ шахсияти худро аллакай тасдиқ кардаед (то як сол). ' +
             'Дар хотираи браузер танҳо забони интихобшуда ва фонди ҷорӣ нигоҳ дошта мешаванд. Cookie-ҳои рекламавӣ ва аналитикӣ нестанд.',
         ],
       },
@@ -228,6 +234,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
         items: [
           'Account: name, phone number and/or email, password (stored only as a hash — nobody knows the password itself).',
           'When you sign in with Google: your Google account ID, name, email and profile photo link — Google shares them with your consent. We never receive your Google password.',
+          'Identity verification: one-time SMS codes (we store only their hash; a code is valid for 5 minutes) and a list of confirmed devices (browser type and sign-in dates) — so that signing in on a new device and changing the password require confirmation.',
           'Fund membership: which funds you belong to, your unit (e.g. "apt. 12"), your role, the message attached to your join request.',
           'Contributions: amount, currency, period, chosen payment details, a photo or screenshot of the receipt, a comment.',
           'What you post in a fund: announcements, comments, likes; for the council — expenses with documents, transfers between accounts, emergency contacts.',
@@ -264,6 +271,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
           'Google Fonts — font loading; Google sees the device IP address when the font is loaded.',
           'Google Play — distribution of the Android app.',
           'Google (Sign in with Google) — confirms your identity if you choose this sign-in method; on the website the button is loaded from Google servers.',
+          'Payomchi (payomchi.tj, Tajikistan) — sends SMS verification codes to +992 numbers; receives only the phone number and the SMS text with the code.',
         ],
         paragraphs: [
           'These companies process data only to keep the service running, under their own privacy policies. Data may be processed outside your country.',
@@ -272,7 +280,8 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
       {
         heading: 'Cookies and browser storage',
         paragraphs: [
-          'We use one cookie — refresh_token: it keeps you signed in (up to 30 days, not accessible to scripts). ' +
+          'We use two cookies, neither accessible to scripts: refresh_token keeps you signed in (up to 30 days), ' +
+            'and device_token marks that you have already confirmed your identity on this device (up to a year). ' +
             'Browser storage holds only your chosen language and current fund. There are no advertising or analytics cookies.',
         ],
       },

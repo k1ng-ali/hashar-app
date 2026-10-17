@@ -67,7 +67,10 @@ async def test_google_login_signs_in_linked_user(monkeypatch):
     user = make_user(id=5, email="ali@gmail.com")
     db, service = google_service(monkeypatch, by_provider=user)
 
-    token, refresh_token = await service.google_login(GoogleLoginIn(id_token=TOKEN))
+    result = await service.google_login(GoogleLoginIn(id_token=TOKEN))
+    token, refresh_token = result.token, result.refresh_token
+    # Google сам подтверждает личность — устройство сразу подтверждено
+    assert result.device_token
 
     assert token.user.id == 5 and refresh_token
     service.repo.get_by_provider.assert_awaited_once_with("google", "google-42")
@@ -80,7 +83,7 @@ async def test_google_login_links_existing_account_by_verified_email(monkeypatch
     user = make_user(id=5, email="ali@gmail.com", avatar_url=None)
     _, service = google_service(monkeypatch, by_email=user)
 
-    token, _ = await service.google_login(GoogleLoginIn(id_token=TOKEN))
+    token = (await service.google_login(GoogleLoginIn(id_token=TOKEN))).token
 
     assert token.user.id == 5
     service.repo.get_by_email.assert_awaited_once_with("ali@gmail.com")
@@ -91,7 +94,7 @@ async def test_google_login_links_existing_account_by_verified_email(monkeypatch
 async def test_google_login_creates_account_without_password_and_phone(monkeypatch):
     _, service = google_service(monkeypatch)
 
-    token, _ = await service.google_login(GoogleLoginIn(id_token=TOKEN))
+    token = (await service.google_login(GoogleLoginIn(id_token=TOKEN))).token
 
     service.repo.create.assert_awaited_once_with(
         full_name="Али Валиев",
@@ -233,12 +236,13 @@ def profile_service(user, phone_taken=False, has_provider=False):
 
 
 async def test_update_profile_sets_normalized_phone():
+    # Не +992 — SMS туда не доставляются, номер сохраняется без кода (+992 — test_verification.py)
     user = make_user(id=5, phone=None, email="ali@gmail.com", deleted_at=None)
     db, service = profile_service(user)
 
-    result = await service.update_profile(5, UpdateProfileIn(phone="+992 90 123 45 67"))
+    result = await service.update_profile(5, UpdateProfileIn(phone="+7 916 123-45-67"))
 
-    assert user.phone == "+992901234567" and result.phone == "+992901234567"
+    assert user.phone == "+79161234567" and result.phone == "+79161234567"
     service.audit.add.assert_called_once()
     db.commit.assert_awaited_once()
 

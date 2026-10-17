@@ -10,6 +10,7 @@ defineProps<{
 
 const emit = defineEmits<{
   (e: 'submit', payload: LoginPayload): void
+  (e: 'forgot'): void
 }>()
 
 const form = reactive({ login: '', password: '' })
@@ -44,6 +45,7 @@ function onLoginInput(event: Event) {
     <button type="submit" class="submit-btn" :disabled="isSubmitting || !form.login || !form.password">
       {{ $t('auth.submit') }}
     </button>
+    <button type="button" class="forgot-btn" @click="emit('forgot')">{{ $t('auth.forgotLink') }}</button>
   </form>
 </template>
 
@@ -74,5 +76,16 @@ input {
 .submit-btn {
   @include cta-button;
   margin-top: 4px;
+}
+
+.forgot-btn {
+  align-self: center;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: $navy;
+  cursor: pointer;
 }
 </style>

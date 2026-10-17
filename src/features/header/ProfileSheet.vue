@@ -47,6 +47,9 @@ async function handleLogout() {
 
     <div class="links">
       <button class="link-btn" @click="go('/funds')">🏘️ {{ $t('header.myFunds') }}</button>
+      <button v-if="authStore.user" class="link-btn" @click="go('/password')">
+        🔑 {{ authStore.user.has_password ? $t('profile.changePassword') : $t('profile.setPassword') }}
+      </button>
       <button v-if="authStore.isPlatformAdmin" class="link-btn" @click="go('/platform')">
         ⚙️ {{ $t('platform.title') }}
       </button>

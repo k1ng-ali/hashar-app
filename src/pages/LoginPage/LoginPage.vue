@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/features/auth/store.ts'
 import { IS_DEV_MODE } from '@/shared/lib/env.ts'
+import { message } from 'ant-design-vue'
 import DemoUserList from '@/features/auth/components/DemoUserList.vue'
+import ForgotPasswordForm from '@/features/auth/components/ForgotPasswordForm.vue'
 import LoginForm from '@/features/auth/components/LoginForm.vue'
 import ProviderButtons from '@/features/auth/components/ProviderButtons.vue'
 import RegisterForm from '@/features/auth/components/RegisterForm.vue'
+import VerificationStep from '@/features/auth/components/VerificationStep.vue'
 import type { DemoUser, LoginPayload, RegisterPayload } from '@/features/auth/types.ts'
 import AppLogo from '@/shared/components/AppLogo.vue'
 import PillTabs from '@/shared/components/PillTabs.vue'
 import { errorDetail } from '@/shared/api/http.ts'
 
 type AuthMode = 'login' | 'register'
+// forgot — восстановление пароля, verify — подтверждение личности (SMS или Google)
+type AuthView = AuthMode | 'forgot' | 'verify'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -21,11 +26,18 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const mode = ref<AuthMode>(route.query.mode === 'register' ? 'register' : 'login')
+const isForgot = ref(false)
 const errorMessage = ref('')
+const view = computed<AuthView>(() => (authStore.challenge ? 'verify' : isForgot.value ? 'forgot' : mode.value))
 
 onMounted(() => {
   void authStore.fetchDemoUsers().catch(() => undefined)
 })
+// Незавершённое подтверждение не переживает уход со страницы
+onBeforeUnmount(() => authStore.cancelChallenge())
+
+// Подтвердить личность нечем: SMS не настроены или номер не +992, а Google выключен
+const UNAVAILABLE = 'Verification is unavailable'
 
 // После входа возвращаемся туда, куда шли (например, ссылка-приглашение /join/CODE)
 function afterAuth() {
@@ -37,23 +49,60 @@ function afterAuth() {
 async function handleLogin(payload: LoginPayload) {
   errorMessage.value = ''
   try {
-    await authStore.login(payload)
-    await afterAuth()
+    if (await authStore.login(payload)) await afterAuth()
   } catch (error) {
+    const detail = errorDetail(error)
     errorMessage.value =
-      errorDetail(error) === 'Too many attempts, try later' ? t('auth.tooManyAttempts') : t('auth.invalid')
+      detail === 'Too many attempts, try later'
+        ? t('auth.tooManyAttempts')
+        : detail === UNAVAILABLE
+          ? t('auth.verify.unavailable')
+          : t('auth.invalid')
   }
 }
 
 async function handleRegister(payload: RegisterPayload) {
   errorMessage.value = ''
   try {
+    // Регистрация всегда ведёт к подтверждению личности
     await authStore.register(payload)
-    await afterAuth()
   } catch (error) {
+    const detail = errorDetail(error)
     errorMessage.value =
-      errorDetail(error) === 'Phone or email is already registered' ? t('auth.alreadyRegistered') : t('errors.generic')
+      detail === 'Phone or email is already registered'
+        ? t('auth.alreadyRegistered')
+        : detail === UNAVAILABLE
+          ? t('auth.verify.unavailable')
+          : t('errors.generic')
   }
+}
+
+async function handleForgot(login: string) {
+  errorMessage.value = ''
+  try {
+    await authStore.forgotPassword(login)
+    isForgot.value = false
+  } catch (error) {
+    const detail = errorDetail(error)
+    errorMessage.value =
+      detail === 'User not found'
+        ? t('auth.forgot.notFound')
+        : detail === 'Too many attempts, try later'
+          ? t('auth.tooManyAttempts')
+          : detail === UNAVAILABLE
+            ? t('auth.verify.unavailable')
+            : t('errors.generic')
+  }
+}
+
+async function handleVerified(purpose: 'login' | 'password') {
+  if (purpose === 'password') message.success(t('auth.verify.passwordChanged'))
+  await afterAuth()
+}
+
+function handleVerifyCancel() {
+  authStore.cancelChallenge()
+  errorMessage.value = ''
 }
 
 async function handleGoogle(idToken: string) {
@@ -92,6 +141,7 @@ async function handleDemo(user: DemoUser) {
 
     <div class="card">
       <PillTabs
+        v-if="view === 'login' || view === 'register'"
         v-model="mode"
         class="tabs"
         :options="[
@@ -102,12 +152,28 @@ async function handleDemo(user: DemoUser) {
       />
 
       <Transition name="fade" mode="out-in">
+        <VerificationStep
+          v-if="view === 'verify' && authStore.challenge"
+          :key="authStore.challenge.challenge"
+          :challenge="authStore.challenge"
+          @done="handleVerified"
+          @cancel="handleVerifyCancel"
+        />
+        <ForgotPasswordForm
+          v-else-if="view === 'forgot'"
+          key="forgot"
+          :is-submitting="authStore.isSubmitting"
+          :error-message="errorMessage"
+          @submit="handleForgot"
+          @cancel="isForgot = false; errorMessage = ''"
+        />
         <LoginForm
-          v-if="mode === 'login'"
+          v-else-if="view === 'login'"
           key="login"
           :is-submitting="authStore.isSubmitting"
           :error-message="errorMessage"
           @submit="handleLogin"
+          @forgot="isForgot = true; errorMessage = ''"
         />
         <RegisterForm
           v-else
@@ -118,7 +184,12 @@ async function handleDemo(user: DemoUser) {
         />
       </Transition>
 
-      <ProviderButtons :disabled="authStore.isSubmitting" @google="handleGoogle" @error="handleGoogleError" />
+      <ProviderButtons
+        v-if="view === 'login' || view === 'register'"
+        :disabled="authStore.isSubmitting"
+        @google="handleGoogle"
+        @error="handleGoogleError"
+      />
 
       <!-- Касается и регистрации, и входа через Google (там аккаунт создаётся сразу) -->
       <i18n-t keypath="legal.consent" tag="p" class="consent">

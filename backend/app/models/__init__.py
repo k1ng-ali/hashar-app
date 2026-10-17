@@ -14,6 +14,7 @@ from app.models.requisite import PaymentRequisite
 from app.models.target_fund import TargetFund
 from app.models.transfer import AccountTransfer
 from app.models.user import User, UserAuthProvider
+from app.models.verification import TrustedDevice, VerificationCode
 
 __all__ = [
     "Base",
@@ -34,6 +35,8 @@ __all__ = [
     "PaymentRequisite",
     "PlanRequest",
     "TargetFund",
+    "TrustedDevice",
     "User",
     "UserAuthProvider",
+    "VerificationCode",
 ]

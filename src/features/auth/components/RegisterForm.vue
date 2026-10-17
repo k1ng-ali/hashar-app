@@ -30,9 +30,9 @@ function onPhoneInput(event: Event) {
 function handleSubmit() {
   if (form.full_name.trim().length < 2) {
     localError.value = t('auth.validation.name')
-  } else if (!form.phone.trim() && !form.email.trim()) {
+  } else if (!form.phone.trim()) {
     localError.value = t('auth.validation.contact')
-  } else if (form.phone.trim() && !isValidPhone(form.phone)) {
+  } else if (!isValidPhone(form.phone)) {
     localError.value = t('requisites.phoneInvalid')
   } else if (form.email.trim() && !EMAIL_PATTERN.test(form.email.trim())) {
     localError.value = t('auth.validation.email')
@@ -42,7 +42,7 @@ function handleSubmit() {
     localError.value = ''
     emit('submit', {
       full_name: form.full_name.trim(),
-      phone: form.phone.trim() || null,
+      phone: form.phone.trim(),
       email: form.email.trim() || null,
       password: form.password,
     })
@@ -68,11 +68,11 @@ function handleSubmit() {
         @input="onPhoneInput"
       />
     </label>
+    <p class="hint">{{ $t('auth.contactHint') }}</p>
     <label>
       <span class="label">Email</span>
       <input v-model="form.email" type="email" autocomplete="email" placeholder="name@mail.com" />
     </label>
-    <p class="hint">{{ $t('auth.contactHint') }}</p>
 
     <label>
       <span class="label">{{ $t('auth.password') }}</span>

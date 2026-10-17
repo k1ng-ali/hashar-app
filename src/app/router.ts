@@ -25,6 +25,7 @@ const AboutPage = () => import('@/pages/AboutPage/AboutPage.vue')
 const PrivacyPage = () => import('@/pages/PrivacyPage/PrivacyPage.vue')
 const TermsPage = () => import('@/pages/TermsPage/TermsPage.vue')
 const AccountDeletionPage = () => import('@/pages/AccountDeletionPage/AccountDeletionPage.vue')
+const ChangePasswordPage = () => import('@/pages/ChangePasswordPage/ChangePasswordPage.vue')
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -56,6 +57,7 @@ export const router = createRouter({
     { path: '/terms', component: TermsPage, meta: { public: true } },
     { path: '/account-deletion', component: AccountDeletionPage, meta: { public: true } },
     { path: '/funds', component: FundsPage },
+    { path: '/password', component: ChangePasswordPage },
     { path: '/join/:code', component: JoinPage },
     { path: '/platform', component: PlatformAdminPage, meta: { platformAdmin: true } },
     { path: '/', component: DashboardPage, meta: { fund: true } },

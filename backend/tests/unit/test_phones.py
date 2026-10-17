@@ -14,9 +14,10 @@ def test_register_rejects_short_phone():
         RegisterIn(full_name="Али", phone="99921", password="secret1")
 
 
-def test_register_accepts_formatted_phone_and_email_only():
+def test_register_accepts_formatted_phone_but_not_empty():
     assert RegisterIn(full_name="Али", phone="+992 90 123 45 67", password="secret1").phone
-    assert RegisterIn(full_name="Али", phone="", email="ali@mail.tj", password="secret1").phone is None
+    with pytest.raises(ValueError):
+        RegisterIn(full_name="Али", phone="", email="ali@mail.tj", password="secret1")
 
 
 def test_emergency_contact_phone_is_formatted():

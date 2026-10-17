@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
@@ -16,9 +18,10 @@ def test_normalize_phone():
     assert normalize_phone(None) is None
 
 
-def test_register_requires_phone_or_email():
+def test_register_requires_phone():
+    # Телефоном подтверждается личность — без него не зарегистрироваться, даже с email
     with pytest.raises(ValueError):
-        RegisterIn(full_name="Тест", password="secret1")
+        RegisterIn(full_name="Тест", email="test@mail.tj", password="secret1")
 
 
 async def test_register_duplicate_login():
@@ -48,8 +51,12 @@ async def test_login_success_issues_tokens():
     service.repo.get_by_login = AsyncMock(
         return_value=make_user(id=7, is_platform_admin=True, hashed_password=hash_password("secret1"))
     )
+    # Подтверждённое устройство: сессия выдаётся сразу, без подтверждения
+    device = SimpleNamespace(expires_at=datetime.now(timezone.utc) + timedelta(days=1), last_used_at=None)
+    service.verification_repo.get_device = AsyncMock(return_value=device)
 
-    token, refresh_token = await service.login(LoginIn(login="+7 900 000 00 07", password="secret1"))
+    result = await service.login(LoginIn(login="+7 900 000 00 07", password="secret1"), device_token="device")
+    token, refresh_token = result.token, result.refresh_token
 
     access = decode_token(token.access_token, expected_type="access")
     assert access["sub"] == "7"
@@ -58,6 +65,7 @@ async def test_login_success_issues_tokens():
     # access-токен нельзя использовать как refresh
     assert decode_token(token.access_token, expected_type="refresh") is None
     service.repo.get_by_login.assert_awaited_with("+79000000007")
+    assert device.last_used_at is not None
 
 
 async def test_refresh_without_cookie():
