@@ -34,10 +34,20 @@ jobs:
       VITE_API_URL: https://api.hashar.app
       VITE_DEV_MODE: "false"
       # Вход через Google: Client ID веб-клиента OAuth (не секрет). Settings → Secrets and variables →
-      # Actions → Variables. Пусто — кнопка Google не показывается
-      VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+      # Actions → Variables → Repository variables (не Secrets и не переменные окружения github-pages:
+      # их видит только job deploy). Пусто — кнопка Google неактивна
+      VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID || vars.VITE_GOOGLE_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v4
+
+      # Без Client ID сборка проходит, но вход через Google выключен — видно в Annotations запуска
+      - name: Check Google client ID
+        run: |
+          if [ -z "$VITE_GOOGLE_CLIENT_ID" ]; then
+            echo "::warning title=Google sign-in disabled::Repository variable GOOGLE_CLIENT_ID is empty — the Google button will be inactive"
+          else
+            echo "::notice title=Google sign-in::Client ID ${VITE_GOOGLE_CLIENT_ID%%-*}-… is set"
+          fi
 
       - uses: actions/setup-node@v4
         with:
