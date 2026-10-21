@@ -447,6 +447,16 @@ export default {
     download: 'Download',
     tooLarge: 'The file is too large',
     unsupported: 'Could not read the image — save the receipt as JPG or PNG',
+    downloadFailed: 'Could not download the receipt',
+    uploading: 'Uploading the receipt…',
+    uploadFailed: 'Could not upload the receipt — please try again',
+  },
+
+  photos: {
+    add: 'Add photo',
+    uploading: 'Uploading…',
+    remove: 'Remove photo',
+    count: '{n} из {max}',
   },
 
   // ── History ──
@@ -470,6 +480,7 @@ export default {
 
   // ── Target funds ──
   targetFunds: {
+    photo: 'Fundraiser photo',
     title: 'Fund details',
     collected: 'Collected',
     target: 'Goal: {amount}',
@@ -492,6 +503,21 @@ export default {
     closeFund: 'Close fund',
     reopenFund: 'Reopen fund',
     toggled: 'Fund status updated',
+    edit: 'Edit',
+    editTitle: 'Edit fund',
+    updated: 'Fund updated',
+    changes: 'Change history',
+    log: {
+      created: 'Fund opened',
+      close: 'Fund closed',
+      open: 'Fund reopened',
+      title: 'Title changed',
+      description: 'Description changed',
+      categoryChanged: 'Category: {from} → {to}',
+      targetAmount: 'Goal: {from} → {to}',
+      imageReplaced: 'Photo updated',
+      imageRemoved: 'Photo removed',
+    },
     deleted: 'Fund deleted',
     notFound: 'Fund not found',
     emptyTitle: 'No funds yet',
@@ -634,7 +660,8 @@ export default {
       generalBalance: 'General fund balance',
       description: 'Justification',
       descriptionPlaceholder: 'Quantity, contractor, act or contract number…',
-      receipt: 'Receipt or act',
+      receipt: 'Receipt and photos',
+      photosHint: 'Receipt, photo of the problem, photo of the result',
       save: 'Record expense',
       added: 'Expense added',
       deleted: 'Expense deleted',
@@ -653,7 +680,11 @@ export default {
       target: 'Required amount, {currency}',
       description: 'Description and estimate',
       descriptionPlaceholder: 'What works, which contractor, is there a meeting decision…',
+      photo: 'Photo (optional)',
+      photoHint: 'Show what the money is for',
       save: 'Open fund',
+      saveChanges: 'Save changes',
+      currencyLocked: 'The fund currency cannot be changed — contributions are already in it',
       created: 'Fund opened 🚀',
       of: 'of {amount}',
       validation: 'Fill in the title, amount and description',
@@ -865,6 +896,7 @@ export default {
   },
 
   // ── Platform admin ──
+
   platform: {
     title: 'Platform admin',
     tabs: {

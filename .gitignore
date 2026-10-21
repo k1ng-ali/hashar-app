@@ -11,5 +11,6 @@ __pycache__/
 venv/
 *.zip
 deploy/.env
+deploy/backup.env
 deploy/backups/
 deploy/certs/

@@ -59,7 +59,7 @@
 | GET | `/accounts`, `/requisites` | Активные счета и реквизиты |
 | GET | `/contributions/my`, `/contributions/my/balance` | Мои взносы и сальдо (в базовой валюте) |
 | POST | `/contributions/` | Взнос: `requisite_id` задаёт валюту; `credited_amount` — если валюта не совпадает с валютой назначения |
-| POST | `/uploads/receipt` | Загрузка чека файлом (multipart `file`, PNG / JPEG / WebP до 1,5 МБ) → `{key}`; ключ передаётся в `receipt_image` взноса или `receipt_images` расхода |
+| POST | `/uploads/receipt` | Загрузка фото файлом (multipart `file`, PNG / JPEG / WebP до 1,5 МБ) → `{key}`; ключ передаётся в `receipt_image` взноса, `receipt_images` расхода (до 3) или `image` сбора |
 | GET | `/target-funds/`, `/target-funds/{id}` | Целевые сборы |
 | GET | `/expenses/?category=&currency=`, `/expenses/{id}` | Лента расходов и карточка расхода |
 | GET / POST / DELETE | `/announcements/...` | Доска объявлений, лайки, комментарии |
@@ -77,7 +77,7 @@
 | GET / POST | `/contributions/`, `/{id}/approve`, `/{id}/reject` | Проверка чеков (при одобрении можно поправить `credited_amount`); свой чек одобряет другой член совета |
 | GET | `/contributions/history?status=&currency=&requisite_id=&q=` | История чеков с итогами по валютам |
 | POST / DELETE ⭐ | `/expenses/` | Расходы (валюта счёта списания); сверх остатка — только с `allow_overdraft`; DELETE — отмена (запись остаётся) |
-| POST / PATCH / toggle / DELETE ⭐ | `/target-funds/...` | Целевые сборы (валюта цели); удалить можно только сбор без взносов и расходов |
+| POST / PATCH / toggle / DELETE ⭐ | `/target-funds/...` | Целевые сборы (валюта цели, необязательное фото `image`; в PATCH `image: null` убирает фото, валюту менять нельзя, правки пишутся в журнал); удалить можно только сбор без взносов и расходов (`has_operations: false` в карточке сбора) |
 | PATCH | `/settings` | Инфо фонда; ⭐ тариф взноса (с 1-го числа следующего месяца); ⭐ базовая валюта и начало расчётов — только до первого ежемесячного взноса |
 | POST ⭐ | `/accounts`, `/accounts/{currency}/disable` | Включить / отключить валютный счёт |
 | GET / POST ⭐ / toggle ⭐ / DELETE ⭐ | `/requisites` | Реквизиты с валютой |

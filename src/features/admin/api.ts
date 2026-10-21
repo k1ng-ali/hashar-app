@@ -16,6 +16,7 @@ import type {
   PlanRequestCreate,
   RequisiteCreate,
   TargetFundCreate,
+  TargetFundUpdate,
   TransferCreate,
 } from './types.ts'
 
@@ -75,7 +76,10 @@ export const deleteExpense = (fundId: number, id: number) => http.delete<void>(`
 export const createTargetFund = (fundId: number, payload: TargetFundCreate) =>
   http.post<TargetFund>(`${council(fundId)}/target-funds/`, payload)
 
-export const toggleTargetFund = (fundId: number, id: number) =>
+export const updateTargetFund = (fundId: number, id: number, payload: TargetFundUpdate) =>
+  http.patch<TargetFund>(`${council(fundId)}/target-funds/${id}`, payload)
+
+export const toggleTargetFund =(fundId: number, id: number) =>
   http.post<TargetFund>(`${council(fundId)}/target-funds/${id}/toggle`)
 
 export const deleteTargetFund = (fundId: number, id: number) => http.delete<void>(`${council(fundId)}/target-funds/${id}`)

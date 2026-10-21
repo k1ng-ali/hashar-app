@@ -1,17 +1,23 @@
 <script setup lang="ts">
 import { LuDownload } from '@kalimahapps/vue-icons/lu'
+import { useI18n } from 'vue-i18n'
 import BottomSheet from '@/shared/components/BottomSheet.vue'
 import { useReceiptStore } from '@/shared/stores/useReceiptStore.ts'
-import { downloadDataUrl } from '@/shared/lib/browser.ts'
+import { downloadImage } from '@/shared/lib/browser.ts'
+import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 
 const receiptStore = useReceiptStore()
+const headerStore = useHeaderStore()
+const { t } = useI18n()
 
-function download() {
-  // Скачиваем только картинку: ссылку вида javascript: клик бы выполнил
-  if (!receiptStore.image.startsWith('data:image/')) return
-  const isSvg = receiptStore.image.startsWith('data:image/svg')
-  const extension = isSvg ? 'svg' : receiptStore.image.startsWith('data:image/png') ? 'png' : 'jpg'
-  void downloadDataUrl(receiptStore.image, `receipt_${Date.now()}.${extension}`)
+async function download() {
+  // Скачиваем только картинку или ссылку на хранилище: ссылку вида javascript: клик бы выполнил
+  if (!/^(data:image\/|https?:\/\/)/.test(receiptStore.image)) return
+  try {
+    await downloadImage(receiptStore.image, `receipt_${Date.now()}`)
+  } catch {
+    headerStore.showNotification(t('receipt.downloadFailed'), 'error')
+  }
 }
 </script>
 

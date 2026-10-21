@@ -25,7 +25,9 @@ async def update_target_fund(
     ctx: FundContext = Depends(require_fund_council),
     service: TargetFundService = Depends(get_target_fund_service),
 ):
-    return await service.update(fund_id=ctx.fund_id, target_fund_id=target_fund_id, payload=payload)
+    return await service.update(
+        fund_id=ctx.fund_id, target_fund_id=target_fund_id, user_id=ctx.user_id, payload=payload
+    )
 
 
 @router.post("/{target_fund_id}/toggle", response_model=TargetFundOut)

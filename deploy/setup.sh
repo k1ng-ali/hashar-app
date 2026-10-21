@@ -6,7 +6,7 @@
 #
 # Что делает: ставит Docker → создаёт .env со случайными SECRET_KEY и паролем БД →
 # проверяет Origin-сертификат Cloudflare → скачивает образ и запускает (./update.sh) →
-# ставит ночной бэкап в cron.
+# ставит ночной бэкап в cron (и в R2, если заполнен backup.env).
 set -eu
 
 cd "$(dirname "$0")"
@@ -80,7 +80,7 @@ openssl x509 -in certs/origin.pem -noout -subject -enddate 2>/dev/null || echo "
 
 # ─── 4. Образ и запуск ────────────────────────────────────────────────────────
 say "Образ backend"
-chmod +x update.sh backup.sh admin.sh
+chmod +x update.sh backup.sh restore.sh admin.sh
 if ! docker compose pull backend; then
   echo "Не скачался — возможно, репозиторий в Docker Hub приватный. Вход:"
   docker login
@@ -114,6 +114,12 @@ else
   (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
   echo "добавлено: $CRON_LINE"
 fi
+# Ключи бакета бэкапов в R2 (README → «Бэкапы»); пока файл пуст, копии остаются только на сервере
+if [ ! -f backup.env ]; then
+  cp backup.env.example backup.env
+  echo "создан backup.env — заполните ключи R2, чтобы копии уходили с сервера"
+fi
+chmod 600 backup.env
 
 API_DOMAIN="$(sed -n 's/^API_DOMAIN=//p' .env)"
 say "Готово"

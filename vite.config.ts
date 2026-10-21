@@ -4,9 +4,13 @@ import vue from '@vitejs/plugin-vue'
 import Components from 'unplugin-vue-components/vite'
 import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers'
 
+// Хранилище чеков — Cloudflare R2 (S3 API); подписанные ссылки ведут на <account_id>.r2.cloudflarestorage.com
+const R2_STORAGE = 'https://*.r2.cloudflarestorage.com'
+
 // CSP для прод-сборки. GitHub Pages не даёт ставить заголовки, поэтому политика — <meta> в index.html.
 // Скрипты только свои, стили — свои + inline от ant-design-vue, шрифт Inter с Google Fonts,
-// картинки — свои, data: (чеки) и https: (аватары провайдеров входа), запросы — только к API.
+// картинки — свои, data: (демо-чеки), https: (чеки по ссылкам на R2, аватары провайдеров входа),
+// запросы — к API и к R2 (скачивание чека: fetch подписанной ссылки, CORS настроен на бакете).
 // frame-ancestors в <meta> не работает — защита от встраивания во фрейм тут недоступна.
 // Со входом через Google добавляется Google Identity Services: скрипт, стили и фрейм кнопки
 function contentSecurityPolicy(apiUrl: string, googleSignIn: boolean): Plugin {
@@ -17,7 +21,7 @@ function contentSecurityPolicy(apiUrl: string, googleSignIn: boolean): Plugin {
     `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com ${gsi && `${gsi}style`}`.trim(),
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https:",
-    `connect-src 'self' ${apiUrl} ${gsi}`.trim(),
+    `connect-src 'self' ${apiUrl} ${R2_STORAGE} ${gsi}`.trim(),
     `frame-src ${gsi || "'none'"}`,
     "object-src 'none'",
     "base-uri 'self'",

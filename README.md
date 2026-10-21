@@ -9,6 +9,7 @@ Fund-system/
 ├── backend/      # FastAPI + async SQLAlchemy + PostgreSQL + Alembic   → backend/README.md
 ├── src/          # Vue 3 + TypeScript + Pinia + vue-router + vue-i18n
 ├── deploy/       # сервер API: setup.sh, update.sh, admin.sh, backup.sh, docker-compose.yml, Caddyfile
+├── monitoring/   # Cloudflare Worker: бэкапы в R2 и API живы → Telegram   → monitoring/README.md
 └── .github/workflows/
     ├── frontend.yml  # release → сборка → GitHub Pages (hashar.app)
     └── backend.yml   # release → тесты → образ в Docker Hub (api.hashar.app)
@@ -89,7 +90,9 @@ sh setup.sh
 | `setup.sh` | первый запуск сервера |
 | `update.sh` | новая версия backend; `BACKEND_TAG=sha-<коммит> ./update.sh` — откат |
 | `admin.sh` | `./admin.sh +992…` / `--revoke` / `--list` — админы платформы |
-| `backup.sh` | дамп БД в `backups/` (cron, хранит 14 дней) |
+| `backup.sh` | дамп БД в `backups/` и в R2 (cron, хранит 14 дней) — см. «Бэкапы» |
+| `restore.sh` | `--list` / `--check` / восстановление БД из копии (с сервера или из R2) |
+| `backup.env` | ключи бакета бэкапов в R2 (отдельно от `.env`, в git не попадает) |
 | `docker-compose.yml` | Postgres + backend + Caddy; из этой папки работают обычные `docker compose ps / logs -f backend / restart` |
 | `Caddyfile` | HTTPS для `api.hashar.app`, только запросы от Cloudflare |
 | `.env` | секреты (создаёт `setup.sh`, в git не попадает) |
@@ -113,8 +116,57 @@ ssh <сервер> /opt/hashar/deploy/update.sh             # когда backend
 - backend при старте применяет миграции; `DEV_MODE=false`: нет `/docs`, демо-входа, демо-чеков и seed, а со слабым `SECRET_KEY` backend не запустится
 - логи контейнеров ротируются (5 × 10 МБ на сервис): `docker compose logs -f backend` из `deploy/`
 - первый админ платформы: зарегистрироваться в приложении, затем `./admin.sh +992XXXXXXXXX` и перезайти
-- бэкап БД хранится на этом же сервере — копии стоит регулярно уносить в другое место. Восстановление: `gunzip -c backups/<файл>.sql.gz | docker compose exec -T db psql -U <DB_USER> <DB_NAME>`
+- бэкапы БД — на сервере и в R2, восстановление — `./restore.sh` (см. «Бэкапы»)
 - проверить прод-сборку фронта локально: `VITE_API_URL=https://api.hashar.app npm run build && npm run preview`
+
+### Хранилище чеков — Cloudflare R2 (один раз)
+
+Фото чеков лежат не в БД, а в приватном бакете R2; бэкенд работает с ним по S3 API (`backend/app/core/storage.py`).
+
+1. **R2 → бакет** (уже создан): публичный доступ и `r2.dev` — **выключены**. Чеки открываются только по подписанным ссылкам на 15 минут, которые бэкенд выдаёт тем, кому чек виден
+2. **Бакет → Settings → Object lifecycle rules:** правило с префиксом `tmp/` — *Delete objects after 1 day*. В `tmp/` лежат загруженные, но так и не отправленные чеки
+3. **Бакет → Settings → CORS policy** — нужно для кнопки «Скачать» в просмотре чека (браузер скачивает файл через `fetch`; Android-приложение тоже работает с origin `https://hashar.app`):
+   ```json
+   [{ "AllowedOrigins": ["https://hashar.app", "http://localhost:5173"], "AllowedMethods": ["GET"], "AllowedHeaders": ["*"], "MaxAgeSeconds": 3600 }]
+   ```
+4. **R2 → Manage API tokens → Create API token:** *Object Read & Write*, только этот бакет. Access Key ID, Secret Access Key и endpoint вида `https://<account_id>.r2.cloudflarestorage.com` → в `deploy/.env` (`S3_*`, см. `deploy/.env.example`), затем `./update.sh`. Без них backend в проде не запустится
+5. Проверка доступа: `docker compose exec backend python -m scripts.init_storage` → «Хранилище готово»
+
+**Перенос старых чеков из БД** (один раз, после выкладки версии с R2): сначала `./backup.sh`, затем
+
+```bash
+docker compose exec backend python -m scripts.migrate_receipts --dry-run   # сколько чеков в БД
+docker compose exec backend python -m scripts.migrate_receipts             # перенести
+```
+
+Скрипт идёт пачками и запускается повторно без вреда. Пока он не прошёл, старые чеки показываются из БД как раньше. Старые версии Android-приложения ещё присылают чек base64 — backend сам кладёт его в R2.
+
+Локально вместо R2 — RustFS из `backend/docker-compose.yml`: `docker compose up -d db storage`, затем `python -m scripts.init_storage` (создаст бакет); ключи — в `backend/.env.example`.
+
+### Бэкапы (один раз)
+
+Каждую ночь `backup.sh` снимает дамп БД в `deploy/backups/` (14 дней) и, если заполнен `deploy/backup.env`, загружает его в отдельный бакет R2 — копия переживает потерю сервера. rclone запускается одноразовым контейнером, ставить ничего не нужно. Фото чеков в бэкап не входят: они и так лежат в R2, а приложение их не удаляет.
+
+1. **R2 → Create bucket** `hashar-backups` — отдельный от чеков: у него свои правила и свой ключ, который не попадает в контейнер backend. Публичный доступ выключен
+2. **Бакет → Settings → Bucket lock rules → Add rule:** префикс `db/`, срок хранения 14 дней. Пока срок не вышел, копию нельзя удалить или перезаписать никаким ключом — даже если сервер взломают, бэкапы останутся
+3. **Бакет → Settings → Object lifecycle rules:** префикс `db/` — *Delete objects after 15 days* (на день позже блокировки)
+4. **R2 → Manage API tokens:** новый токен *Object Read & Write* только на `hashar-backups`
+5. На сервере: `cp backup.env.example backup.env && chmod 600 backup.env` (если нет — его создаёт `setup.sh`), вписать ключи, затем `./backup.sh` → в выводе `(+ R2 ...)`
+6. **Мониторинг:** Cloudflare Worker из [`monitoring/`](monitoring/README.md) — каждый день проверяет, что свежий бэкап лежит в R2, и каждые 5 минут — что API отвечает; пишет в Telegram. Работает вне сервера, поэтому заметит и упавший сервер, и не запустившийся cron. Дополнительно (необязательно) — `BACKUP_PING_URL` для [healthchecks.io](https://healthchecks.io): сигнал от самого `backup.sh`
+
+Восстановление (из `deploy/`):
+
+```bash
+./restore.sh --list                                # копии на сервере и в R2
+./restore.sh --check                               # учебное восстановление свежей копии во временную базу
+./restore.sh hashar_2026-10-21_0300.sql.gz         # заменить рабочую базу (спросит подтверждение)
+```
+
+`--check` рабочую базу не трогает — его стоит запускать раз в месяц: бэкап, который ни разу не восстанавливали, не считается бэкапом. Полное восстановление сначала сохраняет текущую базу через `backup.sh`, останавливает backend, загружает копию одной транзакцией и запускает backend (миграции он применит сам). Если сервер потерян: поднять новый по разделу «Сервер», заполнить `.env` и `backup.env`, затем `./restore.sh latest`.
+
+Скрипты в git без флага исполнения, `setup.sh` ставит его сам. Если `deploy/` на сервере — клон репозитория, один раз выполнить `git config core.fileMode false`, иначе `git pull` в `update.sh` споткнётся о права файлов. Если папка скопирована через `scp`, новые и изменённые скрипты копируются так же, затем `chmod +x *.sh`.
+
+Что можно потерять: изменения с последнего бэкапа (до суток). Если станет много — запускать `backup.sh` чаще (например, `0 */6 * * *` в `crontab -e`) или перейти на непрерывный архив WAL.
 
 ### Вход через Google (один раз)
 

@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.finance import current_period, shift_period
+from app.core.receipts import receipt_url, store_receipt
 from app.enums import ContributionStatusEnum
 from app.models.target_fund import TargetFund
 from app.repositories.audit_repo import AuditRepository
@@ -16,6 +17,7 @@ from app.schemas.target_fund import (
     MonthAmountOut,
     TargetFundCreateIn,
     TargetFundDetailOut,
+    TargetFundHistoryOut,
     TargetFundOut,
     TargetFundUpdateIn,
 )
@@ -24,6 +26,8 @@ from app.services.contribution_service import contribution_out
 
 # Сколько последних месяцев показывать на графике динамики сбора
 CHART_MONTHS = 6
+# Что из журнала показываем участникам в истории сбора
+HISTORY_ACTIONS = {"target_fund.update", "target_fund.close", "target_fund.open"}
 
 
 def _target_fund_out(target: TargetFund, collected: int, contributors: int) -> TargetFundOut:
@@ -36,6 +40,7 @@ def _target_fund_out(target: TargetFund, collected: int, contributors: int) -> T
         currency=target.currency,
         category=target.category,
         is_active=target.is_active,
+        image=receipt_url(target.image),
         collected_amount=collected,
         remaining_amount=max(0, target.target_amount - collected),
         percent=min(100, round(collected / goal * 100)),
@@ -87,6 +92,17 @@ class TargetFundService:
             **_target_fund_out(target, collected, contributors).model_dump(),
             average_contribution=round(sum(c.credited_amount for c in approved) / len(approved)) if approved else 0,
             monthly=monthly,
+            has_operations=bool(contributions) or await self.expense_repo.exists_for_target_fund(fund_id, target.id),
+            history=[
+                TargetFundHistoryOut(
+                    action=event.action.removeprefix("target_fund."),
+                    changes=event.details.get("changes", {}),
+                    actor_name=event.actor.full_name if event.actor else None,
+                    created_at=event.created_at,
+                )
+                for event in await self.audit.list_for_entity(fund_id, "target_fund", target.id)
+                if event.action in HISTORY_ACTIONS
+            ],
             # Список взносов публичный, а сами чеки — только свои (совет видит все)
             contributions=[contribution_out(c, show_receipt=ctx.can_see_receipt(c.user_id)) for c in visible],
         )
@@ -102,15 +118,37 @@ class TargetFundService:
             target_amount=payload.target_amount,
             currency=payload.currency.value,
             category=payload.category.value,
+            image=await store_receipt(payload.image, fund_id, user_id) if payload.image else None,
             created_by_id=user_id,
         )
         await self.db.commit()
         return _target_fund_out(target, 0, 0)
 
-    async def update(self, fund_id: int, target_fund_id: int, payload: TargetFundUpdateIn) -> TargetFundOut:
+    async def update(
+        self, fund_id: int, target_fund_id: int, user_id: int, payload: TargetFundUpdateIn
+    ) -> TargetFundOut:
         target = await self._get_or_404(fund_id, target_fund_id, for_update=True)
-        for field, value in payload.model_dump(exclude_none=True).items():
-            setattr(target, field, value.value if hasattr(value, "value") else value)
+        # Что изменилось — в журнал: «было → стало». Цель сбора нельзя сдвинуть незаметно
+        changes = {}
+        for field, value in payload.model_dump(exclude_none=True, exclude={"image"}).items():
+            value = value.value if hasattr(value, "value") else value
+            if getattr(target, field) != value:
+                changes[field] = [getattr(target, field), value]
+                setattr(target, field, value)
+        # image: null убирает фото, поэтому важно, передано ли поле, а не равно ли оно None
+        if "image" in payload.model_fields_set:
+            target.image = await store_receipt(payload.image, fund_id, user_id) if payload.image else None
+            changes["image"] = "replaced" if target.image else "removed"
+
+        if changes:
+            self.audit.add(
+                fund_id=fund_id,
+                actor_id=user_id,
+                action="target_fund.update",
+                entity="target_fund",
+                entity_id=target.id,
+                details={"title": target.title, "changes": changes},
+            )
         await self.db.commit()
         return await self._out(target)
 
@@ -131,9 +169,7 @@ class TargetFundService:
     async def delete(self, fund_id: int, target_fund_id: int, user_id: int) -> None:
         """Удалить можно только пустой сбор (создан по ошибке). Сбор с деньгами — закрыть."""
         target = await self._get_or_404(fund_id, target_fund_id, for_update=True)
-        if await self.contribution_repo.exists_for_target_fund(
-            fund_id, target.id
-        ) or await self.expense_repo.exists_for_target_fund(fund_id, target.id):
+        if await self._has_operations(fund_id, target.id):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Target fund has operations, close it")
 
         self.audit.add(
@@ -148,6 +184,12 @@ class TargetFundService:
         await self.db.commit()
 
     # ─── Helpers ───────────────────────────────────────────────────────────────
+
+    async def _has_operations(self, fund_id: int, target_fund_id: int) -> bool:
+        """Были ли деньги по сбору (взносы в любом статусе или неотменённые расходы) — тогда не удалить."""
+        return await self.contribution_repo.exists_for_target_fund(
+            fund_id, target_fund_id
+        ) or await self.expense_repo.exists_for_target_fund(fund_id, target_fund_id)
 
     async def _out(self, target: TargetFund) -> TargetFundOut:
         stats = await self.contribution_repo.collected_by_target_funds(target.fund_id)

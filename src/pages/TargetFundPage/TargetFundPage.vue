@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { LuPlus, LuPower, LuShare2, LuTrash2 } from '@kalimahapps/vue-icons/lu'
+import { LuPencil, LuPlus, LuPower, LuShare2, LuTrash2 } from '@kalimahapps/vue-icons/lu'
 import { useAdminStore } from '@/features/admin/store.ts'
+import FundForm from '@/features/admin/components/FundForm.vue'
+import type { TargetFundUpdate } from '@/features/admin/types.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
 import type { Contribution } from '@/features/contributions/types.ts'
 import FundContributionsList from '@/features/targetFunds/components/FundContributionsList.vue'
+import FundHistory from '@/features/targetFunds/components/FundHistory.vue'
 import MonthlyChart from '@/features/targetFunds/components/MonthlyChart.vue'
 import { useTargetFundsStore } from '@/features/targetFunds/store.ts'
+import BottomSheet from '@/shared/components/BottomSheet.vue'
 import CardSkeleton from '@/shared/components/CardSkeleton.vue'
 import EmptyState from '@/shared/components/EmptyState.vue'
 import ProgressBar from '@/shared/components/ProgressBar.vue'
@@ -57,6 +61,22 @@ async function handleToggle() {
   if (!fund.value) return
   await adminStore.toggleTargetFund(fund.value.id)
   headerStore.showNotification(t('targetFunds.toggled'))
+  // Новая строка в истории изменений приходит только с полной карточкой сбора
+  void store.fetchDetail(fund.value.id)
+}
+
+const isEditing = ref(false)
+
+async function handleUpdate(payload: TargetFundUpdate) {
+  if (!fund.value) return
+  try {
+    await adminStore.updateTargetFund(fund.value.id, payload)
+    isEditing.value = false
+    headerStore.showNotification(t('targetFunds.updated'))
+    void store.fetchDetail(fund.value.id)
+  } catch {
+    headerStore.showNotification(t('errors.generic'), 'error')
+  }
 }
 
 async function handleDelete() {
@@ -91,6 +111,16 @@ function openReceipt(contribution: Contribution) {
     <template v-else>
       <!-- 1. Карточка сбора -->
       <div class="hero-card">
+        <button
+          v-if="fund.image"
+          type="button"
+          class="cover"
+          :aria-label="$t('targetFunds.photo')"
+          @click="receiptStore.open(fund.title, fund.image)"
+        >
+          <img :src="fund.image" alt="" />
+        </button>
+
         <div class="hero-top">
           <span class="category">{{ $t(`targetFundCategory.${fund.category}`) }}</span>
           <span class="percent-pill">{{ $t('targetFunds.percentCollected', { n: fund.percent }) }}</span>
@@ -119,10 +149,18 @@ function openReceipt(contribution: Contribution) {
 
         <div class="hero-actions">
           <button class="ghost-btn" @click="handleShare"><LuShare2 /> {{ $t('targetFunds.share') }}</button>
+          <button v-if="fundsStore.permissions.canManageFinance" class="ghost-btn" @click="isEditing = true">
+            <LuPencil /> {{ $t('targetFunds.edit') }}
+          </button>
           <button v-if="fundsStore.permissions.canManageFinance" class="ghost-btn" @click="handleToggle">
             <LuPower /> {{ fund.is_active ? $t('targetFunds.closeFund') : $t('targetFunds.reopenFund') }}
           </button>
-          <button v-if="fundsStore.permissions.canDeleteRecords" class="ghost-btn ghost-btn--danger" @click="handleDelete">
+          <!-- Удалить можно только пустой сбор (создан по ошибке); сбор с деньгами — только закрыть -->
+          <button
+            v-if="fundsStore.permissions.canDeleteRecords && !fund.has_operations"
+            class="ghost-btn ghost-btn--danger"
+            @click="handleDelete"
+          >
             <LuTrash2 /> {{ $t('common.delete') }}
           </button>
         </div>
@@ -156,6 +194,14 @@ function openReceipt(contribution: Contribution) {
         <EmptyState v-else icon="🚀" :title="$t('targetFunds.emptyContrib')" />
       </div>
 
+      <!-- История изменений сбора: правки цели, описания, фото, закрытие -->
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">{{ $t('targetFunds.changes') }}</h2>
+        </div>
+        <FundHistory :fund="fund" />
+      </div>
+
       <!-- 4. Плавающая кнопка -->
       <div class="floating">
         <button
@@ -168,6 +214,18 @@ function openReceipt(contribution: Contribution) {
         <div v-else class="closed-banner">✅ {{ $t('targetFunds.closedBanner') }}</div>
       </div>
     </template>
+
+    <!-- Правка сбора: v-if пересоздаёт форму с актуальными данными при каждом открытии -->
+    <BottomSheet :open="isEditing" :title="$t('targetFunds.editTitle')" @close="isEditing = false">
+      <FundForm
+        v-if="isEditing && fund"
+        :initial="fund"
+        :currencies="[fund.currency]"
+        :base-currency="fund.currency"
+        :is-submitting="adminStore.isSubmitting"
+        @update="handleUpdate"
+      />
+    </BottomSheet>
   </div>
 </template>
 
@@ -190,6 +248,26 @@ function openReceipt(contribution: Contribution) {
   flex-direction: column;
   gap: 12px;
   padding: 20px;
+}
+
+// Фото сбора во всю ширину карточки; по нажатию — на весь экран
+.cover {
+  display: block;
+  width: calc(100% + 40px);
+  margin: -20px -20px 0;
+  padding: 0;
+  border: none;
+  border-radius: 24px 24px 0 0;
+  overflow: hidden;
+  background: $surface-muted;
+  cursor: zoom-in;
+
+  img {
+    display: block;
+    width: 100%;
+    max-height: 260px;
+    object-fit: cover;
+  }
 }
 
 .hero-top {

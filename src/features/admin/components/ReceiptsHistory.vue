@@ -164,7 +164,7 @@ onUnmounted(() => clearTimeout(searchTimer))
   align-items: center;
   gap: 8px;
   padding: 0 12px;
-  border: 1px solid rgba(17, 24, 39, 0.12);
+  border: 1px solid $field-border;
   border-radius: 12px;
   background: #fff;
   color: $text-muted;

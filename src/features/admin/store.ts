@@ -20,6 +20,7 @@ import type {
   PlanRequestCreate,
   RequisiteCreate,
   TargetFundCreate,
+  TargetFundUpdate,
   TransferCreate,
 } from './types.ts'
 
@@ -219,6 +220,13 @@ export const useAdminStore = defineStore('admin', () => {
     })
   }
 
+  function updateTargetFund(id: number, payload: TargetFundUpdate) {
+    return withSubmitting(async () => {
+      const { data } = await api.updateTargetFund(funds.fundId, id, payload)
+      targetFundsStore.upsert(data)
+    })
+  }
+
   async function toggleTargetFund(id: number) {
     const { data } = await api.toggleTargetFund(funds.fundId, id)
     targetFundsStore.upsert(data)
@@ -321,6 +329,7 @@ export const useAdminStore = defineStore('admin', () => {
     addExpense,
     removeExpense,
     addTargetFund,
+    updateTargetFund,
     toggleTargetFund,
     removeTargetFund,
     enableCurrency,

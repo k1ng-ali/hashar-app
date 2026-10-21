@@ -13,7 +13,7 @@ UPLOADS_BY_USER = SlidingWindowLimiter(limit=30, window_seconds=60 * 60)
 
 
 class UploadOut(BaseModel):
-    # Ключ передаётся в receipt_image взноса или receipt_images расхода этого же фонда
+    # Ключ передаётся в receipt_image взноса, receipt_images расхода или image сбора этого же фонда
     key: str
 
 

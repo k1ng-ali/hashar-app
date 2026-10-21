@@ -447,6 +447,16 @@ export default {
     download: 'Боргирӣ',
     tooLarge: 'Файл хеле калон аст',
     unsupported: 'Суратро хондан нашуд — чекро ҳамчун JPG ё PNG нигоҳ доред',
+    downloadFailed: 'Чекро зеркашӣ кардан нашуд',
+    uploading: 'Чек бор карда мешавад…',
+    uploadFailed: 'Чекро бор кардан нашуд — бори дигар кӯшиш кунед',
+  },
+
+  photos: {
+    add: 'Илова кардани акс',
+    uploading: 'Бор шуда истодааст…',
+    remove: 'Хориҷ кардани акс',
+    count: '{n} из {max}',
   },
 
   // ── History ──
@@ -470,6 +480,7 @@ export default {
 
   // ── Target funds ──
   targetFunds: {
+    photo: 'Акси ҷамъоварӣ',
     title: 'Тафсилоти ҷамъоварӣ',
     collected: 'Ҷамъ шуд',
     target: 'Мақсад: {amount}',
@@ -492,6 +503,21 @@ export default {
     closeFund: 'Анҷом додани ҷамъоварӣ',
     reopenFund: 'Аз нав кушодан',
     toggled: 'Ҳолати ҷамъоварӣ нав шуд',
+    edit: 'Тағйир додан',
+    editTitle: 'Тағйир додани ҷамъоварӣ',
+    updated: 'Ҷамъоварӣ нав шуд',
+    changes: 'Таърихи тағйирот',
+    log: {
+      created: 'Ҷамъоварӣ кушода шуд',
+      close: 'Ҷамъоварӣ анҷом ёфт',
+      open: 'Ҷамъоварӣ аз нав кушода шуд',
+      title: 'Ном иваз шуд',
+      description: 'Тавсиф иваз шуд',
+      categoryChanged: 'Категория: {from} → {to}',
+      targetAmount: 'Ҳадаф: {from} → {to}',
+      imageReplaced: 'Акс нав шуд',
+      imageRemoved: 'Акс хориҷ шуд',
+    },
     deleted: 'Ҷамъоварӣ нест карда шуд',
     notFound: 'Ҷамъоварӣ ёфт нашуд',
     emptyTitle: 'Ҳоло ҷамъоварӣ нест',
@@ -634,7 +660,8 @@ export default {
       generalBalance: 'Тавозуни умумии хазина',
       description: 'Асоснокӣ',
       descriptionPlaceholder: 'Миқдор, пудратчӣ, рақами санад ё шартнома…',
-      receipt: 'Чек ё санад',
+      receipt: 'Чек ва аксҳо',
+      photosHint: 'Чек, акси мушкил, акси натиҷа',
       save: 'Сабт кардани хароҷот',
       added: 'Хароҷот илова шуд',
       deleted: 'Хароҷот нест карда шуд',
@@ -653,7 +680,11 @@ export default {
       target: 'Маблағи зарурӣ, {currency}',
       description: 'Тавсиф ва смета',
       descriptionPlaceholder: 'Кадом корҳо, кӣ пудратчӣ, оё қарори ҷаласа ҳаст…',
+      photo: 'Акс (ихтиёрӣ)',
+      photoHint: 'Нишон диҳед, ки барои чӣ ҷамъ мекунед',
       save: 'Кушодани ҷамъоварӣ',
+      saveChanges: 'Нигоҳ доштани тағйирот',
+      currencyLocked: 'Асъори ҷамъовариро иваз кардан мумкин нест — саҳмҳо аллакай бо он қабул шудаанд',
       created: 'Ҷамъоварӣ кушода шуд 🚀',
       of: 'аз {amount}',
       validation: 'Номгӯй, маблағ ва тавсифро пур кунед',
@@ -865,6 +896,7 @@ export default {
   },
 
   // ── Platform admin ──
+
   platform: {
     title: 'Маъмури платформа',
     tabs: {

@@ -132,17 +132,25 @@ async def test_target_fund_hides_others_receipts():
     service = TargetFundService(db=make_db())
     service.repo.get = AsyncMock(return_value=SimpleNamespace(
         id=1, title="Шлагбаум", description="", target_amount=1000, currency="tjs", category="security",
-        is_active=True, created_at=NOW,
+        is_active=True, image=None, created_at=NOW,
     ))  # fmt: skip
     mine, other = make_contribution(id=1, user=make_user(id=1)), make_contribution(id=2, user=make_user(id=2))
     service.contribution_repo.collected_by_target_funds = AsyncMock(return_value={})
     service.contribution_repo.list = AsyncMock(return_value=[mine, other])
     service.contribution_repo.approved_monthly_sums = AsyncMock(return_value={})
+    service.audit.list_for_entity = AsyncMock(return_value=[
+        SimpleNamespace(action="target_fund.update", details={"title": "Шлагбаум", "changes": {"target_amount": [900, 1000]}},
+                        actor=make_user(id=9), created_at=NOW),
+        SimpleNamespace(action="target_fund.delete", details={}, actor=None, created_at=NOW),
+    ])  # fmt: skip
 
     resident = await service.get_detail(ctx=make_ctx(user_id=1), target_fund_id=1)
     council = await service.get_detail(ctx=make_ctx(user_id=9, role=FundRoleEnum.admin), target_fund_id=1)
 
     assert [c.receipt_image is not None for c in resident.contributions] == [True, False]
+    assert resident.has_operations  # по сбору есть взносы — удалить нельзя, только закрыть
+    # История правок видна всем участникам; служебные события журнала в неё не попадают
+    assert [(h.action, h.changes) for h in resident.history] == [("update", {"target_amount": [900, 1000]})]
     assert all(c.receipt_image for c in council.contributions)
 
 

@@ -13,6 +13,8 @@ export interface TargetFund {
   currency: Currency
   category: TargetFundCategory
   is_active: boolean
+  /** Подписанная ссылка на фото «на что собираем» */
+  image: string | null
   collected_amount: number
   remaining_amount: number
   percent: number
@@ -25,8 +27,19 @@ export interface MonthAmount {
   amount: number
 }
 
+/** Строка истории сбора. changes — только у update: поле → [было, стало], image → 'replaced' | 'removed' */
+export interface TargetFundHistoryItem {
+  action: 'update' | 'close' | 'open'
+  changes: Record<string, [unknown, unknown] | string>
+  actor_name: string | null
+  created_at: string
+}
+
 export interface TargetFundDetail extends TargetFund {
   average_contribution: number
   monthly: MonthAmount[]
+  /** Были взносы или расходы — удалить нельзя, только закрыть */
+  has_operations: boolean
+  history: TargetFundHistoryItem[]
   contributions: Contribution[]
 }

@@ -8,7 +8,9 @@
 set -eu
 
 cd "$(dirname "$0")"
-. ./.env
+# Не `. ./.env`: в нём бывают значения с пробелами без кавычек — sh принял бы их за команды
+DB_USER="$(sed -n 's/^DB_USER=//p' .env | tr -d '\r')"
+DB_NAME="$(sed -n 's/^DB_NAME=//p' .env | tr -d '\r')"
 
 psql() { docker compose exec -T db psql -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 "$@"; }
 

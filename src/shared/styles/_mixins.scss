@@ -14,6 +14,7 @@ $warning: #D97706;
 $surface: #FFFFFF;
 $surface-muted: #F4F4F5;
 $hairline: rgba(17, 24, 39, 0.06);
+$field-border: rgba(17, 24, 39, 0.18); // рамка полей ввода — заметна и на белой карточке, и на сером фоне
 
 /* ── Карточка ───────────────────────────────────────────────────────────── */
 @mixin glass-card($radius: 20px) {
@@ -77,20 +78,30 @@ $hairline: rgba(17, 24, 39, 0.06);
 }
 
 /* ── Поля формы ─────────────────────────────────────────────────────────── */
+// Белое поле с явной рамкой: серое без рамки сливалось с фоном страницы (#F6F6F6)
 @mixin field-input {
   width: 100%;
   padding: 12px 14px;
-  border: 1px solid transparent;
+  border: 1px solid $field-border;
   border-radius: 14px;
-  background: $surface-muted;
+  background: $surface;
   color: $navy;
   font-size: 15px;
   outline: none;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover:not(:focus):not(:disabled) {
+    border-color: rgba(17, 24, 39, 0.32);
+  }
 
   &:focus {
-    border-color: rgba(17, 24, 39, 0.4);
-    background: $surface;
+    border-color: $navy;
+    box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+  }
+
+  &:disabled {
+    background: $surface-muted;
+    color: $text-secondary;
   }
 
   &::placeholder {

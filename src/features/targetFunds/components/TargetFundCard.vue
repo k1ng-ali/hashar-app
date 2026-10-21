@@ -23,6 +23,8 @@ const CATEGORY_EMOJI: Record<TargetFundCategory, string> = {
 
 <template>
   <div class="fund-card" :class="{ 'fund-card--closed': !fund.is_active }" @click="emit('open', fund)">
+    <img v-if="fund.image" :src="fund.image" alt="" class="cover" loading="lazy" />
+
     <div class="top">
       <span class="icon">{{ CATEGORY_EMOJI[fund.category] }}</span>
       <div class="titles">
@@ -73,6 +75,16 @@ const CATEGORY_EMOJI: Record<TargetFundCategory, string> = {
   &--closed {
     opacity: 0.7;
   }
+}
+
+// Фото «на что собираем» — во всю ширину карточки
+.cover {
+  width: calc(100% + 32px);
+  height: 150px;
+  margin: -16px -16px 0;
+  object-fit: cover;
+  border-radius: 20px 20px 0 0;
+  background: $surface-muted;
 }
 
 .top {

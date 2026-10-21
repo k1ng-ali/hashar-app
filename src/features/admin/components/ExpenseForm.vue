@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import ReceiptPicker from '@/shared/components/ReceiptPicker.vue'
+import PhotosPicker from '@/shared/components/PhotosPicker.vue'
 import { generateReceiptSvg } from '@/shared/lib/receiptGenerator.ts'
 import type { TargetFund } from '@/features/targetFunds/types.ts'
 import { type Currency } from '@/shared/lib/currency.ts'
@@ -31,7 +31,8 @@ const form = reactive({
   amount: null as number | null,
   currency: props.baseCurrency as Currency,
   description: '',
-  receipt: '',
+  // Ключи загруженных фото: чек, фото проблемы, результат — до трёх
+  photos: [] as string[],
   // 0 — общий баланс дома (a-select не принимает null)
   targetFundId: 0,
   allowOverdraft: false,
@@ -52,7 +53,7 @@ watch(
 
 function generateReceipt() {
   form.amount ||= 8500
-  form.receipt = generateReceiptSvg({
+  const receipt = generateReceiptSvg({
     bankName: 'ООО «Стройторг»',
     amount: form.amount,
     currency: form.currency,
@@ -60,6 +61,7 @@ function generateReceipt() {
     recipientName: 'ООО «Стройторг»',
     purpose: (form.title || t(`expenseCategory.${form.category}`)).slice(0, 32),
   })
+  form.photos = [...form.photos, receipt]
 }
 
 function handleSubmit() {
@@ -78,7 +80,7 @@ function handleSubmit() {
     amount: form.amount,
     currency: form.currency,
     description: form.description.trim(),
-    receipt_images: form.receipt ? [form.receipt] : [],
+    receipt_images: form.photos,
     target_fund_id: form.targetFundId || null,
     allow_overdraft: form.allowOverdraft,
   })
@@ -151,7 +153,13 @@ function handleSubmit() {
 
     <div>
       <span class="label">{{ $t('admin.expenses.receipt') }}</span>
-      <ReceiptPicker v-model="form.receipt" @generate="generateReceipt" />
+      <PhotosPicker
+        v-model="form.photos"
+        :max="3"
+        :hint="$t('admin.expenses.photosHint')"
+        demo
+        @generate="generateReceipt"
+      />
     </div>
 
     <p v-if="error" class="error">{{ error }}</p>

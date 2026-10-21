@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import { LuCircleCheck, LuUpload, LuZap } from '@kalimahapps/vue-icons/lu'
-import { useI18n } from 'vue-i18n'
-import { compressImage } from '@/shared/lib/browser.ts'
+import { LuCircleCheck, LuLoader, LuUpload, LuZap } from '@kalimahapps/vue-icons/lu'
+import { useImageUpload } from '@/shared/composables/useImageUpload.ts'
 import { IS_DEV_MODE } from '@/shared/lib/env.ts'
-import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 
-// Исходный файл может быть большим фото с камеры — перед отправкой он сжимается
-const MAX_FILE_SIZE = 20 * 1024 * 1024
-// Предел после сжатия (backend принимает до 3 МБ, base64 длиннее на треть)
-const MAX_DATA_URL_LENGTH = 4 * 1024 * 1024
-
-defineProps<{
+/**
+ * modelValue — то, что уходит в API: ключ загруженного чека или демо-чек (SVG data URL).
+ * Фото загружается сразу после выбора; превью — локальная blob-ссылка на сжатый файл.
+ */
+const props = defineProps<{
   modelValue: string
 }>()
 
@@ -19,40 +16,31 @@ const emit = defineEmits<{
   (e: 'generate'): void
 }>()
 
-const { t } = useI18n()
-const headerStore = useHeaderStore()
+const { uploading, upload, previewOf, forget } = useImageUpload()
 const inputId = `receipt-${Math.random().toString(36).slice(2, 8)}`
 
 async function handleFile(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   input.value = ''
-  if (!file) return
+  if (!file || uploading.value) return
+  const key = await upload(file)
+  if (key) emit('update:modelValue', key)
+}
 
-  if (file.size > MAX_FILE_SIZE) {
-    headerStore.showNotification(t('receipt.tooLarge'), 'error')
-    return
-  }
-  try {
-    const image = await compressImage(file)
-    if (image.length > MAX_DATA_URL_LENGTH) {
-      headerStore.showNotification(t('receipt.tooLarge'), 'error')
-      return
-    }
-    emit('update:modelValue', image)
-  } catch {
-    headerStore.showNotification(t('receipt.unsupported'), 'error')
-  }
+function replace() {
+  forget(props.modelValue)
+  emit('update:modelValue', '')
 }
 </script>
 
 <template>
   <!-- Чек прикреплён -->
   <div v-if="modelValue" class="receipt-preview">
-    <img :src="modelValue" :alt="$t('receipt.viewerTitle')" />
+    <img :src="previewOf(modelValue)" :alt="$t('receipt.viewerTitle')" />
     <div class="preview-info">
       <span class="attached"><LuCircleCheck /> {{ $t('receipt.attached') }}</span>
-      <button type="button" class="replace-btn" @click="emit('update:modelValue', '')">
+      <button type="button" class="replace-btn" @click="replace">
         {{ $t('receipt.replace') }}
       </button>
     </div>
@@ -60,11 +48,18 @@ async function handleFile(event: Event) {
 
   <!-- Выбор файла -->
   <div v-else class="receipt-dropzone">
-    <input :id="inputId" type="file" accept="image/*" class="file-input" @change="handleFile" />
-    <label :for="inputId" class="dropzone-label">
-      <span class="upload-icon"><LuUpload /></span>
-      <span class="dropzone-title">{{ $t('receipt.pick') }}</span>
-      <span class="dropzone-hint">{{ $t('receipt.pickHint') }}</span>
+    <input
+      :id="inputId"
+      type="file"
+      accept="image/*"
+      class="file-input"
+      :disabled="uploading"
+      @change="handleFile"
+    />
+    <label :for="inputId" class="dropzone-label" :class="{ uploading }">
+      <span class="upload-icon"><LuLoader v-if="uploading" class="spin" /><LuUpload v-else /></span>
+      <span class="dropzone-title">{{ uploading ? $t('receipt.uploading') : $t('receipt.pick') }}</span>
+      <span v-if="!uploading" class="dropzone-hint">{{ $t('receipt.pickHint') }}</span>
     </label>
 
     <!-- Тестовый чек — только в демо-режиме: в проде это был бы генератор поддельных чеков -->
@@ -143,6 +138,21 @@ async function handleFile(event: Event) {
   background: rgba(17, 24, 39, 0.06);
   cursor: pointer;
   text-align: center;
+
+  &.uploading {
+    cursor: progress;
+    opacity: 0.7;
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .upload-icon {

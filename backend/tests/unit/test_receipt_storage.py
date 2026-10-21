@@ -3,7 +3,7 @@
 import base64
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from fastapi import FastAPI, HTTPException
@@ -16,8 +16,10 @@ from app.deps.fund import get_fund_context
 from app.enums import CurrencyEnum, ExpenseCategoryEnum
 from app.schemas.contribution import ContributionCreateIn
 from app.schemas.expense import ExpenseCreateIn
+from app.schemas.target_fund import TargetFundCreateIn, TargetFundUpdateIn
 from app.services.contribution_service import ContributionService, contribution_out
 from app.services.expense_service import ExpenseService, expense_out
+from app.services.target_fund_service import TargetFundService
 from tests.unit.helpers import (
     RECEIPT,
     make_contribution,
@@ -225,3 +227,87 @@ def test_upload_endpoint_is_rate_limited(client, monkeypatch):
         for _ in range(3)
     ]
     assert statuses == [201, 201, 429]
+
+
+# ─── Фото расхода и сбора ─────────────────────────────────────────────────────
+
+
+def test_expense_accepts_at_most_three_images():
+    fields = dict(
+        title="Ремонт", category=ExpenseCategoryEnum.repair, amount=100, currency=CurrencyEnum.tjs, description="Замок"
+    )
+    assert len(ExpenseCreateIn(**fields, receipt_images=[RECEIPT] * 3).receipt_images) == 3
+    with pytest.raises(ValidationError):
+        ExpenseCreateIn(**fields, receipt_images=[RECEIPT] * 4)
+
+
+def _target_service():
+    service = TargetFundService(make_db())
+    service.accounts.ensure_active_currency = AsyncMock()
+    service.contribution_repo.collected_by_target_funds = AsyncMock(return_value={})
+    service.repo.create = AsyncMock(
+        side_effect=lambda **fields: SimpleNamespace(id=1, is_active=True, created_at=datetime.now(timezone.utc), **fields)
+    )
+    return service
+
+
+TARGET_FIELDS = dict(title="Шлагбаум", description="Во двор", target_amount=1000, currency=CurrencyEnum.tjs)
+
+
+async def test_target_fund_photo_is_optional(fake_storage):
+    out = await _target_service().create(1, 2, TargetFundCreateIn(**TARGET_FIELDS))
+    assert out.image is None
+
+
+async def test_target_fund_photo_is_stored_and_signed(fake_storage):
+    service = _target_service()
+    key = await uploaded_key(user_id=2)
+    out = await service.create(1, 2, TargetFundCreateIn(**TARGET_FIELDS, image=key))
+
+    stored = service.repo.create.await_args.kwargs["image"]
+    assert stored.startswith("receipts/1/") and stored in fake_storage.objects
+    assert out.image and out.image != stored
+
+
+async def test_target_fund_photo_of_another_user_is_rejected(fake_storage):
+    key = await uploaded_key(user_id=9)
+    with pytest.raises(HTTPException) as error:
+        await _target_service().create(1, 2, TargetFundCreateIn(**TARGET_FIELDS, image=key))
+    assert error.value.status_code == 422
+
+
+async def test_target_fund_update_keeps_replaces_or_removes_photo(fake_storage):
+    service = _target_service()
+    target = SimpleNamespace(
+        id=1, fund_id=1, image="receipts/1/old.png", is_active=True, created_at=datetime.now(timezone.utc),
+        **{**TARGET_FIELDS, "currency": "tjs"}, category="landscaping",
+    )
+    service.repo.get = AsyncMock(return_value=target)
+
+    await service.update(1, 1, 2, TargetFundUpdateIn(title="Новый шлагбаум"))
+    assert target.image == "receipts/1/old.png"
+
+    await service.update(1, 1, 2, TargetFundUpdateIn(image=await uploaded_key(user_id=2)))
+    assert target.image.startswith("receipts/1/") and target.image != "receipts/1/old.png"
+
+    await service.update(1, 1, 2, TargetFundUpdateIn(image=None))
+    assert target.image is None
+
+
+async def test_target_fund_update_is_audited_with_old_and_new_values(fake_storage):
+    service = _target_service()
+    service.audit.add = Mock()
+    target = SimpleNamespace(
+        id=1, fund_id=1, image=None, is_active=True, created_at=datetime.now(timezone.utc),
+        **{**TARGET_FIELDS, "currency": "tjs"}, category="landscaping",
+    )
+    service.repo.get = AsyncMock(return_value=target)
+
+    # Те же значения — правки нет, журнал не засоряем
+    await service.update(1, 1, 2, TargetFundUpdateIn(title="Шлагбаум", target_amount=1000))
+    service.audit.add.assert_not_called()
+
+    await service.update(1, 1, 2, TargetFundUpdateIn(title="Шлагбаум", target_amount=1500))
+    details = service.audit.add.call_args.kwargs["details"]
+    assert service.audit.add.call_args.kwargs["action"] == "target_fund.update"
+    assert details["changes"] == {"target_amount": [1000, 1500]}

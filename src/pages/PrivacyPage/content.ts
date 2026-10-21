@@ -48,7 +48,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
         heading: 'Где хранятся данные и кто помогает нам работать',
         items: [
           'База данных и API работают на нашем сервере у хостинг-провайдера.',
-          'Cloudflare — защищает и ускоряет соединение с API (через него проходят запросы).',
+          'Cloudflare — защищает и ускоряет соединение с API (через него проходят запросы) и хранит фото чеков в закрытом хранилище R2: чек открывается только по временной ссылке, которую получают те, кому он виден в сервисе.',
           'GitHub Pages — хостинг сайта hashar.app.',
           'Google Fonts — загрузка шрифта; Google видит IP-адрес устройства при загрузке.',
           'Google Play — распространение Android-приложения.',
@@ -80,7 +80,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
         heading: 'Сколько храним',
         paragraphs: [
           'Данные аккаунта — пока аккаунт существует. Записи учёта фонда хранятся, пока существует фонд: на них держится отчётность перед другими участниками. ' +
-            'Резервные копии базы хранятся 14 дней, журналы сервера перезаписываются по мере заполнения.',
+            'Резервные копии базы хранятся 14 дней на сервере и в закрытом хранилище Cloudflare R2, журналы сервера перезаписываются по мере заполнения.',
         ],
       },
       {
@@ -157,7 +157,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
         heading: 'Маълумот дар куҷо нигоҳ дошта мешавад ва кӣ ба мо кӯмак мекунад',
         items: [
           'Пойгоҳи додаҳо ва API дар сервери мо назди провайдери хостинг кор мекунанд.',
-          'Cloudflare — пайвастро бо API ҳимоя ва тез мекунад (дархостҳо аз он мегузаранд).',
+          'Cloudflare — пайвастро бо API ҳимоя ва тез мекунад (дархостҳо аз он мегузаранд) ва аксҳои чекҳоро дар анбори пӯшидаи R2 нигоҳ медорад: чек танҳо бо истиноди муваққатӣ кушода мешавад, ки онро касоне мегиранд, ки чек дар хизмат ба онҳо намоён аст.',
           'GitHub Pages — хостинги сайти hashar.app.',
           'Google Fonts — боркунии шрифт; Google ҳангоми боркунӣ суроғаи IP-и дастгоҳро мебинад.',
           'Google Play — паҳн кардани барномаи Android.',
@@ -189,7 +189,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
         heading: 'Чӣ қадар нигоҳ медорем',
         paragraphs: [
           'Маълумоти аккаунт — то вақте ки аккаунт вуҷуд дорад. Сабтҳои баҳисобгирии фонд то вақте ки фонд вуҷуд дорад, нигоҳ дошта мешаванд: ҳисобот дар назди дигар аъзоён ба онҳо такя мекунад. ' +
-            'Нусхаҳои эҳтиётии пойгоҳ 14 рӯз нигоҳ дошта мешаванд, журналҳои сервер ҳангоми пур шудан аз нав навишта мешаванд.',
+            'Нусхаҳои эҳтиётии пойгоҳ 14 рӯз дар сервер ва дар анбори пӯшидаи Cloudflare R2 нигоҳ дошта мешаванд, журналҳои сервер ҳангоми пур шудан аз нав навишта мешаванд.',
         ],
       },
       {
@@ -266,7 +266,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
         heading: 'Where data is stored and who helps us run the service',
         items: [
           'The database and API run on our server at a hosting provider.',
-          'Cloudflare — protects and speeds up the connection to the API (requests pass through it).',
+          'Cloudflare — protects and speeds up the connection to the API (requests pass through it) and stores receipt photos in private R2 storage: a receipt opens only via a temporary link given to those who can see it in the service.',
           'GitHub Pages — hosting for the hashar.app website.',
           'Google Fonts — font loading; Google sees the device IP address when the font is loaded.',
           'Google Play — distribution of the Android app.',
@@ -298,7 +298,7 @@ export const PRIVACY: Record<AppLocale, LegalDocument> = {
         heading: 'Retention',
         paragraphs: [
           'Account data is kept while the account exists. Fund records are kept while the fund exists, because reporting to other members relies on them. ' +
-            'Database backups are kept for 14 days; server logs are overwritten as they fill up.',
+            'Database backups are kept for 14 days on the server and in private Cloudflare R2 storage; server logs are overwritten as they fill up.',
         ],
       },
       {

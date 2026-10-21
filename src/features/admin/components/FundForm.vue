@@ -1,31 +1,37 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import PhotosPicker from '@/shared/components/PhotosPicker.vue'
 import { formatMoney } from '@/shared/lib/format.ts'
-import { TARGET_FUND_CATEGORIES, type TargetFundCategory } from '@/features/targetFunds/types.ts'
+import { TARGET_FUND_CATEGORIES, type TargetFund, type TargetFundCategory } from '@/features/targetFunds/types.ts'
 import { type Currency } from '@/shared/lib/currency.ts'
-import type { TargetFundCreate } from '../types.ts'
+import type { TargetFundCreate, TargetFundUpdate } from '../types.ts'
 
 const PRESETS = [5000, 10000, 50000, 100000, 280000]
 
+/** Без initial — новый сбор (submit), с initial — правка существующего (update). */
 const props = defineProps<{
   currencies: Currency[]
   baseCurrency: Currency
   isSubmitting: boolean
+  initial?: TargetFund
 }>()
 
 const emit = defineEmits<{
   (e: 'submit', payload: TargetFundCreate): void
+  (e: 'update', payload: TargetFundUpdate): void
 }>()
 
 const { t } = useI18n()
 
 const form = reactive({
-  title: '',
-  category: 'landscaping' as TargetFundCategory,
-  target_amount: 10000 as number | null,
-  currency: props.baseCurrency as Currency,
-  description: '',
+  title: props.initial?.title ?? '',
+  category: props.initial?.category ?? ('landscaping' as TargetFundCategory),
+  target_amount: (props.initial?.target_amount ?? 10000) as number | null,
+  currency: props.initial?.currency ?? props.baseCurrency,
+  description: props.initial?.description ?? '',
+  // Необязательное фото «на что собираем»: ключ загрузки или, при правке, ссылка на прежнее фото
+  photos: props.initial?.image ? [props.initial.image] : ([] as string[]),
 })
 const error = ref('')
 
@@ -35,13 +41,19 @@ function handleSubmit() {
     return
   }
   error.value = ''
-  emit('submit', {
+  const fields = {
     title: form.title.trim(),
     category: form.category,
     target_amount: form.target_amount,
-    currency: form.currency,
     description: form.description.trim(),
-  })
+  }
+  if (!props.initial) {
+    emit('submit', { ...fields, currency: form.currency, image: form.photos[0] ?? null })
+    return
+  }
+  // Фото передаём, только если его сменили или убрали — прежнее остаётся без поля image
+  const image = form.photos[0] ?? null
+  emit('update', image === props.initial.image ? fields : { ...fields, image })
 }
 </script>
 
@@ -77,11 +89,14 @@ function handleSubmit() {
           type="button"
           class="chip"
           :class="{ 'chip--active': form.currency === currency }"
+          :disabled="!!initial && form.currency !== currency"
           @click="form.currency = currency"
         >
           {{ currency.toUpperCase() }}
         </button>
       </div>
+      <!-- Взносы уже зачтены в валюте сбора — сменить её нельзя -->
+      <p v-if="initial" class="hint">{{ $t('admin.funds.currencyLocked') }}</p>
     </div>
 
     <label>
@@ -106,9 +121,16 @@ function handleSubmit() {
       <textarea v-model="form.description" rows="4" :placeholder="$t('admin.funds.descriptionPlaceholder')" />
     </label>
 
+    <div>
+      <span class="label">{{ $t('admin.funds.photo') }}</span>
+      <PhotosPicker v-model="form.photos" :max="1" :hint="$t('admin.funds.photoHint')" />
+    </div>
+
     <p v-if="error" class="error">{{ error }}</p>
 
-    <button type="submit" class="submit-btn" :disabled="isSubmitting">🚀 {{ $t('admin.funds.save') }}</button>
+    <button type="submit" class="submit-btn" :disabled="isSubmitting">
+      {{ initial ? $t('admin.funds.saveChanges') : `🚀 ${$t('admin.funds.save')}` }}
+    </button>
   </form>
 </template>
 
@@ -150,6 +172,12 @@ textarea {
     background: $gradient;
     color: #fff;
   }
+}
+
+.hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: $text-muted;
 }
 
 .error {

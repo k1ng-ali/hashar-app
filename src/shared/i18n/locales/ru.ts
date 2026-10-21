@@ -447,6 +447,16 @@ export default {
     download: 'Скачать',
     tooLarge: 'Файл слишком большой',
     unsupported: 'Не удалось прочитать картинку — сохраните чек как JPG или PNG',
+    downloadFailed: 'Не удалось скачать чек',
+    uploading: 'Загружаем чек…',
+    uploadFailed: 'Не удалось загрузить чек — попробуйте ещё раз',
+  },
+
+  photos: {
+    add: 'Добавить фото',
+    uploading: 'Загрузка…',
+    remove: 'Убрать фото',
+    count: '{n} из {max}',
   },
 
   // ── History ──
@@ -470,6 +480,7 @@ export default {
 
   // ── Target funds ──
   targetFunds: {
+    photo: 'Фото сбора',
     title: 'Детали сбора',
     collected: 'Собрано',
     target: 'Цель: {amount}',
@@ -492,6 +503,21 @@ export default {
     closeFund: 'Завершить сбор',
     reopenFund: 'Возобновить сбор',
     toggled: 'Статус сбора обновлён',
+    edit: 'Изменить',
+    editTitle: 'Изменить сбор',
+    updated: 'Сбор обновлён',
+    changes: 'История изменений',
+    log: {
+      created: 'Сбор открыт',
+      close: 'Сбор завершён',
+      open: 'Сбор возобновлён',
+      title: 'Изменено название',
+      description: 'Изменено описание',
+      categoryChanged: 'Категория: {from} → {to}',
+      targetAmount: 'Цель: {from} → {to}',
+      imageReplaced: 'Обновлено фото',
+      imageRemoved: 'Фото убрано',
+    },
     deleted: 'Сбор удалён',
     notFound: 'Сбор не найден',
     emptyTitle: 'Сборов пока нет',
@@ -634,7 +660,8 @@ export default {
       generalBalance: 'Общий баланс фонда',
       description: 'Обоснование',
       descriptionPlaceholder: 'Количество, подрядчик, номер акта или договора…',
-      receipt: 'Чек или акт',
+      receipt: 'Чек и фото',
+      photosHint: 'Чек, фото проблемы, фото результата',
       save: 'Зафиксировать расход',
       added: 'Расход добавлен',
       deleted: 'Расход удалён',
@@ -653,7 +680,11 @@ export default {
       target: 'Нужная сумма, {currency}',
       description: 'Описание и смета',
       descriptionPlaceholder: 'Какие работы, кто подрядчик, есть ли решение собрания…',
+      photo: 'Фото (необязательно)',
+      photoHint: 'Покажите, на что собираете',
       save: 'Открыть сбор',
+      saveChanges: 'Сохранить изменения',
+      currencyLocked: 'Валюту сбора изменить нельзя — взносы уже приняты в ней',
       created: 'Сбор открыт 🚀',
       of: 'из {amount}',
       validation: 'Заполните название, сумму и описание',
@@ -865,6 +896,7 @@ export default {
   },
 
   // ── Platform admin ──
+
   platform: {
     title: 'Админ платформы',
     tabs: {

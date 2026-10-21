@@ -41,3 +41,14 @@ class AuditRepository(BaseRepository):
             .limit(limit)
         )
         return list(result.scalars().all())
+
+    async def list_for_entity(self, fund_id: int, entity: str, entity_id: int, limit: int = 50) -> list[AuditEvent]:
+        """История одной записи (например, правки сбора) — новые первыми."""
+        result = await self.db.execute(
+            select(AuditEvent)
+            .where(AuditEvent.fund_id == fund_id, AuditEvent.entity == entity, AuditEvent.entity_id == entity_id)
+            .options(selectinload(AuditEvent.actor))
+            .order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())

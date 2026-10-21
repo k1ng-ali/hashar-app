@@ -28,13 +28,34 @@ export async function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), REVOKE_DELAY_MS)
 }
 
-/** Сохраняет картинку из data URL (чек) как файл. В Android-приложении — через «Поделиться». */
-export async function downloadDataUrl(dataUrl: string, filename: string) {
-  if (Capacitor.isNativePlatform()) {
-    await shareNative(dataUrlToBase64(dataUrl), filename)
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/svg+xml': 'svg',
+}
+
+/**
+ * Сохраняет чек как файл: data URL (демо-чек) или подписанную ссылку на хранилище.
+ * Ссылку на другой домен атрибут download не скачивает — поэтому файл сначала загружается
+ * (нужен CORS бакета). В Android-приложении — через «Поделиться».
+ */
+export async function downloadImage(src: string, basename: string) {
+  if (src.startsWith('data:')) {
+    const type = src.slice(5, src.search(/[;,]/))
+    const filename = `${basename}.${IMAGE_EXTENSIONS[type] ?? 'jpg'}`
+    if (Capacitor.isNativePlatform()) {
+      await shareNative(dataUrlToBase64(src), filename)
+      return
+    }
+    clickDownloadLink(src, filename)
     return
   }
-  clickDownloadLink(dataUrl, filename)
+  // no-store: иначе браузер может отдать картинку из кеша <img> — без CORS-заголовков, и fetch упадёт
+  const response = await fetch(src, { cache: 'no-store' })
+  if (!response.ok) throw new Error(`Download failed: ${response.status}`)
+  const blob = await response.blob()
+  await downloadBlob(blob, `${basename}.${IMAGE_EXTENSIONS[blob.type] ?? 'jpg'}`)
 }
 
 function clickDownloadLink(href: string, filename: string) {
@@ -93,15 +114,16 @@ export function filenameFromDisposition(header: string | undefined, fallback: st
   return match?.[1] ?? fallback
 }
 
-// Чек сжимаем до разумного размера: текст на скриншоте читается, а БД не раздувается
+// Чек сжимаем до разумного размера: текст на скриншоте читается, файл — 100–400 КБ
 const RECEIPT_MAX_SIDE = 1600
-const RECEIPT_QUALITY = 0.82
+const RECEIPT_QUALITY = 0.8
 
 /**
- * Фото или скриншот чека → JPEG data URL не больше RECEIPT_MAX_SIDE по большей стороне.
+ * Фото или скриншот чека → WebP (или JPEG) не больше RECEIPT_MAX_SIDE по большей стороне.
+ * Перерисовка через canvas заодно убирает EXIF — с геопозицией и моделью телефона.
  * Бросает ошибку, если браузер не смог прочитать картинку (например, HEIC вне Safari).
  */
-export async function compressImage(file: File): Promise<string> {
+export async function compressImage(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
   const scale = Math.min(1, RECEIPT_MAX_SIDE / Math.max(bitmap.width, bitmap.height))
   const canvas = document.createElement('canvas')
@@ -115,5 +137,14 @@ export async function compressImage(file: File): Promise<string> {
   context.fillRect(0, 0, canvas.width, canvas.height)
   context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
   bitmap.close()
-  return canvas.toDataURL('image/jpeg', RECEIPT_QUALITY)
+
+  const webp = await canvasToBlob(canvas, 'image/webp')
+  // Браузер без кодировщика WebP (часть версий Safari) молча отдаёт PNG — тогда JPEG
+  return webp.type === 'image/webp' ? webp : canvasToBlob(canvas, 'image/jpeg')
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Canvas encoding failed'))), type, RECEIPT_QUALITY)
+  })
 }

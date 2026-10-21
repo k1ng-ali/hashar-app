@@ -78,6 +78,17 @@ export interface TargetFundCreate {
   target_amount: number
   currency: Currency
   category: TargetFundCategory
+  /** Ключ загруженного фото (POST /uploads/receipt) */
+  image: string | null
+}
+
+/** Правка сбора. Валюту менять нельзя; image: нет поля — фото прежнее, null — убрать, ключ — новое */
+export interface TargetFundUpdate {
+  title: string
+  description: string
+  target_amount: number
+  category: TargetFundCategory
+  image?: string | null
 }
 
 // ── Accounts ──
