@@ -1,5 +1,21 @@
 import { http } from '@/shared/api/http.ts'
-import type { FundAdmin, PlanApprove, PlanRequest } from './types.ts'
+import type {
+  AuditEventAdmin,
+  AuditFilters,
+  FundAdmin,
+  FundHealth,
+  FundHealthFilters,
+  Paged,
+  PlanApprove,
+  PlanRequest,
+  PlatformOverview,
+  PlatformPlans,
+  UserAdmin,
+  UserDetailAdmin,
+  UserFilter,
+} from './types.ts'
+
+export const PAGE_SIZE = 30
 
 export const listPlanRequests = (status?: PlanRequest['status']) =>
   http.get<PlanRequest[]>('/admin/plan-requests', { params: { status } })
@@ -11,3 +27,33 @@ export const rejectPlanRequest = (id: number, comment: string) =>
   http.post<PlanRequest>(`/admin/plan-requests/${id}/reject`, { admin_comment: comment })
 
 export const listFunds = () => http.get<FundAdmin[]>('/admin/funds', { params: { limit: 100 } })
+
+// ── Аналитика ─────────────────────────────────────────────────────────────
+
+export const getOverview = (months = 12) =>
+  http.get<PlatformOverview>('/admin/analytics/overview', { params: { months } })
+
+export const getPlansStats = (months = 12) =>
+  http.get<PlatformPlans>('/admin/analytics/plans', { params: { months } })
+
+export const listFundHealth = (filters: FundHealthFilters, skip = 0, limit = PAGE_SIZE) =>
+  http.get<Paged<FundHealth>>('/admin/analytics/funds', {
+    params: {
+      q: filters.q || undefined,
+      plan: filters.plan ?? undefined,
+      inactive: filters.inactive || undefined,
+      sort: filters.sort,
+      skip,
+      limit,
+    },
+  })
+
+export const listUsers = (q: string, filter: UserFilter, skip = 0, limit = PAGE_SIZE) =>
+  http.get<Paged<UserAdmin>>('/admin/users', { params: { q: q || undefined, filter, skip, limit } })
+
+export const getUser = (id: number) => http.get<UserDetailAdmin>(`/admin/users/${id}`)
+
+export const listAudit = (filters: AuditFilters, skip = 0, limit = PAGE_SIZE) =>
+  http.get<AuditEventAdmin[]>('/admin/audit', {
+    params: { fund_id: filters.fund_id ?? undefined, entity: filters.entity ?? undefined, skip, limit },
+  })

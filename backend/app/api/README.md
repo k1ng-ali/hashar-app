@@ -94,3 +94,9 @@
 | POST | `/admin/plan-requests/{id}/approve`, `/reject` | Включить тариф на N месяцев / отклонить; для individual обязательна `monthly_price`; остаток прежнего тарифа переносится в дни нового |
 | GET | `/admin/funds` | Все фонды с тарифами, председателем и администраторами (контакты) |
 | PUT | `/admin/funds/{id}/plan` | Установить тариф вручную |
+| GET | `/admin/analytics/overview?months=` | Сводка платформы: пользователи и фонды (всего, новые и активные за 30 дней), подтверждение личности, рост по месяцам, взносы и расходы по валютам |
+| GET | `/admin/analytics/plans?months=` | Распределение по действующим тарифам, выручка по месяцам (из `plan.approve` в журнале: цена × месяцы), MRR, заявки, тарифы, истекающие за 14 дней |
+| GET | `/admin/analytics/funds?q=&plan=&inactive=&sort=` | Фонды со счётчиками: участники, заявки, чеки (и ждущие дольше 3 дней), последняя активность; `sort` — created / members / activity / pending |
+| GET | `/admin/users?q=&filter=` | Пользователи (поиск по имени, телефону, email; `filter` — all / unverified / admins / deleted) — только просмотр |
+| GET | `/admin/users/{id}` | Пользователь: фонды и роли, активные сессии |
+| GET | `/admin/audit?fund_id=&actor_id=&entity=` | Журнал действий всей платформы с названием фонда |

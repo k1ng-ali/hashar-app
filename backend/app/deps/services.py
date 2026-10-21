@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.services.account_service import AccountService
+from app.services.analytics_service import AnalyticsService
 from app.services.announcement_service import AnnouncementService
 from app.services.audit_service import AuditService
 from app.services.auth_service import AuthService
@@ -23,6 +24,10 @@ async def get_auth_service(db: AsyncSession = Depends(get_db)) -> AuthService:
 
 async def get_audit_service(db: AsyncSession = Depends(get_db)) -> AuditService:
     return AuditService(db=db)
+
+
+async def get_analytics_service(db: AsyncSession = Depends(get_db)) -> AnalyticsService:
+    return AnalyticsService(db=db)
 
 
 async def get_fund_service(db: AsyncSession = Depends(get_db)) -> FundService:

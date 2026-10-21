@@ -28,6 +28,7 @@
 | `AuditService` | `list` | Журнал действий фонда; записи добавляют сами сервисы через `AuditRepository.add` в той же транзакции |
 | `AnnouncementService` | `list`, `create`, `toggle_like`, `add_comment`, `delete` | Закреп — совет; объявления о переводах не удаляются |
 | `ReportService` | `financial(currency)`, `debtors`, `export_*` | Отчёт по одному валютному счёту; CSV с колонкой валюты |
+| `AnalyticsService` | `overview(months)`, `plans(months)`, `funds`, `users`, `user`, `audit` | Аналитика админа платформы, только чтение; всё агрегируется в SQL (`AnalyticsRepository`), суммы разных валют не складываются; выручка — по снимкам `plan.approve` в журнале |
 
 ## Журнал и защита от ошибок
 

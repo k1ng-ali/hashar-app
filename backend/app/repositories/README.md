@@ -30,3 +30,4 @@
 | `expense_repo.py` | `get`, `list`, `sums_by_currency`, `sums_by_category(currency)`, `monthly_sums(currency)`, `create`, `exists_for_target_fund` — все без отменённых (`deleted_at`) |
 | `target_fund_repo.py` | `get(for_update)`, `list(active_only)`, `create`, `delete` |
 | `announcement_repo.py` | `get`, `list`, `create`, `delete`, `create_comment`, `likes_count`, `liked_ids`, `add_like`, `remove_like` |
+| `analytics_repo.py` | агрегаты платформы: `count_*`, `verification_stats`, `new_*_by_month`, `*_by_month` / `*_by_currency`, `plan_distribution`, `mrr`, `revenue_*`, `expiring_funds`, `list_fund_health`, `list_users`, `get_user_row`, `list_memberships`, `count_active_sessions`, `list_audit` |

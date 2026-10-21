@@ -29,6 +29,7 @@ from app.api.council.reports import router as council_reports_router
 
 # ─── Admin (админ платформы) ──────────────────────────────────────────────────
 from app.api.admin.plans import router as admin_plans_router
+from app.api.admin.analytics import router as admin_analytics_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -56,3 +57,4 @@ api_router.include_router(council_audit_router, prefix="/council")
 api_router.include_router(council_reports_router, prefix="/council")
 
 api_router.include_router(admin_plans_router, prefix="/admin")
+api_router.include_router(admin_analytics_router, prefix="/admin")

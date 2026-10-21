@@ -19,6 +19,7 @@
 | `fund.py` | `FundCreateIn`, `FundUpdateIn`, `RateOut`, `FundOut`, `FundPublicOut`, `MyFundOut`, `AccountOut`, `PlanInfoOut`, `FundSummaryOut`, `AccountSummaryOut`, `OperationOut` |
 | `member.py` | `FundContext`, `JoinIn`, `MemberOut`, `MemberOutCouncil`, `MemberStatusUpdateIn`, `MemberRoleUpdateIn`, `ChairmanTransferIn` |
 | `plan.py` | `PlanOptionOut`, `PlanRequestIn`, `PlanRequestOut`, `PlanApproveIn`, `PlanRejectIn`, `FundPlanSetIn`, `FundCouncilMemberOut`, `FundOutAdmin` |
+| `analytics.py` | `PlatformOverviewOut`, `PlatformPlansOut`, `FundHealthListOut`, `UserListOutAdmin`, `UserDetailOutAdmin`, `AuditEventOutAdmin` — аналитика админа платформы |
 | `account.py` | `AccountCreateIn`, `RequisiteCreateIn`, `RequisiteOut`, `TransferCreateIn`, `TransferOut` |
 | `balance.py` | `ResidentBalanceOut` |
 | `contribution.py` | `ContributionCreateIn`, `ContributionApproveIn`, `ContributionRejectIn`, `ContributionOut`, `CurrencyTotalOut`, `ContributionHistoryOut` |
