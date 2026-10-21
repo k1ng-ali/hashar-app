@@ -38,8 +38,19 @@ class Settings(BaseSettings):
     PAYOMCHI_API_KEY: str = ""
     PAYOMCHI_SENDER_ID: str = ""
 
-    # Максимальный размер тела запроса (чеки приходят data URL внутри JSON)
+    # Максимальный размер тела запроса. Чеки загружаются файлом (/uploads/receipt), но старые
+    # версии приложения ещё присылают их data URL внутри JSON — до 6 штук в расходе
     MAX_BODY_BYTES: int = 25 * 1024 * 1024
+
+    # Хранилище чеков по S3 API: в проде Cloudflare R2 (https://<account_id>.r2.cloudflarestorage.com),
+    # локально MinIO из docker-compose. Бакет приватный — чеки отдаются ссылками на S3_URL_TTL секунд.
+    # Пусто в DEV_MODE — загрузка чеков выключена, работают только демо-чеки
+    S3_ENDPOINT_URL: str = ""
+    S3_ACCESS_KEY_ID: str = ""
+    S3_SECRET_ACCESS_KEY: str = ""
+    S3_BUCKET: str = ""
+    S3_REGION: str = "auto"
+    S3_URL_TTL: int = 15 * 60
 
     DB_HOST: str
     DB_PORT: int
@@ -68,7 +79,16 @@ class Settings(BaseSettings):
                     f"CORS_ORIGINS must list https origins in production (got {self.CORS_ORIGINS}), "
                     "e.g. CORS_ORIGINS=https://hashar.app"
                 )
+        # Без хранилища в проде нельзя ни прикрепить, ни показать чек
+        if not self.DEV_MODE and not self.storage_configured:
+            raise ValueError(
+                "S3_ENDPOINT_URL, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY and S3_BUCKET are required in production"
+            )
         return self
+
+    @property
+    def storage_configured(self) -> bool:
+        return all((self.S3_ENDPOINT_URL, self.S3_ACCESS_KEY_ID, self.S3_SECRET_ACCESS_KEY, self.S3_BUCKET))
 
     @property
     def get_db_url(self) -> str:

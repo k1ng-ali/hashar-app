@@ -8,3 +8,6 @@ asyncpg==0.32.0
 alembic==1.20.0
 python-jose[cryptography]==3.5.0
 bcrypt==4.0.1
+# Чеки в Cloudflare R2 по S3 API и их загрузка файлом (multipart)
+boto3==1.43.116
+python-multipart==0.0.32

@@ -4,7 +4,7 @@
 - category: monthly_fee / target_fund
 - status: pending → approved | rejected (решение принимает совет дома)
 - billing_period: месяц ежемесячного взноса (YYYY-MM), для целевых — null
-- receipt_image: data URL чека (картинка или svg)
+- receipt_image: ключ чека в хранилище (receipts/...), демо-чек — svg data URL
 - user_unit: снимок помещения участника на момент взноса
 - currency: валюта счёта, на который переведены деньги (из выбранного реквизита)
 - requisite_label: снимок реквизита («банк · номер · получатель») — реквизит могут удалить

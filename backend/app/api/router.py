@@ -13,6 +13,7 @@ from app.api.platform.expenses import router as platform_expenses_router
 from app.api.platform.announcements import router as platform_announcements_router
 from app.api.platform.reports import router as platform_reports_router
 from app.api.platform.emergency_contacts import router as platform_emergency_router
+from app.api.platform.uploads import router as platform_uploads_router
 
 # ─── Council (совет фонда) ────────────────────────────────────────────────────
 from app.api.council.members import router as council_members_router
@@ -41,6 +42,7 @@ api_router.include_router(platform_expenses_router)
 api_router.include_router(platform_announcements_router)
 api_router.include_router(platform_reports_router)
 api_router.include_router(platform_emergency_router)
+api_router.include_router(platform_uploads_router)
 
 api_router.include_router(council_members_router, prefix="/council")
 api_router.include_router(council_contributions_router, prefix="/council")

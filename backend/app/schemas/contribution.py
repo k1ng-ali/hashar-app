@@ -8,7 +8,7 @@ from app.enums import ContributionCategoryEnum, ContributionStatusEnum, Currency
 
 PERIOD_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
 
-# Чек: только картинка data URL ограниченного размера (core/receipts.py)
+# Чек: ключ загрузки (POST /uploads/receipt) или, от старых версий приложения, картинка data URL (core/receipts.py)
 ReceiptImage = Annotated[str, Field(min_length=10, max_length=MAX_RECEIPT_CHARS), AfterValidator(validate_receipt)]
 
 
@@ -57,7 +57,7 @@ class ContributionOut(BaseModel):
     target_fund_id: int | None = None
     target_fund_title: str | None = None
     billing_period: str | None = None
-    # None — чек чужой: участник видит только свои чеки, совет — все
+    # Подписанная ссылка на чек (живёт S3_URL_TTL). None — чек чужой: участник видит только свои, совет — все
     receipt_image: str | None = None
     status: ContributionStatusEnum
     comment_user: str | None = None

@@ -4,6 +4,7 @@ from typing import Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.finance import current_period, rate_at, shift_period
+from app.core.receipts import receipt_url
 from app.enums import ContributionCategoryEnum, MemberStatusEnum
 from app.repositories.contribution_repo import ContributionRepository
 from app.repositories.expense_repo import ExpenseRepository
@@ -92,7 +93,7 @@ class DashboardService:
                         currency=c.currency,
                         status=c.status,
                         # Чек взноса — только владельцу и совету; акты расходов фонда видят все
-                        receipt_image=c.receipt_image if ctx.can_see_receipt(c.user_id) else None,
+                        receipt_image=receipt_url(c.receipt_image) if ctx.can_see_receipt(c.user_id) else None,
                         created_at=c.created_at,
                     )
                 )
@@ -108,7 +109,7 @@ class DashboardService:
                         subtitle=e.created_by.full_name if e.created_by else "",
                         amount=e.amount,
                         currency=e.currency,
-                        receipt_image=e.receipt_images[0] if e.receipt_images else None,
+                        receipt_image=receipt_url(e.receipt_images[0]) if e.receipt_images else None,
                         created_at=e.created_at,
                     )
                 )

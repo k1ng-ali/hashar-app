@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.receipts import receipt_url, store_receipt
 from app.enums import CurrencyEnum, ExpenseCategoryEnum
 from app.models.expense import Expense
 from app.repositories.audit_repo import AuditRepository
@@ -23,7 +24,7 @@ def expense_out(expense: Expense) -> ExpenseOut:
         amount=expense.amount,
         currency=expense.currency,
         description=expense.description,
-        receipt_images=list(expense.receipt_images or []),
+        receipt_images=[url for url in map(receipt_url, expense.receipt_images or []) if url],
         target_fund_id=expense.target_fund_id,
         target_fund_title=expense.target_fund.title if expense.target_fund else None,
         created_by_name=expense.created_by.full_name if expense.created_by else None,
@@ -81,7 +82,7 @@ class ExpenseService:
             amount=payload.amount,
             currency=payload.currency.value,
             description=payload.description,
-            receipt_images=payload.receipt_images,
+            receipt_images=[await store_receipt(image, fund_id, user_id) for image in payload.receipt_images],
             target_fund_id=payload.target_fund_id,
             created_by_id=user_id,
         )

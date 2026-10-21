@@ -59,6 +59,7 @@
 | GET | `/accounts`, `/requisites` | Активные счета и реквизиты |
 | GET | `/contributions/my`, `/contributions/my/balance` | Мои взносы и сальдо (в базовой валюте) |
 | POST | `/contributions/` | Взнос: `requisite_id` задаёт валюту; `credited_amount` — если валюта не совпадает с валютой назначения |
+| POST | `/uploads/receipt` | Загрузка чека файлом (multipart `file`, PNG / JPEG / WebP до 1,5 МБ) → `{key}`; ключ передаётся в `receipt_image` взноса или `receipt_images` расхода |
 | GET | `/target-funds/`, `/target-funds/{id}` | Целевые сборы |
 | GET | `/expenses/?category=&currency=`, `/expenses/{id}` | Лента расходов и карточка расхода |
 | GET / POST / DELETE | `/announcements/...` | Доска объявлений, лайки, комментарии |

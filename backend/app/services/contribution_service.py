@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.finance import current_period
+from app.core.receipts import receipt_url, store_receipt
 from app.enums import ContributionCategoryEnum, ContributionStatusEnum
 from app.models.contribution import Contribution
 from app.repositories.audit_repo import AuditRepository
@@ -37,7 +38,7 @@ def contribution_out(contribution: Contribution, show_receipt: bool = True) -> C
         target_fund_id=contribution.target_fund_id,
         target_fund_title=contribution.target_fund.title if contribution.target_fund else None,
         billing_period=contribution.billing_period,
-        receipt_image=contribution.receipt_image if show_receipt else None,
+        receipt_image=receipt_url(contribution.receipt_image) if show_receipt else None,
         status=contribution.status,
         comment_user=contribution.comment_user,
         comment_admin=contribution.comment_admin,
@@ -116,7 +117,7 @@ class ContributionService:
             category=payload.category.value,
             target_fund_id=target_fund_id,
             billing_period=billing_period,
-            receipt_image=payload.receipt_image,
+            receipt_image=await store_receipt(payload.receipt_image, fund_id, user_id),
             comment_user=payload.comment_user,
         )
         await self.db.commit()
