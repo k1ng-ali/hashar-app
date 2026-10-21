@@ -7,7 +7,7 @@ import { useFundsStore } from '@/features/funds/store.ts'
 import type { FundPublic, JoinPayload } from '@/features/funds/types.ts'
 import CardSkeleton from '@/shared/components/CardSkeleton.vue'
 import EmptyState from '@/shared/components/EmptyState.vue'
-import { errorDetail } from '@/shared/api/http.ts'
+import { errorMessage } from '@/shared/api/errors.ts'
 import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 import { useNavStore } from '@/shared/stores/useNavStore.ts'
 
@@ -47,7 +47,7 @@ async function handleSubmit(payload: JoinPayload) {
     headerStore.showNotification(t('funds.join.sent'))
     await router.replace('/funds')
   } catch (error) {
-    headerStore.showNotification(errorDetail(error) ?? t('errors.generic'), 'error')
+    headerStore.showNotification(errorMessage(error), 'error')
   }
 }
 

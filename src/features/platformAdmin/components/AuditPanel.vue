@@ -6,7 +6,18 @@ import { formatDateTime } from '@/shared/lib/format.ts'
 import type { AuditEventAdmin, AuditFilters } from '../types.ts'
 
 // Типы записей журнала (AuditEvent.entity на бэкенде)
-const ENTITIES = ['fund', 'member', 'contribution', 'expense', 'target_fund', 'account', 'requisite', 'transfer', 'user']
+const ENTITIES = [
+  'fund',
+  'member',
+  'contribution',
+  'expense',
+  'target_fund',
+  'announcement',
+  'account',
+  'requisite',
+  'transfer',
+  'user',
+]
 // Сколько полей снимка показывать в карточке
 const MAX_DETAILS = 6
 

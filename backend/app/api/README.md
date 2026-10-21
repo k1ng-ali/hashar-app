@@ -85,6 +85,7 @@
 | GET / POST ⭐ | `/plan-requests/` | Заявки на тариф и продление (обязателен `contact`) |
 | GET | `/audit/` | Журнал действий совета и админа платформы |
 | GET | `/notices/` | Уведомления от платформы: сообщения админа, решения по заявкам на тариф, окончание тарифа; `unread` — непрочитанные |
+| PUT | `/announcements/{id}/pin` | Закрепить / открепить объявление (`{"is_pinned": bool}`), пишется в журнал |
 | POST | `/notices/read` | Отметить уведомления прочитанными (по `fund_members.notices_read_at`) |
 | GET | `/reports/export/contributions`, `/expenses`, `/debtors` | CSV-реестры (имена, помещения, телефоны) |
 

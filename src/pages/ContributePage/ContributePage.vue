@@ -10,7 +10,7 @@ import { useFundsStore } from '@/features/funds/store.ts'
 import PlanStatusBanner from '@/features/notices/components/PlanStatusBanner.vue'
 import { useTargetFundsStore } from '@/features/targetFunds/store.ts'
 import CardSkeleton from '@/shared/components/CardSkeleton.vue'
-import { errorDetail } from '@/shared/api/http.ts'
+import { errorMessage } from '@/shared/api/errors.ts'
 import { copyText } from '@/shared/lib/browser.ts'
 import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 import { useNavStore } from '@/shared/stores/useNavStore.ts'
@@ -70,7 +70,7 @@ async function handleSubmit() {
     void dashboardStore.fetchSummary()
     await router.replace('/finance/my')
   } catch (error) {
-    headerStore.showNotification(errorDetail(error) ?? t('contribution.error'), 'error', 3000)
+    headerStore.showNotification(errorMessage(error, 'contribution.error'), 'error', 3000)
   }
 }
 </script>

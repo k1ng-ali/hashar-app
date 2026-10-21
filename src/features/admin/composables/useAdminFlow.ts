@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 import type { Contribution } from '@/features/contributions/types.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
 import type { FundRole, MemberStatus, Plan } from '@/features/funds/types.ts'
-import { errorDetail } from '@/shared/api/http.ts'
+import { errorMessage } from '@/shared/api/errors.ts'
 import { copyText } from '@/shared/lib/browser.ts'
 import type { Currency } from '@/shared/lib/currency.ts'
 import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
@@ -81,25 +81,6 @@ export function useAdminFlow() {
       headerStore.showNotification(errorMessage(error), 'error', 3500)
       return false
     }
-  }
-
-  // Известные ошибки бэкенда — понятным текстом
-  function errorMessage(error: unknown): string {
-    const detail = errorDetail(error)
-    const known: Record<string, string> = {
-      'Member limit reached for the plan': 'admin.errors.memberLimit',
-      'Account balance must be zero': 'admin.errors.balanceNotZero',
-      'Cannot disable the base currency': 'admin.errors.baseCurrency',
-      'Currency account is not enabled': 'admin.errors.currencyDisabled',
-      'Plan request is already pending': 'plans.pending',
-      'Insufficient funds': 'overdraft.rejected',
-      'Absence decision required': 'absence.chooseFirst',
-      'Financial setup is locked': 'admin.errors.setupLocked',
-      'Cannot approve your own contribution': 'admin.errors.ownContribution',
-      'Target fund has operations, close it': 'admin.errors.targetFundHasOperations',
-      'Request body is too large': 'receipt.tooLarge',
-    }
-    return detail && known[detail] ? t(known[detail]) : (detail ?? t('errors.generic'))
   }
 
   function confirmDelete() {

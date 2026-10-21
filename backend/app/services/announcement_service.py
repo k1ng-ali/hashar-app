@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.enums import AnnouncementCategoryEnum
 from app.models.announcement import Announcement, AnnouncementComment
 from app.repositories.announcement_repo import AnnouncementRepository
+from app.repositories.audit_repo import AuditRepository
 from app.repositories.member_repo import MemberRepository
 from app.schemas.announcement import AnnouncementCreateIn, AnnouncementOut, CommentOut
 from app.schemas.member import FundContext
@@ -30,6 +31,7 @@ class AnnouncementService:
         self.db = db
         self.repo = AnnouncementRepository(db=db)
         self.member_repo = MemberRepository(db=db)
+        self.audit = AuditRepository(db=db)
 
     async def list(
         self,
@@ -85,6 +87,22 @@ class AnnouncementService:
         )
         await self.db.commit()
         return _comment_out(comment)
+
+    async def set_pinned(self, ctx: FundContext, announcement_id: int, is_pinned: bool) -> AnnouncementOut:
+        """Закрепить или открепить — только совет (роутер council)."""
+        announcement = await self._get_or_404(ctx.fund_id, announcement_id)
+        if announcement.is_pinned != is_pinned:
+            announcement.is_pinned = is_pinned
+            self.audit.add(
+                fund_id=ctx.fund_id,
+                actor_id=ctx.user_id,
+                action="announcement.pin" if is_pinned else "announcement.unpin",
+                entity="announcement",
+                entity_id=announcement.id,
+                details={"title": announcement.title},
+            )
+            await self.db.commit()
+        return (await self._out_many(ctx.fund_id, [announcement], user_id=ctx.user_id))[0]
 
     async def delete(self, ctx: FundContext, announcement_id: int) -> None:
         announcement = await self._get_or_404(ctx.fund_id, announcement_id)

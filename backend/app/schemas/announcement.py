@@ -19,6 +19,10 @@ class AnnouncementCreateIn(BaseModel):
     is_pinned: bool = False
 
 
+class AnnouncementPinIn(BaseModel):
+    is_pinned: bool
+
+
 class CommentCreateIn(BaseModel):
     text: str = Field(min_length=1, max_length=2000)
 

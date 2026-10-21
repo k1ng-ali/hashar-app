@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { LuMessageCircle, LuPin, LuSend, LuThumbsUp, LuTrash2 } from '@kalimahapps/vue-icons/lu'
+import { LuMessageCircle, LuPin, LuPinOff, LuSend, LuThumbsUp, LuTrash2 } from '@kalimahapps/vue-icons/lu'
 import { formatDateTime, formatMoney } from '@/shared/lib/format.ts'
 import type { Announcement } from '../types.ts'
 
 defineProps<{
   announcement: Announcement
   canDelete: boolean
+  /** Закрепить / открепить может совет; объявления о переводах не закрепляются вручную. */
+  canPin: boolean
   isSubmitting: boolean
 }>()
 
@@ -14,6 +16,7 @@ const emit = defineEmits<{
   (e: 'like', id: number): void
   (e: 'comment', id: number, text: string): void
   (e: 'delete', id: number): void
+  (e: 'pin', id: number, isPinned: boolean): void
 }>()
 
 const isCommentsOpen = ref(false)
@@ -38,6 +41,16 @@ function sendComment(id: number) {
       </div>
       <div class="top-right">
         <span class="date">{{ formatDateTime(announcement.created_at) }}</span>
+        <button
+          v-if="canPin"
+          class="icon-btn"
+          :aria-label="announcement.is_pinned ? $t('announcements.unpin') : $t('announcements.pin')"
+          :title="announcement.is_pinned ? $t('announcements.unpin') : $t('announcements.pin')"
+          @click="emit('pin', announcement.id, !announcement.is_pinned)"
+        >
+          <LuPinOff v-if="announcement.is_pinned" />
+          <LuPin v-else />
+        </button>
         <button
           v-if="canDelete"
           class="icon-btn icon-btn--danger"

@@ -21,6 +21,10 @@ export const toggleLike = (fundId: number, id: number) => http.post<Announcement
 export const addComment = (fundId: number, id: number, text: string) =>
   http.post<AnnouncementComment>(`${base(fundId)}/${id}/comments`, { text })
 
+// Закрепить / открепить — только совет
+export const setPinned = (fundId: number, id: number, isPinned: boolean) =>
+  http.put<Announcement>(`/council/funds/${fundId}/announcements/${id}/pin`, { is_pinned: isPinned })
+
 export const deleteAnnouncement = (fundId: number, id: number) => http.delete<void>(`${base(fundId)}/${id}`)
 
 // ── Экстренные телефоны: смотрят все, ведёт совет ──

@@ -67,6 +67,12 @@ export const useAnnouncementsStore = defineStore('announcements', () => {
     }
   }
 
+  async function setPinned(id: number, isPinned: boolean) {
+    await api.setPinned(funds.fundId, id, isPinned)
+    // Закреплённые идут сверху — порядок меняется, перечитываем ленту
+    await fetchItems()
+  }
+
   async function remove(id: number) {
     await api.deleteAnnouncement(funds.fundId, id)
     items.value = items.value.filter((item) => item.id !== id)
@@ -107,6 +113,7 @@ export const useAnnouncementsStore = defineStore('announcements', () => {
     create,
     like,
     comment,
+    setPinned,
     remove,
     fetchContacts,
     addContact,

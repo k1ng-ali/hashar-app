@@ -528,6 +528,10 @@ export default {
 
   // ── Announcements ──
   announcements: {
+    pin: 'Часпондан',
+    unpin: 'Аз часп кандан',
+    pinnedDone: 'Эълон часпонда шуд 📌',
+    unpinnedDone: 'Эълон аз часп канда шуд',
     title: 'Тахтаи эълонҳо',
     subtitle: 'Хабарҳои шӯро, ҷаласаҳо, корҳои садамавӣ ва ҳаракат дар ҳисобҳо',
     create: 'Сохтан',
@@ -1078,6 +1082,7 @@ export default {
       system: 'Система',
       empty: 'Сабт нест',
       entities: {
+        announcement: 'Эълонҳо',
         fund: 'Хазина',
         member: 'Аъзоён',
         contribution: 'Пардохтҳо',
@@ -1089,6 +1094,10 @@ export default {
         user: 'Аккаунтҳо',
       },
       actions: {
+        announcement: {
+          pin: 'Эълон часпонда шуд',
+          unpin: 'Эълон аз часп канда шуд',
+        },
         notice: {
           send: 'Огоҳинома ба шӯрои хазина',
         },
@@ -1143,6 +1152,34 @@ export default {
         },
       },
     },
+  },
+
+  // ── Ошибки сервера понятным текстом (shared/api/errors.ts) ──
+  apiErrors: {
+    noRights: 'Барои ин амал ҳуқуқ нокифоя аст',
+    notMember: 'Шумо аъзои ин хазина нестед',
+    chairmanOnly: 'Инро танҳо раис карда метавонад',
+    fundNotFound: 'Хазина ёфт нашуд',
+    notFound: 'Сабт ёфт нашуд — шояд аллакай нест карда шудааст',
+    requisiteNotFound: 'Реквизит ёфт нашуд ё хомӯш аст — дигарашро интихоб кунед',
+    alreadyMember: 'Шумо аллакай аъзои ин хазина ҳастед',
+    requestPending: 'Дархост аллакай фиристода шуда, қарори шӯроро интизор аст',
+    blocked: 'Шумо дар ин хазина блок шудаед',
+    transferChairman: 'Аввал ҳуқуқи раисро ба аъзои дигар супоред',
+    alreadyReviewed: 'Қарор аллакай қабул шудааст — саҳифаро нав кунед',
+    memberInactive: 'Аъзо фаъол нест',
+    cannotChangeYourself: 'Нақш ё ҳолати худро тағйир додан мумкин нест',
+    cannotChangeChairman: 'Нақши раис танҳо бо супоридани ҳуқуқ иваз мешавад',
+    alreadyChairman: 'Ин аъзо аллакай раис аст',
+    targetFundClosed: 'Ҷамъоварӣ баста аст — пардохт дигар қабул намешавад',
+    currencyMismatch: 'Асъор бояд бо асъори ҷамъоварӣ мувофиқ бошад',
+    creditedRequired: 'Нишон диҳед, ки чӣ қадар ба асъори таъинот ҳисоб шавад',
+    financeAnnouncement: 'Эълонҳо дар бораи ҳаракати ҳисобҳо нест карда намешаванд',
+    tooManyContacts: 'Тамосҳо аз ҳад зиёданд',
+    receiptFormat: 'Чек бояд тасвири PNG, JPEG ё WebP бошад',
+    receiptExpired: 'Боркунии чек кӯҳна шуд — онро аз нав замима кунед',
+    tooManyUploads: 'Боркунӣ аз ҳад зиёд, баъдтар кӯшиш кунед',
+    priceRequired: 'Нархи моҳонаи мувофиқашударо нишон диҳед',
   },
 
   // ── Errors ──

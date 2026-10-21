@@ -26,7 +26,7 @@
 | `ExpenseService` | `list(category, currency)`, `get`, `create`, `delete` | Расход со счёта включённой валюты; сверх остатка — 409, если не подтверждён `allow_overdraft` (`AccountService.ensure_sufficient`, с блокировкой строки фонда); `delete` — отмена (`deleted_at`), запись остаётся |
 | `TargetFundService` | `list`, `get_detail(ctx)`, `create`, `update`, `toggle`, `delete` | У сбора своя валюта; удаляется только пустой сбор, сбор с деньгами — закрывается |
 | `AuditService` | `list` | Журнал действий фонда; записи добавляют сами сервисы через `AuditRepository.add` в той же транзакции |
-| `AnnouncementService` | `list`, `create`, `toggle_like`, `add_comment`, `delete` | Закреп — совет; объявления о переводах не удаляются |
+| `AnnouncementService` | `list`, `create`, `toggle_like`, `add_comment`, `set_pinned`, `delete` | Закреп и открепление — совет (пишется в журнал); объявления о переводах не удаляются |
 | `ReportService` | `financial(currency)`, `debtors`, `export_*` | Отчёт по одному валютному счёту; CSV с колонкой валюты |
 | `AnalyticsService` | `overview(months)`, `plans(months)`, `funds`, `users`, `user`, `audit` | Аналитика админа платформы, только чтение; всё агрегируется в SQL (`AnalyticsRepository`), суммы разных валют не складываются; выручка — по снимкам `plan.approve` в журнале |
 | `NoticeService` | `list`, `mark_read`, `send`, `list_admin`, `check_plan_expiry` | Уведомления совету от платформы. `check_plan_expiry` — фоновая задача (`app/jobs.py`, раз в `NOTICE_CHECK_INTERVAL`): за 3 дня до окончания тарифа, при окончании и при блокировке взносов; повторы отсекает `dedupe_key` |

@@ -15,7 +15,7 @@ import {
 } from '@/features/announcements/types.ts'
 import { useAuthStore } from '@/features/auth/store.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
-import { errorDetail } from '@/shared/api/http.ts'
+import { errorMessage } from '@/shared/api/errors.ts'
 import BottomSheet from '@/shared/components/BottomSheet.vue'
 import CardSkeleton from '@/shared/components/CardSkeleton.vue'
 import EmptyState from '@/shared/components/EmptyState.vue'
@@ -89,7 +89,7 @@ async function handleAddContact(payload: EmergencyContactCreate) {
     headerStore.showNotification(t('emergency.added'))
   } catch (error) {
     // Бэкенд мог отклонить номер — показываем его причину
-    headerStore.showNotification(errorDetail(error) ?? t('errors.generic'), 'error')
+    headerStore.showNotification(errorMessage(error), 'error')
   }
 }
 
@@ -99,6 +99,15 @@ async function handleDeleteContact(id: number) {
     await store.removeContact(id)
   } catch {
     headerStore.showNotification(t('errors.generic'), 'error')
+  }
+}
+
+async function handlePin(id: number, isPinned: boolean) {
+  try {
+    await store.setPinned(id, isPinned)
+    headerStore.showNotification(isPinned ? t('announcements.pinnedDone') : t('announcements.unpinnedDone'))
+  } catch (error) {
+    headerStore.showNotification(errorMessage(error), 'error')
   }
 }
 
@@ -143,10 +152,12 @@ async function handleDelete(id: number) {
         :key="announcement.id"
         :announcement="announcement"
         :can-delete="canDelete(announcement)"
+        :can-pin="fundsStore.permissions.canPinAnnouncements && !announcement.transfer"
         :is-submitting="store.isSubmitting"
         @like="store.like"
         @comment="handleComment"
         @delete="handleDelete"
+        @pin="handlePin"
       />
     </div>
 

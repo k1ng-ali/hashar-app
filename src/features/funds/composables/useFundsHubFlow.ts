@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { errorDetail } from '@/shared/api/http.ts'
+import { errorMessage } from '@/shared/api/errors.ts'
 import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 import { useNavStore } from '@/shared/stores/useNavStore.ts'
 import { useFundsStore } from '../store.ts'
@@ -69,7 +69,7 @@ export function useFundsHubFlow() {
       await store.leave(fund.id)
       headerStore.showNotification(t('absence.youLeft'))
     } catch (error) {
-      headerStore.showNotification(errorDetail(error) ?? t('errors.generic'), 'error')
+      headerStore.showNotification(errorMessage(error), 'error')
     }
   }
 
@@ -86,7 +86,7 @@ export function useFundsHubFlow() {
       headerStore.showNotification(t('funds.create.success'))
       await router.push('/')
     } catch (error) {
-      headerStore.showNotification(errorDetail(error) ?? t('errors.generic'), 'error')
+      headerStore.showNotification(errorMessage(error), 'error')
     }
   }
 
@@ -99,7 +99,7 @@ export function useFundsHubFlow() {
       headerStore.showNotification(t('funds.join.sent'))
       void store.search(query.value)
     } catch (error) {
-      headerStore.showNotification(errorDetail(error) ?? t('errors.generic'), 'error')
+      headerStore.showNotification(errorMessage(error), 'error')
     }
   }
 

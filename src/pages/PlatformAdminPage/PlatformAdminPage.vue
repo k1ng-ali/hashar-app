@@ -25,7 +25,7 @@ import type {
 import CardSkeleton from '@/shared/components/CardSkeleton.vue'
 import EmptyState from '@/shared/components/EmptyState.vue'
 import PillTabs from '@/shared/components/PillTabs.vue'
-import { errorDetail } from '@/shared/api/http.ts'
+import { errorMessage } from '@/shared/api/errors.ts'
 import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 import { useNavStore } from '@/shared/stores/useNavStore.ts'
 
@@ -78,7 +78,7 @@ async function safely(action: () => Promise<unknown>) {
   try {
     await action()
   } catch (error) {
-    headerStore.showNotification(errorDetail(error) ?? t('errors.loadFailed'), 'error')
+    headerStore.showNotification(errorMessage(error, 'errors.loadFailed'), 'error')
   }
 }
 
@@ -89,7 +89,7 @@ async function handleApprove(request: PlanRequest, payload: PlanApprove) {
     headerStore.showNotification(t('platform.approved'))
     void safely(analytics.fetchOverview)
   } catch (error) {
-    headerStore.showNotification(errorDetail(error) ?? t('errors.generic'), 'error')
+    headerStore.showNotification(errorMessage(error), 'error')
   }
 }
 
@@ -99,7 +99,7 @@ async function handleReject(request: PlanRequest, comment: string) {
     headerStore.showNotification(t('platform.rejected'))
     void safely(analytics.fetchOverview)
   } catch (error) {
-    headerStore.showNotification(errorDetail(error) ?? t('errors.generic'), 'error')
+    headerStore.showNotification(errorMessage(error), 'error')
   }
 }
 
@@ -143,7 +143,7 @@ async function sendNotice(text: string) {
     headerStore.showNotification(t('platform.notify.done'))
     notifyFund.value = null
   } catch (error) {
-    headerStore.showNotification(errorDetail(error) ?? t('errors.generic'), 'error')
+    headerStore.showNotification(errorMessage(error), 'error')
   } finally {
     isSending.value = false
   }

@@ -528,6 +528,10 @@ export default {
 
   // ── Announcements ──
   announcements: {
+    pin: 'Pin',
+    unpin: 'Unpin',
+    pinnedDone: 'Announcement pinned 📌',
+    unpinnedDone: 'Announcement unpinned',
     title: 'Notice board',
     subtitle: 'Council news, meetings, emergency works and account movements',
     create: 'Create',
@@ -1078,6 +1082,7 @@ export default {
       system: 'System',
       empty: 'No entries',
       entities: {
+        announcement: 'Announcements',
         fund: 'Fund',
         member: 'Members',
         contribution: 'Contributions',
@@ -1089,6 +1094,10 @@ export default {
         user: 'User accounts',
       },
       actions: {
+        announcement: {
+          pin: 'Announcement pinned',
+          unpin: 'Announcement unpinned',
+        },
         notice: {
           send: 'Notice sent to fund council',
         },
@@ -1143,6 +1152,34 @@ export default {
         },
       },
     },
+  },
+
+  // ── Ошибки сервера понятным текстом (shared/api/errors.ts) ──
+  apiErrors: {
+    noRights: 'You do not have rights for this action',
+    notMember: 'You are not a member of this fund',
+    chairmanOnly: 'Only the chairman can do this',
+    fundNotFound: 'Fund not found',
+    notFound: 'Not found — it may have been deleted',
+    requisiteNotFound: 'Requisite not found or disabled — choose another one',
+    alreadyMember: 'You are already a member of this fund',
+    requestPending: 'Your request has already been sent and awaits the council',
+    blocked: 'You are blocked in this fund',
+    transferChairman: 'Transfer the chairman rights to another member first',
+    alreadyReviewed: 'A decision has already been made — refresh the page',
+    memberInactive: 'The member is not active',
+    cannotChangeYourself: 'You cannot change your own role or status',
+    cannotChangeChairman: 'The chairman role changes only by transferring rights',
+    alreadyChairman: 'This member is already the chairman',
+    targetFundClosed: 'The campaign is closed and no longer accepts contributions',
+    currencyMismatch: 'The currency must match the campaign currency',
+    creditedRequired: 'Specify how much to credit in the target currency',
+    financeAnnouncement: 'Account movement announcements cannot be deleted',
+    tooManyContacts: 'Too many contacts',
+    receiptFormat: 'The receipt must be a PNG, JPEG or WebP image',
+    receiptExpired: 'The receipt upload has expired — attach it again',
+    tooManyUploads: 'Too many uploads, try again later',
+    priceRequired: 'Enter the negotiated monthly price',
   },
 
   // ── Errors ──

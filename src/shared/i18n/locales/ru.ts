@@ -528,6 +528,10 @@ export default {
 
   // ── Announcements ──
   announcements: {
+    pin: 'Закрепить',
+    unpin: 'Открепить',
+    pinnedDone: 'Объявление закреплено 📌',
+    unpinnedDone: 'Объявление откреплено',
     title: 'Доска объявлений',
     subtitle: 'Новости совета, собрания, аварийные работы и движение по счетам',
     create: 'Создать',
@@ -1078,6 +1082,7 @@ export default {
       system: 'Система',
       empty: 'Записей нет',
       entities: {
+        announcement: 'Объявления',
         fund: 'Фонд',
         member: 'Участники',
         contribution: 'Взносы',
@@ -1089,6 +1094,10 @@ export default {
         user: 'Аккаунты',
       },
       actions: {
+        announcement: {
+          pin: 'Объявление закреплено',
+          unpin: 'Объявление откреплено',
+        },
         notice: {
           send: 'Уведомление совету фонда',
         },
@@ -1143,6 +1152,34 @@ export default {
         },
       },
     },
+  },
+
+  // ── Ошибки сервера понятным текстом (shared/api/errors.ts) ──
+  apiErrors: {
+    noRights: 'Недостаточно прав для этого действия',
+    notMember: 'Вы не участник этого фонда',
+    chairmanOnly: 'Это может сделать только председатель',
+    fundNotFound: 'Фонд не найден',
+    notFound: 'Запись не найдена — возможно, её уже удалили',
+    requisiteNotFound: 'Реквизит не найден или отключён — выберите другой',
+    alreadyMember: 'Вы уже участник этого фонда',
+    requestPending: 'Заявка уже отправлена и ждёт решения совета',
+    blocked: 'Вы заблокированы в этом фонде',
+    transferChairman: 'Сначала передайте права председателя другому участнику',
+    alreadyReviewed: 'Решение уже принято — обновите страницу',
+    memberInactive: 'Участник не активен',
+    cannotChangeYourself: 'Нельзя изменить собственную роль или статус',
+    cannotChangeChairman: 'Роль председателя меняется только передачей прав',
+    alreadyChairman: 'Этот участник уже председатель',
+    targetFundClosed: 'Сбор закрыт — взносы в него больше не принимаются',
+    currencyMismatch: 'Валюта должна совпадать с валютой сбора',
+    creditedRequired: 'Укажите, сколько зачесть в валюте назначения',
+    financeAnnouncement: 'Объявления о движении по счетам удалить нельзя',
+    tooManyContacts: 'Слишком много контактов',
+    receiptFormat: 'Чек должен быть изображением PNG, JPEG или WebP',
+    receiptExpired: 'Загрузка чека устарела — прикрепите его ещё раз',
+    tooManyUploads: 'Слишком много загрузок, попробуйте позже',
+    priceRequired: 'Укажите договорную цену в месяц',
   },
 
   // ── Errors ──
