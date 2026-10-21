@@ -26,10 +26,12 @@ from app.api.council.plan import router as council_plan_router
 from app.api.council.emergency_contacts import router as council_emergency_router
 from app.api.council.audit import router as council_audit_router
 from app.api.council.reports import router as council_reports_router
+from app.api.council.notices import router as council_notices_router
 
 # ─── Admin (админ платформы) ──────────────────────────────────────────────────
 from app.api.admin.plans import router as admin_plans_router
 from app.api.admin.analytics import router as admin_analytics_router
+from app.api.admin.notices import router as admin_notices_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -55,6 +57,8 @@ api_router.include_router(council_plan_router, prefix="/council")
 api_router.include_router(council_emergency_router, prefix="/council")
 api_router.include_router(council_audit_router, prefix="/council")
 api_router.include_router(council_reports_router, prefix="/council")
+api_router.include_router(council_notices_router, prefix="/council")
 
 api_router.include_router(admin_plans_router, prefix="/admin")
 api_router.include_router(admin_analytics_router, prefix="/admin")
+api_router.include_router(admin_notices_router, prefix="/admin")

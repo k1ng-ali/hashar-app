@@ -6,15 +6,19 @@ import { LuCreditCard, LuReceiptText, LuTarget, LuWallet } from '@kalimahapps/vu
 import { useAuthStore } from '@/features/auth/store.ts'
 import BalanceBanner from '@/features/contributions/components/BalanceBanner.vue'
 import { useContributionsStore } from '@/features/contributions/store.ts'
-import AttentionCard, { type AttentionItem } from '@/features/dashboard/components/AttentionCard.vue'
+import AttentionCard from '@/features/dashboard/components/AttentionCard.vue'
 import BalanceCard from '@/features/dashboard/components/BalanceCard.vue'
 import MetricsRow from '@/features/dashboard/components/MetricsRow.vue'
 import OperationsList from '@/features/dashboard/components/OperationsList.vue'
 import QuickTiles, { type QuickTile } from '@/features/dashboard/components/QuickTiles.vue'
 import RequisitesSheet from '@/features/dashboard/components/RequisitesSheet.vue'
+import { useCouncilAttention } from '@/features/dashboard/composables/useCouncilAttention.ts'
 import { useDashboardStore } from '@/features/dashboard/store.ts'
 import type { Operation, OperationsFilter } from '@/features/dashboard/types.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
+import LatestNoticeCard from '@/features/notices/components/LatestNoticeCard.vue'
+import PlanStatusBanner from '@/features/notices/components/PlanStatusBanner.vue'
+import { useNoticesStore } from '@/features/notices/store.ts'
 import { useTargetFundsStore } from '@/features/targetFunds/store.ts'
 import CardSkeleton from '@/shared/components/CardSkeleton.vue'
 import EmptyState from '@/shared/components/EmptyState.vue'
@@ -22,10 +26,6 @@ import PillTabs from '@/shared/components/PillTabs.vue'
 import { firstName } from '@/shared/lib/format.ts'
 import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 import { useReceiptStore } from '@/shared/stores/useReceiptStore.ts'
-
-// Тариф платформы скоро закончится — предупреждаем председателя заранее
-const PLAN_WARNING_DAYS = 7
-const DAY_MS = 24 * 60 * 60 * 1000
 
 const { t } = useI18n()
 const router = useRouter()
@@ -36,11 +36,16 @@ const contributionsStore = useContributionsStore()
 const targetFundsStore = useTargetFundsStore()
 const headerStore = useHeaderStore()
 const receiptStore = useReceiptStore()
+const noticesStore = useNoticesStore()
 
 const isRequisitesOpen = ref(false)
 
 onMounted(async () => {
   headerStore.setTitle(t('dashboard.greeting', { name: firstName(authStore.user?.full_name ?? '') }))
+  // Совету — свежие уведомления от платформы (карточка на главной и колокольчик)
+  if (fundsStore.permissions.isCouncil && fundsStore.current) {
+    void noticesStore.fetch(fundsStore.current.id).catch(() => undefined)
+  }
   await Promise.all([store.fetchDashboard(), contributionsStore.fetchBalance(), targetFundsStore.fetchList()])
 })
 
@@ -68,25 +73,12 @@ function handleTile(key: string) {
 }
 
 // ── Требует внимания (совет) ─────────────────────────────────────────────
-const attention = computed<AttentionItem[]>(() => {
-  const summary = store.summary
-  const fund = fundsStore.current
-  if (!fundsStore.permissions.isCouncil || !summary || !fund) return []
+const attention = useCouncilAttention()
 
-  const items: AttentionItem[] = []
-  if (summary.pending_count) {
-    items.push({ key: 'receipts', label: t('attention.receipts'), count: summary.pending_count, to: '/fund/receipts' })
-  }
-  if (summary.pending_members_count) {
-    items.push({ key: 'members', label: t('attention.members'), count: summary.pending_members_count, to: '/fund/members' })
-  }
-  const expiresAt = fund.plan.expires_at ? new Date(fund.plan.expires_at).getTime() : null
-  if (fund.plan.effective_plan !== 'free' && expiresAt && expiresAt - Date.now() < PLAN_WARNING_DAYS * DAY_MS) {
-    const days = Math.max(0, Math.ceil((expiresAt - Date.now()) / DAY_MS))
-    items.push({ key: 'plan', label: t('attention.plan', { n: days }), to: '/fund/settings' })
-  }
-  return items
-})
+// Последнее непрочитанное уведомление от платформы — карточкой на главной
+const latestNotice = computed(() =>
+  fundsStore.permissions.isCouncil ? (noticesStore.items.find((n) => n.is_unread) ?? null) : null,
+)
 
 // ── Операции ─────────────────────────────────────────────────────────────
 function changeFilter(filter: OperationsFilter) {
@@ -119,23 +111,33 @@ function openExpense(operation: Operation) {
       <button class="ghost-btn" @click="store.fetchDashboard()">{{ $t('common.retry') }}</button>
     </EmptyState>
 
-    <!-- 2. Дела совета -->
+    <!-- 2. Тариф не продлён: совету — продлить, жителям — взносы недоступны -->
+    <PlanStatusBanner
+      v-if="fundsStore.current"
+      :plan="fundsStore.current.plan"
+      :is-council="fundsStore.permissions.isCouncil"
+      :can-renew="fundsStore.permissions.isChairman"
+      @renew="router.push('/fund/settings')"
+    />
+
+    <!-- 3. Уведомление от платформы и дела совета -->
+    <LatestNoticeCard v-if="latestNotice" :notice="latestNotice" @open="noticesStore.isOpen = true" />
     <AttentionCard v-if="attention.length" :items="attention" @open="(to) => router.push(to)" />
 
-    <!-- 3. Моё сальдо -->
+    <!-- 4. Моё сальдо -->
     <BalanceBanner
       v-if="contributionsStore.balance && contributionsStore.balance.rate > 0"
       :balance="contributionsStore.balance"
       @pay="router.push('/contribute')"
     />
 
-    <!-- 4. Быстрые действия -->
+    <!-- 5. Быстрые действия -->
     <section class="section">
       <h2 class="section-title">{{ $t('dashboard.quickActions') }}</h2>
       <QuickTiles :tiles="tiles" @select="handleTile" />
     </section>
 
-    <!-- 5. Месяц по базовому счёту -->
+    <!-- 6. Месяц по базовому счёту -->
     <MetricsRow
       v-if="store.summary && store.baseAccount"
       :account="store.baseAccount"
@@ -144,7 +146,7 @@ function openExpense(operation: Operation) {
       :members-count="store.summary.active_members_count"
     />
 
-    <!-- 6. Последние операции -->
+    <!-- 7. Последние операции -->
     <section class="section">
       <div class="section-header">
         <h2 class="section-title">{{ $t('dashboard.operationsTitle') }}</h2>

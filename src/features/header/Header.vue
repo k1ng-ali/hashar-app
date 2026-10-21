@@ -1,31 +1,54 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { LuBell, LuChevronDown, LuChevronLeft } from '@kalimahapps/vue-icons/lu'
 import { useAuthStore } from '@/features/auth/store.ts'
-import { useDashboardStore } from '@/features/dashboard/store.ts'
+import { useCouncilAttention } from '@/features/dashboard/composables/useCouncilAttention.ts'
 import FundSwitcherSheet from '@/features/funds/components/FundSwitcherSheet.vue'
 import { useFundsStore } from '@/features/funds/store.ts'
 import type { MyFund } from '@/features/funds/types.ts'
 import ProfileSheet from '@/features/header/ProfileSheet.vue'
+import NoticesSheet from '@/features/notices/components/NoticesSheet.vue'
+import { useNoticesStore } from '@/features/notices/store.ts'
 import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 
 const router = useRouter()
 const headerStore = useHeaderStore()
 const authStore = useAuthStore()
 const fundsStore = useFundsStore()
-const dashboardStore = useDashboardStore()
+const noticesStore = useNoticesStore()
+const attention = useCouncilAttention()
 
 const isProfileOpen = ref(false)
 const isSwitcherOpen = ref(false)
 
 const initials = computed(() => authStore.user?.full_name.slice(0, 1) ?? '?')
 
-// Колокольчик — у совета: чеки на проверке и заявки на вступление
-const attentionCount = computed(() => {
-  const summary = dashboardStore.summary
-  return summary ? summary.pending_count + summary.pending_members_count : 0
-})
+// Колокольчик — у совета: дела фонда (чеки, заявки) и уведомления от платформы
+const attentionCount = computed(() => attention.value.length + noticesStore.unread)
+
+// Уведомления платформы видит только совет — грузим при смене фонда или роли
+watch(
+  () => [fundsStore.current?.id, fundsStore.permissions.isCouncil] as const,
+  ([fundId, isCouncil]) => {
+    if (fundId && isCouncil) void noticesStore.fetch(fundId).catch(() => undefined)
+    else noticesStore.reset()
+  },
+  { immediate: true },
+)
+
+// Открыли окно — уведомления прочитаны
+watch(
+  () => noticesStore.isOpen,
+  (open) => {
+    if (open) void noticesStore.markRead().catch(() => undefined)
+  },
+)
+
+function goFromNotices(to: string) {
+  noticesStore.isOpen = false
+  void router.push(to)
+}
 
 // ── Handlers ─────────────────────────────────────────────────────────────
 async function selectFund(fund: MyFund) {
@@ -75,7 +98,7 @@ function manageFunds() {
         v-if="fundsStore.permissions.isCouncil"
         class="circle-btn"
         :aria-label="$t('attention.title')"
-        @click="router.push('/fund')"
+        @click="noticesStore.isOpen = true"
       >
         <LuBell />
         <span v-if="attentionCount" class="bell-dot" />
@@ -90,6 +113,14 @@ function manageFunds() {
     </Transition>
 
     <ProfileSheet :open="isProfileOpen" @close="isProfileOpen = false" />
+    <NoticesSheet
+      :open="noticesStore.isOpen"
+      :notices="noticesStore.items"
+      :attention="attention"
+      :can-renew="fundsStore.permissions.isChairman"
+      @close="noticesStore.isOpen = false"
+      @go="goFromNotices"
+    />
     <FundSwitcherSheet
       :open="isSwitcherOpen"
       :funds="fundsStore.activeFunds"

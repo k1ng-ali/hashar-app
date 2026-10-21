@@ -25,6 +25,7 @@ const emit = defineEmits<{
   (e: 'change'): void
   (e: 'more'): void
   (e: 'audit', fund: FundHealth): void
+  (e: 'notify', fund: FundHealth): void
 }>()
 
 const { t } = useI18n()
@@ -131,6 +132,7 @@ const toggle = (id: number) => (expanded.value = expanded.value === id ? null : 
             {{ expanded === fund.id ? $t('platform.funds.hideCouncil') : $t('platform.council') }}
           </button>
           <button type="button" class="link" @click="emit('audit', fund)">{{ $t('platform.funds.openAudit') }}</button>
+          <button type="button" class="link" @click="emit('notify', fund)">{{ $t('platform.notify.action') }}</button>
         </div>
 
         <!-- Председатель и администраторы с контактами -->
@@ -329,7 +331,8 @@ const toggle = (id: number) => (expanded.value = expanded.value === id ? null : 
 
 .actions {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 6px 16px;
 }
 
 .link {

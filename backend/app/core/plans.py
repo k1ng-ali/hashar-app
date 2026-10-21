@@ -5,6 +5,11 @@
 Уже вступившие участники при понижении тарифа не исключаются,
 но новых принять нельзя, пока число участников не станет меньше лимита.
 
+После истечения платного тарифа у фонда 7 дней льготного срока (grace): всё работает,
+совет видит предупреждение. Дальше (lapsed), если активных участников больше лимита Free,
+жители вносить взносы не могут — только первые 10 членов совета (председатель и самые ранние
+администраторы), чтобы лимит нельзя было обойти раздачей прав администратора.
+
 Смена тарифа не сжигает оплаченное: неиспользованный остаток текущего тарифа
 переводится в деньги по его цене (fund.plan_price) и докупает дни нового тарифа
 по новой цене. Например, осталось 15 дней Max (399 смн/мес) ≈ 199.5 смн →
@@ -15,11 +20,15 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from app.enums import PLAN_MEMBER_LIMITS, PLAN_PRICES_TJS, PlanEnum
+from app.enums import PLAN_MEMBER_LIMITS, PLAN_PRICES_TJS, LapseEnum, PlanEnum
 from app.models.fund import Fund
 
 # Длина оплаченного месяца тарифа
 PLAN_MONTH = timedelta(days=30)
+# Льготный срок после истечения платного тарифа — потом взносы жителей блокируются
+PLAN_GRACE = timedelta(days=7)
+# За сколько до окончания тарифа совет получает уведомление
+PLAN_EXPIRY_WARNING = timedelta(days=3)
 
 
 @dataclass
@@ -78,3 +87,26 @@ def carryover(fund: Fund, new_price: int | None, now: datetime | None = None) ->
     value_tjs = remaining / PLAN_MONTH * fund.plan_price
     extra = remaining * fund.plan_price / new_price if new_price else None
     return Carryover(remaining=remaining, value_tjs=round(value_tjs, 2), extra=extra)
+
+
+def lapse_state(fund: Fund, now: datetime | None = None) -> LapseEnum:
+    """Состояние фонда после истечения платного тарифа. Бессрочный и free — всегда none."""
+    if fund.plan == PlanEnum.free.value or fund.plan_expires_at is None:
+        return LapseEnum.none
+    now = now or datetime.now(timezone.utc)
+    if fund.plan_expires_at > now:
+        return LapseEnum.none
+    if now < fund.plan_expires_at + PLAN_GRACE:
+        return LapseEnum.grace
+    return LapseEnum.lapsed
+
+
+def blocks_at(fund: Fund) -> datetime | None:
+    """С какого момента блокируются взносы жителей, если тариф не продлят."""
+    if fund.plan == PlanEnum.free.value or fund.plan_expires_at is None:
+        return None
+    return fund.plan_expires_at + PLAN_GRACE
+
+
+def free_limit() -> int:
+    return PLAN_MEMBER_LIMITS[PlanEnum.free] or 0

@@ -19,7 +19,7 @@
 | `AuthService` | `register`, `login`, `refresh`, `logout`, `logout_all`, `me`, `delete_account`, `dev_login`, `list_demo_users` | Логин — телефон (нормализуется) или email; refresh-токен указывает на сессию (`auth_sessions`), выход её отзывает; лимит попыток — `core/rate_limit.py`. `delete_account` стирает имя, контакты, пароль, сессии и способы входа, выводит из фондов; взносы, комментарии и журнал остаются за «Удалённым пользователем» с помещением |
 | `FundService` | `create`, `search`, `get_by_code`, `join`, `cancel_request`, `leave`, `list_my`, `get`, `update` | Создатель — председатель; председатель не может выйти; финансовые настройки — только председатель |
 | `MemberService` | `list_members`, `approve`, `reject`, `set_status`, `set_role`, `transfer_chairman`, `get_balance`, `list_debtors` | Лимит тарифа при одобрении; председателя и себя менять нельзя |
-| `PlanService` | `catalog`, `info`, `ensure_capacity`, `create_request`, `list_requests`, `approve`, `reject`, `list_funds`, `set_plan` | Одна заявка в ожидании; продление того же тарифа по той же цене — от даты окончания; смена тарифа — остаток прежнего переводится в дни нового (`core/plans.carryover`) |
+| `PlanService` | `catalog`, `info(fund, user_id, role)`, `ensure_capacity`, `ensure_can_contribute`, `create_request`, `list_requests`, `approve`, `reject`, `list_funds`, `set_plan` | Одна заявка в ожидании; продление того же тарифа по той же цене — от даты окончания; смена тарифа — остаток прежнего переводится в дни нового (`core/plans.carryover`). После окончания тарифа 7 дней льготы, затем при >10 участниках взносы вносят только первые 10 членов совета (`core/plans.lapse_state`); отказ и одобрение заявки создают уведомление совету |
 | `AccountService` | `balances`, `list_accounts`, `enable_currency`, `disable_currency`, реквизиты, `create_transfer` | Базовый счёт не отключается; отключить можно только пустой счёт; перевод публикует объявление |
 | `DashboardService` | `summary`, `operations` | Остатки и метрики месяца по каждой валюте |
 | `ContributionService` | `list_my`, `create`, `list_all`, `history`, `approve`, `reject` | Валюта = валюта реквизита (любого активного); зачёт — в базовой валюте или валюте сбора, при оплате в другой валюте сумму зачёта вводит участник, совет может поправить при одобрении; снимок реквизита в `requisite_label` |
@@ -29,6 +29,7 @@
 | `AnnouncementService` | `list`, `create`, `toggle_like`, `add_comment`, `delete` | Закреп — совет; объявления о переводах не удаляются |
 | `ReportService` | `financial(currency)`, `debtors`, `export_*` | Отчёт по одному валютному счёту; CSV с колонкой валюты |
 | `AnalyticsService` | `overview(months)`, `plans(months)`, `funds`, `users`, `user`, `audit` | Аналитика админа платформы, только чтение; всё агрегируется в SQL (`AnalyticsRepository`), суммы разных валют не складываются; выручка — по снимкам `plan.approve` в журнале |
+| `NoticeService` | `list`, `mark_read`, `send`, `list_admin`, `check_plan_expiry` | Уведомления совету от платформы. `check_plan_expiry` — фоновая задача (`app/jobs.py`, раз в `NOTICE_CHECK_INTERVAL`): за 3 дня до окончания тарифа, при окончании и при блокировке взносов; повторы отсекает `dedupe_key` |
 
 ## Журнал и защита от ошибок
 

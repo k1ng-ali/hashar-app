@@ -84,6 +84,8 @@
 | GET / POST | `/transfers/` | Переводы и корректировки (+ объявление); списание сверх остатка — только с `allow_overdraft` |
 | GET / POST ⭐ | `/plan-requests/` | Заявки на тариф и продление (обязателен `contact`) |
 | GET | `/audit/` | Журнал действий совета и админа платформы |
+| GET | `/notices/` | Уведомления от платформы: сообщения админа, решения по заявкам на тариф, окончание тарифа; `unread` — непрочитанные |
+| POST | `/notices/read` | Отметить уведомления прочитанными (по `fund_members.notices_read_at`) |
 | GET | `/reports/export/contributions`, `/expenses`, `/debtors` | CSV-реестры (имена, помещения, телефоны) |
 
 ### Admin — админ платформы
@@ -100,3 +102,5 @@
 | GET | `/admin/users?q=&filter=` | Пользователи (поиск по имени, телефону, email; `filter` — all / unverified / admins / deleted) — только просмотр |
 | GET | `/admin/users/{id}` | Пользователь: фонды и роли, активные сессии |
 | GET | `/admin/audit?fund_id=&actor_id=&entity=` | Журнал действий всей платформы с названием фонда |
+| POST | `/admin/funds/{id}/notices` | Уведомление совету фонда от админа платформы (пишется в журнал `notice.send`) |
+| GET | `/admin/notices?fund_id=` | Отправленные уведомления |

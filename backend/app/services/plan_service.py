@@ -3,13 +3,32 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.plans import PLAN_MONTH, carryover, effective_plan, is_extension, member_limit, plan_price
-from app.enums import PLAN_MEMBER_LIMITS, PLAN_PRICES_TJS, PlanEnum, PlanRequestStatusEnum
+from app.core.plans import (
+    PLAN_MONTH,
+    blocks_at,
+    carryover,
+    effective_plan,
+    free_limit,
+    is_extension,
+    lapse_state,
+    member_limit,
+    plan_price,
+)
+from app.enums import (
+    COUNCIL_ROLES,
+    PLAN_MEMBER_LIMITS,
+    PLAN_PRICES_TJS,
+    FundRoleEnum,
+    LapseEnum,
+    PlanEnum,
+    PlanRequestStatusEnum,
+)
 from app.models.fund import Fund
 from app.models.plan_request import PlanRequest
 from app.repositories.audit_repo import AuditRepository
 from app.repositories.fund_repo import FundRepository
 from app.repositories.member_repo import MemberRepository
+from app.repositories.notice_repo import NoticeRepository
 from app.repositories.plan_request_repo import PlanRequestRepository
 from app.schemas.fund import PlanInfoOut
 from app.schemas.plan import (
@@ -59,6 +78,7 @@ class PlanService:
         self.fund_repo = FundRepository(db=db)
         self.member_repo = MemberRepository(db=db)
         self.audit = AuditRepository(db=db)
+        self.notices = NoticeRepository(db=db)
 
     # ─── Лимиты ────────────────────────────────────────────────────────────────
 
@@ -69,17 +89,44 @@ class PlanService:
             for plan in PlanEnum
         ]
 
-    async def info(self, fund: Fund) -> PlanInfoOut:
+    async def info(self, fund: Fund, user_id: int | None = None, role: FundRoleEnum | None = None) -> PlanInfoOut:
         plan = effective_plan(fund)
+        members_count = await self.member_repo.count_active(fund.id)
+        lapse = lapse_state(fund)
+        blocked = lapse == LapseEnum.lapsed and members_count > free_limit()
         return PlanInfoOut(
             plan=fund.plan,
             effective_plan=plan,
             expires_at=fund.plan_expires_at,
             member_limit=member_limit(fund),
-            members_count=await self.member_repo.count_active(fund.id),
+            members_count=members_count,
             price_tjs=(fund.plan_price or plan_price(plan)) if plan != PlanEnum.free else 0,
             remaining_tjs=remaining.value_tjs if (remaining := carryover(fund, None)) else None,
+            lapse=lapse,
+            blocks_at=blocks_at(fund) if lapse != LapseEnum.none else None,
+            over_free_limit=members_count > free_limit(),
+            contributions_blocked=blocked,
+            can_contribute=not blocked or (user_id is not None and await self._in_free_council(fund, user_id, role)),
         )
+
+    # ─── Взносы после окончания тарифа ─────────────────────────────────────────
+
+    async def ensure_can_contribute(self, fund: Fund, user_id: int, role: FundRoleEnum | None) -> None:
+        """403, если тариф не продлён после льготного срока, а пользователь не входит в 10 членов совета."""
+        if lapse_state(fund) != LapseEnum.lapsed:
+            return
+        if await self.member_repo.count_active(fund.id) <= free_limit():
+            return
+        if not await self._in_free_council(fund, user_id, role):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Fund plan expired: contributions are blocked"
+            )
+
+    async def _in_free_council(self, fund: Fund, user_id: int, role: FundRoleEnum | None) -> bool:
+        """Председатель и самые ранние администраторы в пределах лимита Free — раздача прав лимит не обходит."""
+        if role not in COUNCIL_ROLES:
+            return False
+        return user_id in await self.member_repo.first_council_user_ids(fund.id, free_limit())
 
     async def ensure_capacity(self, fund: Fund) -> None:
         """409, если в фонде уже максимум участников по тарифу."""
@@ -146,12 +193,29 @@ class PlanService:
 
         self._close(request, admin_id, PlanRequestStatusEnum.approved, payload.admin_comment)
         self._audit_plan(fund, "plan.approve", admin_id, **details)
+        self.notices.add(
+            fund_id=fund.id,
+            kind="plan_approved",
+            details={
+                "plan": fund.plan,
+                "expires_at": fund.plan_expires_at.isoformat(),
+                "comment": payload.admin_comment,
+            },
+            author_id=admin_id,
+        )
         await self.db.commit()
         return plan_request_out(await self.repo.get(request_id))
 
     async def reject(self, request_id: int, admin_id: int, comment: str) -> PlanRequestOut:
         request = await self._get_pending_or_error(request_id)
         self._close(request, admin_id, PlanRequestStatusEnum.rejected, comment)
+        # Совет видит отказ и причину в окне уведомлений
+        self.notices.add(
+            fund_id=request.fund_id,
+            kind="plan_rejected",
+            details={"plan": request.plan, "months": request.months, "reason": comment},
+            author_id=admin_id,
+        )
         await self.db.commit()
         return plan_request_out(await self.repo.get(request_id))
 

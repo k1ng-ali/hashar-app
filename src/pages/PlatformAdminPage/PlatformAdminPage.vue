@@ -6,11 +6,14 @@ import { useFundsStore } from '@/features/funds/store.ts'
 import { useAnalyticsStore } from '@/features/platformAdmin/analyticsStore.ts'
 import AuditPanel from '@/features/platformAdmin/components/AuditPanel.vue'
 import FundsHealthPanel from '@/features/platformAdmin/components/FundsHealthPanel.vue'
+import NoticeComposer from '@/features/platformAdmin/components/NoticeComposer.vue'
 import OverviewPanel from '@/features/platformAdmin/components/OverviewPanel.vue'
 import PlanRequestCard from '@/features/platformAdmin/components/PlanRequestCard.vue'
 import PlansPanel from '@/features/platformAdmin/components/PlansPanel.vue'
 import UsersPanel from '@/features/platformAdmin/components/UsersPanel.vue'
+import * as platformApi from '@/features/platformAdmin/api.ts'
 import { usePlatformAdminStore } from '@/features/platformAdmin/store.ts'
+import type { NoticeAdmin } from '@/features/notices/types.ts'
 import type {
   FundCouncilMember,
   FundHealth,
@@ -117,6 +120,34 @@ function openFundAudit(fund: FundHealth) {
 
 const openUser = (user: UserAdmin) => safely(() => analytics.openUser(user.id))
 
+// ── Уведомление совету фонда ─────────────────────────────────────────────
+const notifyFund = ref<FundHealth | null>(null)
+const sentNotices = ref<NoticeAdmin[]>([])
+const isSending = ref(false)
+
+async function openNotify(fund: FundHealth) {
+  notifyFund.value = fund
+  sentNotices.value = []
+  await safely(async () => {
+    const { data } = await platformApi.listSentNotices(fund.id)
+    if (notifyFund.value?.id === fund.id) sentNotices.value = data
+  })
+}
+
+async function sendNotice(text: string) {
+  const fund = notifyFund.value
+  if (!fund) return
+  isSending.value = true
+  try {
+    await platformApi.sendNotice(fund.id, text)
+    headerStore.showNotification(t('platform.notify.done'))
+    notifyFund.value = null
+  } catch (error) {
+    headerStore.showNotification(errorDetail(error) ?? t('errors.generic'), 'error')
+  } finally {
+    isSending.value = false
+  }
+}
 </script>
 
 <template>
@@ -184,6 +215,7 @@ const openUser = (user: UserAdmin) => safely(() => analytics.openUser(user.id))
           @change="safely(analytics.fetchFunds)"
           @more="safely(() => analytics.fetchFunds(true))"
           @audit="openFundAudit"
+          @notify="openNotify"
         />
       </section>
 
@@ -217,6 +249,15 @@ const openUser = (user: UserAdmin) => safely(() => analytics.openUser(user.id))
         />
       </section>
     </Transition>
+
+    <NoticeComposer
+      :open="!!notifyFund"
+      :fund-name="notifyFund?.name ?? ''"
+      :sent="sentNotices"
+      :is-submitting="isSending"
+      @close="notifyFund = null"
+      @send="sendNotice"
+    />
   </div>
 </template>
 

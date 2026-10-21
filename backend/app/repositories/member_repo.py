@@ -78,6 +78,21 @@ class MemberRepository(BaseRepository):
         )
         return list(result.scalars().all())
 
+    async def first_council_user_ids(self, fund_id: int, limit: int) -> list[int]:
+        """Первые limit членов совета: председатель, затем администраторы по давности членства."""
+        role_order = case({"chairman": 0}, value=FundMember.role, else_=1)
+        result = await self.db.execute(
+            select(FundMember.user_id)
+            .where(
+                FundMember.fund_id == fund_id,
+                FundMember.status == ACTIVE,
+                FundMember.role.in_([FundRoleEnum.chairman.value, FundRoleEnum.admin.value]),
+            )
+            .order_by(role_order, FundMember.id)
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
     async def count_active(self, fund_id: int) -> int:
         result = await self.db.execute(
             select(func.count(FundMember.id)).where(FundMember.fund_id == fund_id, FundMember.status == ACTIVE)

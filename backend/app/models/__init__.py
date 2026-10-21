@@ -7,6 +7,7 @@ from app.models.contribution import Contribution
 from app.models.emergency_contact import EmergencyContact
 from app.models.expense import Expense
 from app.models.fund import Fund, FundAccount
+from app.models.fund_notice import FundNotice
 from app.models.fund_rate import FundRate
 from app.models.member import FundMember
 from app.models.plan_request import PlanRequest
@@ -29,6 +30,7 @@ __all__ = [
     "Expense",
     "Fund",
     "FundAccount",
+    "FundNotice",
     "FundRate",
     "MemberAccrualPause",
     "FundMember",

@@ -13,6 +13,7 @@ from app.services.emergency_contact_service import EmergencyContactService
 from app.services.expense_service import ExpenseService
 from app.services.fund_service import FundService
 from app.services.member_service import MemberService
+from app.services.notice_service import NoticeService
 from app.services.plan_service import PlanService
 from app.services.report_service import ReportService
 from app.services.target_fund_service import TargetFundService
@@ -44,6 +45,10 @@ async def get_account_service(db: AsyncSession = Depends(get_db)) -> AccountServ
 
 async def get_member_service(db: AsyncSession = Depends(get_db)) -> MemberService:
     return MemberService(db=db)
+
+
+async def get_notice_service(db: AsyncSession = Depends(get_db)) -> NoticeService:
+    return NoticeService(db=db)
 
 
 async def get_plan_service(db: AsyncSession = Depends(get_db)) -> PlanService:

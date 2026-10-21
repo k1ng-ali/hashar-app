@@ -1,3 +1,4 @@
+import type { NoticeAdmin } from '@/features/notices/types.ts'
 import { http } from '@/shared/api/http.ts'
 import type {
   AuditEventAdmin,
@@ -57,3 +58,11 @@ export const listAudit = (filters: AuditFilters, skip = 0, limit = PAGE_SIZE) =>
   http.get<AuditEventAdmin[]>('/admin/audit', {
     params: { fund_id: filters.fund_id ?? undefined, entity: filters.entity ?? undefined, skip, limit },
   })
+
+// ── Уведомления совету фонда ──────────────────────────────────────────────
+
+export const sendNotice = (fundId: number, text: string) =>
+  http.post<NoticeAdmin>(`/admin/funds/${fundId}/notices`, { text })
+
+export const listSentNotices = (fundId: number) =>
+  http.get<NoticeAdmin[]>('/admin/notices', { params: { fund_id: fundId, limit: 20 } })

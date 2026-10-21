@@ -6,6 +6,8 @@ import ContributionForm from '@/features/contributions/components/ContributionFo
 import { useContributionForm } from '@/features/contributions/composables/useContributionForm.ts'
 import { useContributionsStore } from '@/features/contributions/store.ts'
 import { useDashboardStore } from '@/features/dashboard/store.ts'
+import { useFundsStore } from '@/features/funds/store.ts'
+import PlanStatusBanner from '@/features/notices/components/PlanStatusBanner.vue'
 import { useTargetFundsStore } from '@/features/targetFunds/store.ts'
 import CardSkeleton from '@/shared/components/CardSkeleton.vue'
 import { errorDetail } from '@/shared/api/http.ts'
@@ -17,6 +19,7 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const dashboardStore = useDashboardStore()
+const fundsStore = useFundsStore()
 const targetFundsStore = useTargetFundsStore()
 const contributionsStore = useContributionsStore()
 const headerStore = useHeaderStore()
@@ -32,6 +35,8 @@ onMounted(async () => {
   navStore.hideTabs()
 
   await Promise.all([
+    // Свежий статус тарифа: после окончания тарифа взносы могут быть заблокированы
+    fundsStore.fetchCurrent(),
     dashboardStore.fetchRequisites(),
     targetFundsStore.fetchList(),
     contributionsStore.fetchBalance(),
@@ -74,14 +79,22 @@ async function handleSubmit() {
   <div class="contribute-page">
     <p class="subtitle">{{ $t('contribution.subtitle') }}</p>
 
-    <!-- Шаги -->
-    <div class="steps">
+    <!-- Шаги (не нужны, если взнос сейчас недоступен) -->
+    <div v-if="fundsStore.current?.plan.can_contribute !== false" class="steps">
       <span class="step"><b>1</b>{{ $t('contribution.steps.copy') }}</span>
       <span class="step"><b>2</b>{{ $t('contribution.steps.transfer') }}</span>
       <span class="step"><b>3</b>{{ $t('contribution.steps.upload') }}</span>
     </div>
 
     <CardSkeleton v-if="!isReady" :lines="6" />
+    <!-- Тариф фонда не продлён после льготного срока — взнос внести нельзя -->
+    <PlanStatusBanner
+      v-else-if="fundsStore.current && !fundsStore.current.plan.can_contribute"
+      :plan="fundsStore.current.plan"
+      :is-council="fundsStore.permissions.isCouncil"
+      :can-renew="fundsStore.permissions.isChairman"
+      @renew="router.push('/fund/settings')"
+    />
     <div v-else class="form-card">
       <ContributionForm
         v-model:category="form.category.value"

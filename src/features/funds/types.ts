@@ -19,7 +19,19 @@ export interface PlanInfo {
   price_tjs: number | null
   /** Стоимость неиспользованного остатка — при смене тарифа перейдёт в дни нового. */
   remaining_tjs: number | null
+  /** После окончания платного тарифа: grace — 7 дней льготы, lapsed — тариф не продлён. */
+  lapse: PlanLapse
+  /** С этого момента взносы жителей блокируются, если тариф не продлят. */
+  blocks_at: string | null
+  /** Активных участников больше, чем позволяет Free. */
+  over_free_limit: boolean
+  /** Взносы жителей сейчас заблокированы. */
+  contributions_blocked: boolean
+  /** Может ли текущий пользователь внести взнос. */
+  can_contribute: boolean
 }
+
+export type PlanLapse = 'none' | 'grace' | 'lapsed'
 
 /** Запись истории тарифа: действует с period до следующей записи. */
 export interface Rate {

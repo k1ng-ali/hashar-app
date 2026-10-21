@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.enums import ContributionStatusEnum, CurrencyEnum, FundRoleEnum, MemberStatusEnum, PlanEnum
+from app.enums import ContributionStatusEnum, CurrencyEnum, FundRoleEnum, LapseEnum, MemberStatusEnum, PlanEnum
 
 PERIOD_PATTERN = r"^\d{4}-(0[1-9]|1[0-2])$"
 
@@ -55,6 +55,12 @@ class PlanInfoOut(BaseModel):
     price_tjs: int | None = None  # цена текущего тарифа за месяц
     # Стоимость неиспользованного остатка — при смене тарифа перейдёт в дни нового
     remaining_tjs: float | None = None
+    # После окончания платного тарифа: grace — 7 дней льготы, lapsed — не продлён (core/plans.py)
+    lapse: LapseEnum = LapseEnum.none
+    blocks_at: datetime | None = None  # с этого момента взносы жителей блокируются
+    over_free_limit: bool = False  # активных участников больше, чем позволяет Free
+    contributions_blocked: bool = False  # взносы жителей сейчас заблокированы
+    can_contribute: bool = True  # может ли текущий пользователь внести взнос
 
 
 class FundOut(BaseModel):

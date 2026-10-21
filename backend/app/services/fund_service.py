@@ -67,7 +67,7 @@ class FundService:
             joined_at=datetime.now(timezone.utc),
         )
         await self.db.commit()
-        return await self._fund_out(fund, FundRoleEnum.chairman)
+        return await self._fund_out(fund, FundRoleEnum.chairman, user_id)
 
     # ─── Поиск и вступление ────────────────────────────────────────────────────
 
@@ -162,7 +162,7 @@ class FundService:
         ]
 
     async def get(self, ctx: FundContext) -> FundOut:
-        return await self._fund_out(await self._get_or_404(ctx.fund_id), ctx.role)
+        return await self._fund_out(await self._get_or_404(ctx.fund_id), ctx.role, ctx.user_id)
 
     async def update(self, ctx: FundContext, payload: FundUpdateIn) -> FundOut:
         fund = await self._get_or_404(ctx.fund_id, for_update=True)
@@ -202,7 +202,7 @@ class FundService:
         for field, value in data.items():
             setattr(fund, field, value)
         await self.db.commit()
-        return await self._fund_out(fund, ctx.role)
+        return await self._fund_out(fund, ctx.role, ctx.user_id)
 
     # ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -222,7 +222,7 @@ class FundService:
         if rate_at(await self.rate_repo.schedule(fund.id), effective) != amount:
             await self.rate_repo.create(fund_id=fund.id, period=effective, amount=amount, created_by_id=user_id)
 
-    async def _fund_out(self, fund: Fund, role: FundRoleEnum) -> FundOut:
+    async def _fund_out(self, fund: Fund, role: FundRoleEnum, user_id: int) -> FundOut:
         schedule = await self.rate_repo.schedule(fund.id)
         today = current_period()
         # Пока расчёты не начались, «текущий» тариф — стартовый
@@ -241,7 +241,7 @@ class FundService:
             start_period=fund.start_period,
             setup_locked=await self.contribution_repo.has_monthly_fees(fund.id),
             accounts=await self.accounts.list_accounts(fund.id),
-            plan=await self.plans.info(fund),
+            plan=await self.plans.info(fund, user_id=user_id, role=role),
             my_role=role,
             created_at=fund.created_at,
         )

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.finance import current_period
 from app.core.receipts import receipt_url, store_receipt
-from app.enums import ContributionCategoryEnum, ContributionStatusEnum
+from app.enums import ContributionCategoryEnum, ContributionStatusEnum, FundRoleEnum
 from app.models.contribution import Contribution
 from app.repositories.audit_repo import AuditRepository
 from app.repositories.contribution_repo import ContributionFilters, ContributionRepository
@@ -19,6 +19,7 @@ from app.schemas.contribution import (
     CurrencyTotalOut,
 )
 from app.services.account_service import AccountService, requisite_label
+from app.services.plan_service import PlanService
 
 
 def contribution_out(contribution: Contribution, show_receipt: bool = True) -> ContributionOut:
@@ -57,6 +58,7 @@ class ContributionService:
         self.target_fund_repo = TargetFundRepository(db=db)
         self.audit = AuditRepository(db=db)
         self.accounts = AccountService(db=db)
+        self.plans = PlanService(db=db)
 
     # ─── Участник ──────────────────────────────────────────────────────────────
 
@@ -76,6 +78,9 @@ class ContributionService:
         # Валюта взноса = валюта реквизита, на который перевели деньги
         requisite = await self.accounts.get_active_requisite(fund_id, payload.requisite_id)
         fund = await self.fund_repo.get(fund_id)
+        member = await self.member_repo.get_by_user(fund_id, user_id)
+        # Тариф не продлён после льготного срока — вносят только 10 членов совета
+        await self.plans.ensure_can_contribute(fund, user_id, FundRoleEnum(member.role) if member else None)
 
         target_fund_id = None
         billing_period = None
@@ -103,7 +108,6 @@ class ContributionService:
                 detail="credited_amount is required when paying in another currency",
             )
 
-        member = await self.member_repo.get_by_user(fund_id, user_id)
         contribution = await self.repo.create(
             fund_id=fund_id,
             user_id=user_id,

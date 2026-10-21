@@ -8,6 +8,14 @@ class PlanEnum(str, Enum):
     individual = "individual"  # договорной, лимит задаёт админ платформы
 
 
+class LapseEnum(str, Enum):
+    """Состояние фонда после окончания платного тарифа (core/plans.lapse_state)."""
+
+    none = "none"  # free или платный тариф действует
+    grace = "grace"  # платный тариф истёк, идёт 7-дневный льготный срок
+    lapsed = "lapsed"  # льготный срок прошёл, тариф не продлён
+
+
 class PlanRequestStatusEnum(str, Enum):
     pending = "pending"
     approved = "approved"

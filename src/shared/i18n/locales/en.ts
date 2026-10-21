@@ -896,6 +896,39 @@ export default {
   },
 
   // ── Platform admin ──
+  // ── Уведомления от платформы ──
+  notices: {
+    title: 'Notifications',
+    fromPlatform: 'From Hashar platform',
+    fromAdmin: 'Message from the platform administrator',
+    new: 'New',
+    empty: 'No notifications yet',
+    openAll: 'Open notifications',
+    renew: 'Renew plan',
+    planRejected: 'Request for the {plan} plan was rejected',
+    reason: 'Reason: {reason}',
+    planApproved: '{plan} plan enabled',
+    activeUntil: 'Active until {date}',
+    planExpiring: '{plan} plan ends on {date}',
+    planExpiringBody: 'Renew in advance. If the fund has more than 10 members, without renewal they cannot make contributions from {date}.',
+    planExpired: '{plan} plan expired on {date}',
+    planExpiredBlock: 'Renew the subscription, otherwise fund members cannot make contributions from {date}.',
+    planExpiredFree: 'The fund is now on Free: up to 10 members. Renew the plan to accept new members.',
+    planLapsed: 'Member contributions are blocked',
+    planLapsedBody: 'The plan was not renewed. Only 10 council members can make contributions. Renew the plan to restore contributions for everyone.',
+  },
+
+  // ── Тариф фонда не продлён ──
+  planStatus: {
+    expiredTitle: 'The fund subscription expired on {date}',
+    graceBlock: 'Renew the subscription, otherwise fund members cannot make contributions from {date}.',
+    graceFree: 'From {date} the fund runs on Free — up to 10 members. Renew to keep your plan.',
+    blockedTitle: 'The fund has not renewed its subscription',
+    blockedResident: 'Contributions are unavailable right now. Please contact the fund chairman.',
+    blockedCouncil: 'Since {date} members cannot make contributions — only 10 council members can. Renew the plan.',
+    blockedCouncilOver: 'Only the first 10 council members can make contributions, and you are not one of them. Contact the chairman.',
+    renew: 'Renew subscription',
+  },
 
   platform: {
     title: 'Platform admin',
@@ -912,7 +945,7 @@ export default {
     monthlyPrice: 'Price per month, TJS',
     carryover: 'Rest of the current plan ≈ {amount} TJS →',
     carryoverDays: '+{n} days of the new plan',
-    commentPlaceholder: 'Comment (required to reject)',
+    commentPlaceholder: 'Comment — the fund council will see it (required to reject)',
     approve: 'Enable plan',
     reject: 'Reject',
     approved: 'Plan enabled ✅',
@@ -926,6 +959,29 @@ export default {
     contact: 'Contact',
     council: 'Chairman and administrators',
     loadMore: 'Show more',
+    notify: {
+      action: 'Send notice',
+      title: 'Notice to the fund council',
+      hint: 'The chairman and administrators of the fund will see it in their notifications.',
+      placeholder: 'Notice text',
+      send: 'Send',
+      sent: 'Sent',
+      done: 'Notice sent ✅',
+      templates: {
+        growth: {
+          label: 'Member growth',
+          text: 'Your fund\'s membership is growing very fast. We suggest agreeing on an individual plan.',
+        },
+        moderation: {
+          label: 'Moderation',
+          text: 'Suspicious activity has been noticed in your fund. The fund will be under moderation for several days.',
+        },
+        contacts: {
+          label: 'Contacts',
+          text: 'We could not reach you using the contacts provided. Please update the contacts in your request.',
+        },
+      },
+    },
     overview: {
       users: 'Users',
       funds: 'Funds',
@@ -1033,6 +1089,9 @@ export default {
         user: 'User accounts',
       },
       actions: {
+        notice: {
+          send: 'Notice sent to fund council',
+        },
         plan: {
           approve: 'Plan enabled by request',
           set: 'Plan set manually',

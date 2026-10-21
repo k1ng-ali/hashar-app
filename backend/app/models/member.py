@@ -9,6 +9,7 @@
   (вышедший во время блокировки остаётся blocked с заполненным left_at)
 - address_unit: помещение участника в этом фонде ("кв. 12")
 - message: сообщение к заявке на вступление
+- notices_read_at: когда член совета последний раз открыл уведомления платформы (models/fund_notice.py)
 """
 
 from sqlalchemy import TIMESTAMP, BigInteger, Column, ForeignKey, Index, String, Text, UniqueConstraint, func, text
@@ -36,6 +37,7 @@ class FundMember(Base):
     joined_at = Column(TIMESTAMP(timezone=True), nullable=True)
     left_at = Column(TIMESTAMP(timezone=True), nullable=True)
     blocked_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    notices_read_at = Column(TIMESTAMP(timezone=True), nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     user = relationship("User", foreign_keys=[user_id], lazy="raise")
