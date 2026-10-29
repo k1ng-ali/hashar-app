@@ -15,6 +15,7 @@ from app.main import app
 from app.schemas.plan import PlanApproveIn
 from app.services.dashboard_service import DashboardService
 from app.services.plan_service import PlanService, plan_request_out
+from app.services.report_service import ReportService
 from app.services.target_fund_service import TargetFundService
 from tests.unit.helpers import make_contribution, make_ctx, make_db, make_fund, make_user
 
@@ -178,6 +179,19 @@ def test_resident_cannot_export_csv(kind):
         app.dependency_overrides.clear()
 
     assert response.status_code == 403
+
+
+@pytest.mark.parametrize("kind", ["contributions", "expenses", "debtors"])
+async def test_csv_does_not_start_with_id(kind):
+    # Файл, начинающийся с «ID», Excel принимает за формат SYLK и открывает пустым
+    service = ReportService(db=make_db())
+    service.contribution_repo.list = AsyncMock(return_value=[])
+    service.expense_repo.list = AsyncMock(return_value=[])
+    service.members.list_debtors = AsyncMock(return_value=[])
+
+    _, content = await getattr(service, f"export_{kind}")(fund_id=1)
+
+    assert not content.lstrip("﻿").upper().startswith("ID")
 
 
 def test_old_export_urls_are_gone():

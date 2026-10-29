@@ -63,7 +63,9 @@ def plans(members: int, council_ids: list[int]) -> PlanService:
 
 
 async def test_grace_period_does_not_block():
-    await plans(50, []).ensure_can_contribute(expired_fund(3), user_id=9, role=FundRoleEnum.resident)
+    # ensure_can_contribute сверяется с текущим временем, а не с NOW — иначе тест «протухает» вместе с NOW
+    fund = make_fund(plan="pro", plan_price=199, plan_expires_at=datetime.now(timezone.utc) - timedelta(days=3))
+    await plans(50, []).ensure_can_contribute(fund, user_id=9, role=FundRoleEnum.resident)
 
 
 async def test_lapsed_fund_within_free_limit_does_not_block():

@@ -25,7 +25,10 @@ CATEGORY_TITLES = {"monthly_fee": "Ежемесячный взнос", "target_f
 
 
 class ReportService:
-    """Финансовая отчётность фонда и CSV-выгрузки (UTF-8 BOM, разделитель `;` — для Excel)."""
+    """
+    Финансовая отчётность фонда и CSV-выгрузки (UTF-8 BOM, разделитель `;` — для Excel).
+    Первая колонка не должна называться «ID»: такой файл Excel принимает за формат SYLK и открывает пустым.
+    """
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -118,7 +121,7 @@ class ReportService:
             for c in items
         ]
         header = [
-            "ID", "Дата", "Участник", "Помещение", "Категория", "Период / Сбор",
+            "№", "Дата", "Участник", "Помещение", "Категория", "Период / Сбор",
             "Сумма", "Валюта", "Зачтено", "Валюта зачёта", "Реквизит", "Статус", "Проверил", "Комментарий",
         ]  # fmt: skip
         return self._filename("reestr_vznosov"), self._to_csv(header, rows)
@@ -139,7 +142,7 @@ class ReportService:
             ]
             for e in items
         ]
-        header = ["ID", "Дата", "Название", "Категория", "Сумма", "Валюта", "Целевой сбор", "Ответственный", "Описание"]
+        header = ["№", "Дата", "Название", "Категория", "Сумма", "Валюта", "Целевой сбор", "Ответственный", "Описание"]
         return self._filename("reestr_rashodov"), self._to_csv(header, rows)
 
     async def export_debtors(self, fund_id: int) -> tuple[str, str]:
