@@ -3,7 +3,7 @@ import os
 import pytest
 
 # Настройки для тестов: БД не нужна, сервисы работают с замоканной сессией
-os.environ.setdefault("SECRET_KEY", "test-secret")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-at-least-32-bytes-long")
 os.environ.setdefault("DEV_MODE", "true")
 os.environ.setdefault("DB_HOST", "localhost")
 os.environ.setdefault("DB_PORT", "5432")

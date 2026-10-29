@@ -2,12 +2,12 @@
 
 from unittest.mock import AsyncMock, MagicMock
 
+import jwt
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import HTTPException
-from jose import jwt
-from jose.backends import RSAKey
+from jwt.algorithms import RSAAlgorithm
 
 from app.core import google_auth
 from app.core.config import settings
@@ -157,10 +157,7 @@ def google_keys(monkeypatch):
     private_pem = private_key.private_bytes(
         serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()
     )
-    public_pem = private_key.public_key().public_bytes(
-        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
-    )
-    jwk = RSAKey(public_pem, "RS256").to_dict()
+    jwk = RSAAlgorithm.to_jwk(private_key.public_key(), as_dict=True)
     jwk.update(kid="key-1", use="sig")
     downloads = []
 
@@ -220,6 +217,17 @@ async def test_verify_rejects_token_signed_by_another_key(google_keys):
 
     with pytest.raises(GoogleTokenError):
         await verify_google_id_token(forged)
+
+
+async def test_verify_rejects_unknown_key_id(google_keys):
+    token = google_keys()
+    _, rest = token.split(".", 1)
+    # Тот же токен, но kid, которого нет среди ключей Google, — даже после перезагрузки ключей
+    unknown = jwt.utils.base64url_encode(b'{"alg":"RS256","kid":"key-2","typ":"JWT"}').decode()
+
+    with pytest.raises(GoogleTokenError):
+        await verify_google_id_token(f"{unknown}.{rest}")
+    assert len(google_keys.downloads) == 2
 
 
 # ─── Смена телефона ───────────────────────────────────────────────────────────

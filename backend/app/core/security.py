@@ -14,7 +14,7 @@ import secrets
 from datetime import datetime, timezone
 
 import bcrypt
-from jose import JWTError, jwt
+import jwt
 
 from app.core.config import ACCESS_TOKEN_EXPIRE, CHALLENGE_TOKEN_EXPIRE, REFRESH_TOKEN_EXPIRE, settings
 
@@ -86,7 +86,7 @@ def decode_token(token: str, expected_type: str) -> dict | None:
     """Возвращает payload или None, если токен битый/просрочен/не того типа."""
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-    except JWTError:
+    except jwt.PyJWTError:
         return None
     if payload.get("type") != expected_type or not payload.get("sub"):
         return None

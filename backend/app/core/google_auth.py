@@ -13,7 +13,7 @@ import re
 import time
 import urllib.request
 
-from jose import JWTError, jwt
+import jwt
 
 from app.core.config import settings
 
@@ -47,15 +47,13 @@ async def _get_certs(force: bool = False) -> dict:
         return _certs
 
 
-def _decode(id_token: str, certs: dict) -> dict:
-    # aud проверяем сами: клиентов несколько (веб и Android), а jose принимает только один.
-    # at_hash не проверяем — к ID-токену для входа access-токен не прилагается
-    return jwt.decode(
-        id_token,
-        certs,
-        algorithms=["RS256"],
-        options={"verify_aud": False, "verify_at_hash": False},
-    )
+def _decode(id_token: str, kid: str | None, certs: dict) -> dict:
+    try:
+        key = jwt.PyJWKSet.from_dict(certs)[kid]
+    except KeyError as error:
+        raise jwt.InvalidKeyError("Unknown signing key") from error
+    # iss и aud проверяем ниже сами — с понятными сообщениями об ошибке
+    return jwt.decode(id_token, key.key, algorithms=["RS256"], options={"verify_aud": False})
 
 
 async def verify_google_id_token(id_token: str) -> dict:
@@ -64,10 +62,10 @@ async def verify_google_id_token(id_token: str) -> dict:
         kid = jwt.get_unverified_header(id_token).get("kid")
         certs = await _get_certs()
         # Google меняет ключи — незнакомый kid значит, что кэш устарел
-        if kid and not any(key.get("kid") == kid for key in certs.get("keys", [])):
+        if not any(key.get("kid") == kid for key in certs.get("keys", [])):
             certs = await _get_certs(force=True)
-        claims = _decode(id_token, certs)
-    except JWTError as error:
+        claims = _decode(id_token, kid, certs)
+    except jwt.PyJWTError as error:
         raise GoogleTokenError(str(error)) from error
 
     if claims.get("iss") not in GOOGLE_ISSUERS:
