@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 
-from fastapi import HTTPException, status
+from fastapi import BackgroundTasks, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.plans import (
     PLAN_MONTH,
     blocks_at,
@@ -14,6 +15,7 @@ from app.core.plans import (
     member_limit,
     plan_price,
 )
+from app.core.telegram import escape, notify_admin
 from app.enums import (
     COUNCIL_ROLES,
     PLAN_MEMBER_LIMITS,
@@ -67,6 +69,49 @@ def plan_request_out(request: PlanRequest) -> PlanRequestOut:
 
 
 DAY = PLAN_MONTH / 30
+
+
+def plan_request_message(request: PlanRequest, now: datetime | None = None) -> str:
+    """Уведомление админу платформы о новой заявке — HTML-разметка Telegram."""
+    now = now or datetime.now(timezone.utc)
+    fund = request.fund
+    plan = PlanEnum(request.plan)
+    price = plan_price(plan)
+
+    if fund.plan == plan.value:
+        kind = "Продление тарифа"
+    elif effective_plan(fund, now) == PlanEnum.free:
+        kind = "Подключение тарифа"
+    else:
+        kind = "Смена тарифа"
+
+    if fund.plan == PlanEnum.free.value:
+        current = "Free"
+    elif fund.plan_expires_at is None:
+        current = f"{fund.plan.title()}, бессрочно"
+    elif fund.plan_expires_at > now:
+        current = f"{fund.plan.title()} до {fund.plan_expires_at:%d.%m.%Y}"
+    else:
+        current = f"{fund.plan.title()}, истёк {fund.plan_expires_at:%d.%m.%Y}"
+
+    total = f"{price * request.months} смн" if price else "цена по договорённости"
+    lines = [
+        f"🆕 <b>{kind}</b>",
+        f"Фонд: <b>{escape(fund.name)}</b> · #{fund.id}",
+        f"Тариф: {plan.value.title()} × {request.months} мес. — {total}",
+        f"Сейчас: {current}",
+    ]
+    if not is_extension(fund, plan, price, now) and (rest := carryover(fund, price, now)):
+        days = f" → +{round(rest.extra / DAY)} дн. нового" if rest.extra is not None else ""
+        lines.append(f"Остаток текущего: {rest.value_tjs:g} смн{days}")
+    if request.requested_by:
+        lines.append(f"Председатель: {escape(request.requested_by.full_name)}")
+    lines.append(f"Связь: {escape(request.contact)}")
+    if request.comment:
+        lines.append(f"Комментарий: {escape(request.comment)}")
+    if settings.app_url:
+        lines.append(f'\n<a href="{settings.app_url}/platform?tab=requests">Открыть заявки</a>')
+    return "\n".join(lines)
 
 
 class PlanService:
@@ -136,7 +181,14 @@ class PlanService:
 
     # ─── Председатель ──────────────────────────────────────────────────────────
 
-    async def create_request(self, fund_id: int, user_id: int, payload: PlanRequestIn) -> PlanRequestOut:
+    async def create_request(
+        self,
+        fund_id: int,
+        user_id: int,
+        payload: PlanRequestIn,
+        background_tasks: BackgroundTasks | None = None,
+    ) -> PlanRequestOut:
+        """Заявка председателя; админ платформы узнаёт о ней в Telegram — уже после ответа API."""
         if await self.repo.has_pending(fund_id):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Plan request is already pending")
 
@@ -149,6 +201,8 @@ class PlanService:
             requested_by_id=user_id,
         )
         await self.db.commit()
+        if background_tasks is not None:
+            background_tasks.add_task(notify_admin, plan_request_message(request))
         return plan_request_out(request)
 
     async def list_for_fund(self, fund_id: int) -> list[PlanRequestOut]:

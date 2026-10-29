@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useFundsStore } from '@/features/funds/store.ts'
 import { useAnalyticsStore } from '@/features/platformAdmin/analyticsStore.ts'
@@ -30,6 +30,7 @@ import { useHeaderStore } from '@/shared/stores/useHeaderStore.ts'
 import { useNavStore } from '@/shared/stores/useNavStore.ts'
 
 const { t } = useI18n()
+const route = useRoute()
 const router = useRouter()
 const store = usePlatformAdminStore()
 const analytics = useAnalyticsStore()
@@ -37,7 +38,10 @@ const fundsStore = useFundsStore()
 const headerStore = useHeaderStore()
 const navStore = useNavStore()
 
-const view = ref<PlatformTab>('overview')
+// ?tab=requests — ссылка из уведомления в Telegram о новой заявке
+const PLATFORM_TABS: PlatformTab[] = ['overview', 'plans', 'requests', 'funds', 'users', 'audit']
+const queryTab = route.query.tab as PlatformTab
+const view = ref<PlatformTab>(PLATFORM_TABS.includes(queryTab) ? queryTab : 'overview')
 const tabs = computed(() => [
   { value: 'overview' as PlatformTab, label: t('platform.tabs.overview') },
   { value: 'plans' as PlatformTab, label: t('platform.tabs.plans') },
@@ -72,7 +76,7 @@ watch(view, (tab) => {
   if (tab === 'funds') void safely(analytics.fetchFunds)
   if (tab === 'users') void safely(analytics.fetchUsers)
   if (tab === 'audit') void safely(analytics.fetchAudit)
-})
+}, { immediate: true })
 
 async function safely(action: () => Promise<unknown>) {
   try {

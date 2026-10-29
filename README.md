@@ -181,6 +181,16 @@ docker compose exec backend python -m scripts.migrate_receipts             # п�
 
 Как устроено: сайт получает ID-токен через Google Identity Services (кнопку рисует Google), Android — через системный Credential Manager (`@capgo/capacitor-social-login`; в WebView Google запрещает OAuth-окна). Backend (`POST /auth/google`, `app/core/google_auth.py`) проверяет подпись токена по ключам Google, издателя, срок и `aud`. Аккаунт ищется по Google ID, затем по **подтверждённому** email (тогда Google привязывается к существующему аккаунту), иначе создаётся новый — без пароля и телефона. Телефон добавляется и меняется в профиле (`PATCH /auth/me`). Пустой `GOOGLE_CLIENT_ID` — кнопка Google неактивна, пустой `GOOGLE_CLIENT_IDS` — `/auth/google` отвечает 404.
 
+### Уведомления в Telegram (один раз)
+
+Когда председатель отправляет заявку на тариф (подключение, продление или смену), админ платформы получает сообщение в Telegram: фонд, тариф и сумма, текущий тариф, перенос остатка, контакт председателя и ссылка на вкладку «Заявки» (`/platform?tab=requests`).
+
+1. Бот — у [@BotFather](https://t.me/BotFather) (`/newbot`) или тот же, что у мониторинга (`monitoring/README.md`). Написать боту любое сообщение — иначе он не может писать первым. Для нескольких админов — группа, куда добавлен бот
+2. Chat id — `https://api.telegram.org/bot<ТОКЕН>/getUpdates` → `"chat":{"id":...}` (у группы начинается с минуса)
+3. `deploy/.env` на сервере: `TELEGRAM_BOT_TOKEN=<токен>`, `TELEGRAM_ADMIN_CHAT_ID=<chat id>`, затем `./update.sh`
+
+Как устроено: сообщение уходит в фоне уже после ответа API (`app/core/telegram.py`) — если Telegram недоступен, заявка всё равно создаётся, а ошибка (без токена) пишется в `docker compose logs backend`. Пустые переменные — уведомления выключены.
+
 ## Android
 
 Та же Vue-сборка, упакованная Capacitor в WebView (`android/`, `capacitor.config.ts`). Работает с продовым API.

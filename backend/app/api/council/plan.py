@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, BackgroundTasks, Depends, status
 
 from app.deps.fund import require_fund_chairman, require_fund_council
 from app.deps.services import get_plan_service
@@ -20,7 +20,10 @@ async def list_plan_requests(
 @router.post("/", response_model=PlanRequestOut, status_code=status.HTTP_201_CREATED)
 async def create_plan_request(
     payload: PlanRequestIn,
+    background_tasks: BackgroundTasks,
     ctx: FundContext = Depends(require_fund_chairman),
     service: PlanService = Depends(get_plan_service),
 ):
-    return await service.create_request(fund_id=ctx.fund_id, user_id=ctx.user_id, payload=payload)
+    return await service.create_request(
+        fund_id=ctx.fund_id, user_id=ctx.user_id, payload=payload, background_tasks=background_tasks
+    )

@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     PAYOMCHI_API_KEY: str = ""
     PAYOMCHI_SENDER_ID: str = ""
 
+    # Уведомления админу платформы в Telegram о новых заявках на тариф: токен бота от @BotFather
+    # и id чата (личного или группы с ботом). Пусто — уведомления выключены
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_ADMIN_CHAT_ID: str = ""
+
     # Максимальный размер тела запроса. Чеки загружаются файлом (/uploads/receipt), но старые
     # версии приложения ещё присылают их data URL внутри JSON — до 6 штук в расходе
     MAX_BODY_BYTES: int = 25 * 1024 * 1024
@@ -89,6 +94,11 @@ class Settings(BaseSettings):
                 "S3_ENDPOINT_URL, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY and S3_BUCKET are required in production"
             )
         return self
+
+    @property
+    def app_url(self) -> str:
+        """Адрес фронтенда для ссылок в уведомлениях — первый из CORS_ORIGINS (в проде https://hashar.app)."""
+        return self.CORS_ORIGINS[0].rstrip("/") if self.CORS_ORIGINS else ""
 
     @property
     def storage_configured(self) -> bool:
