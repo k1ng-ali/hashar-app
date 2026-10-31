@@ -30,10 +30,25 @@ PLAN_MEMBER_LIMITS: dict[PlanEnum, int | None] = {
     PlanEnum.individual: None,
 }
 
-# Цена в TJS за месяц. None — по договорённости
-PLAN_PRICES_TJS: dict[PlanEnum, int | None] = {
-    PlanEnum.free: 0,
-    PlanEnum.pro: 199,
-    PlanEnum.max: 399,
-    PlanEnum.individual: None,
-}
+
+class DiscountKindEnum(str, Enum):
+    percent = "percent"  # процент от цены за месяц
+    fixed = "fixed"  # смн с цены за месяц
+
+
+class DiscountStateEnum(str, Enum):
+    """Состояние скидки или промокода для админа платформы (core/plans.discount_state)."""
+
+    active = "active"
+    scheduled = "scheduled"  # срок ещё не начался
+    expired = "expired"  # срок закончился
+    exhausted = "exhausted"  # лимит применений исчерпан
+    disabled = "disabled"  # выключена админом
+
+
+class PromoStatusEnum(str, Enum):
+    """Что стало с введённым промокодом при расчёте цены."""
+
+    none = "none"  # промокод не вводили
+    applied = "applied"
+    not_better = "not_better"  # действующая распродажа выгоднее — промокод не расходуется

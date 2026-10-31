@@ -6,20 +6,15 @@ from pydantic import BaseModel, Field
 from app.enums import FundRoleEnum, PlanEnum, PlanRequestStatusEnum
 
 
-class PlanOptionOut(BaseModel):
-    """Строка каталога тарифов."""
-
-    plan: PlanEnum
-    member_limit: int | None = None
-    price_tjs: int | None = None
-
-
 class PlanRequestIn(BaseModel):
     plan: Literal[PlanEnum.pro, PlanEnum.max, PlanEnum.individual]
     months: int = Field(1, ge=1, le=12)
     # Как связаться с председателем по оплате: телефон, Telegram, email
     contact: str = Field(min_length=3, max_length=150)
     comment: str | None = Field(None, max_length=1000)
+    promo_code: str | None = Field(None, max_length=30)
+    # Цена за месяц, которую видел председатель: разошлась с текущей — заявка не создаётся
+    expected_price_tjs: int | None = None
 
 
 class PlanRequestOut(BaseModel):
@@ -28,6 +23,10 @@ class PlanRequestOut(BaseModel):
     fund_name: str
     plan: PlanEnum
     months: int
+    # Цена за месяц на момент заявки: без скидки и к оплате (у individual пусто)
+    list_price_tjs: int | None = None
+    price_tjs: int | None = None
+    discount_label: str | None = None
     status: PlanRequestStatusEnum
     contact: str
     comment: str | None = None

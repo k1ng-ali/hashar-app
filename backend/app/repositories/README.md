@@ -22,6 +22,7 @@
 | `user_repo.py` | `get(for_update)`, `get_by_login`, `exists_login`, `list_all` (без удалённых), `create`, `delete_auth_providers` |
 | `fund_repo.py` | `get(for_update)`, `get_by_code`, `code_exists`, `search`, `list_all`, `create`, `list_accounts`, `get_account`, `create_account` |
 | `member_repo.py` | `get(for_update)`, `get_by_user`, `get_chairman`, `list(status)`, `list_council_by_funds`, `list_by_user`, `first_council_user_ids`, `count_active`, `count_active_by_funds`, `has_other_council`, `units_by_users`, `create` |
+| `pricing_repo.py` | `list_prices`, `get_price(for_update)`, `list_discounts`, `list_running_sales`, `get_discount(for_update)`, `get_by_code(for_update)`, `count_uses(fund_id)`, `uses_by_discount`, `create_discount`, `delete_discount` |
 | `plan_request_repo.py` | `get(for_update)`, `list(status, fund_id)`, `has_pending`, `replace_contact`, `create` |
 | `requisite_repo.py` | `get`, `list(active_only, currencies)`, `create`, `delete` |
 | `transfer_repo.py` | `get`, `list`, `sums_by_currency` → `(зачислено, списано)`, `create` |

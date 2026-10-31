@@ -3,14 +3,19 @@ import { http } from '@/shared/api/http.ts'
 import type {
   AuditEventAdmin,
   AuditFilters,
+  DiscountPlan,
   FundAdmin,
   FundHealth,
   FundHealthFilters,
   Paged,
   PlanApprove,
+  PlanDiscount,
+  PlanDiscountPayload,
+  PlanPrice,
   PlanRequest,
   PlatformOverview,
   PlatformPlans,
+  Pricing,
   UserAdmin,
   UserDetailAdmin,
   UserFilter,
@@ -28,6 +33,21 @@ export const rejectPlanRequest = (id: number, comment: string) =>
   http.post<PlanRequest>(`/admin/plan-requests/${id}/reject`, { admin_comment: comment })
 
 export const listFunds = () => http.get<FundAdmin[]>('/admin/funds', { params: { limit: 100 } })
+
+// ── Цены, скидки и промокоды ──────────────────────────────────────────────
+
+export const getPricing = () => http.get<Pricing>('/admin/pricing/')
+
+export const setPlanPrice = (plan: DiscountPlan, price: number) =>
+  http.put<PlanPrice>(`/admin/pricing/prices/${plan}`, { price_tjs: price })
+
+export const createDiscount = (payload: PlanDiscountPayload) =>
+  http.post<PlanDiscount>('/admin/pricing/discounts', payload)
+
+export const updateDiscount = (id: number, payload: PlanDiscountPayload) =>
+  http.put<PlanDiscount>(`/admin/pricing/discounts/${id}`, payload)
+
+export const deleteDiscount = (id: number) => http.delete<void>(`/admin/pricing/discounts/${id}`)
 
 // ── Аналитика ─────────────────────────────────────────────────────────────
 

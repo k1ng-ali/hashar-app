@@ -151,8 +151,8 @@ export const useFundsStore = defineStore('funds', () => {
     await restore()
   }
 
+  /** Всегда с сервера: цены и скидки меняет админ платформы. */
   async function fetchPlans() {
-    if (plans.value.length) return
     const { data } = await api.listPlans()
     plans.value = data
   }

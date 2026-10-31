@@ -18,7 +18,8 @@
 | `user.py` | `CurrentUser`, `UserOut`, `DemoUserOut` |
 | `fund.py` | `FundCreateIn`, `FundUpdateIn`, `RateOut`, `FundOut`, `FundPublicOut`, `MyFundOut`, `AccountOut`, `PlanInfoOut`, `FundSummaryOut`, `AccountSummaryOut`, `OperationOut` |
 | `member.py` | `FundContext`, `JoinIn`, `MemberOut`, `MemberOutCouncil`, `MemberStatusUpdateIn`, `MemberRoleUpdateIn`, `ChairmanTransferIn` |
-| `plan.py` | `PlanOptionOut`, `PlanRequestIn`, `PlanRequestOut`, `PlanApproveIn`, `PlanRejectIn`, `FundPlanSetIn`, `FundCouncilMemberOut`, `FundOutAdmin` |
+| `pricing.py` | `PlanOptionOut`, `PlanSaleOut`, `PlanQuoteOut`, `PlanPriceIn`, `PlanPriceOut`, `PlanDiscountIn`, `PlanDiscountOut`, `PricingOut` |
+| `plan.py` | `PlanRequestIn`, `PlanRequestOut`, `PlanApproveIn`, `PlanRejectIn`, `FundPlanSetIn`, `FundCouncilMemberOut`, `FundOutAdmin` |
 | `analytics.py` | `PlatformOverviewOut`, `PlatformPlansOut`, `FundHealthListOut`, `UserListOutAdmin`, `UserDetailOutAdmin`, `AuditEventOutAdmin` — аналитика админа платформы |
 | `notice.py` | `NoticeOut`, `NoticeListOut`, `NoticeIn`, `NoticeOutAdmin` — уведомления совету от платформы |
 | `account.py` | `AccountCreateIn`, `RequisiteCreateIn`, `RequisiteOut`, `TransferCreateIn`, `TransferOut` |

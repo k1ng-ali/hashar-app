@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { LuCheck } from '@kalimahapps/vue-icons/lu'
 import { useAuthStore } from '@/features/auth/store.ts'
+import { discountValueLabel } from '@/features/funds/planSale.ts'
+import { useFundsStore } from '@/features/funds/store.ts'
+import type { Plan } from '@/features/funds/types.ts'
 import AppLogo from '@/shared/components/AppLogo.vue'
 import { LOCALES, setLocale, type AppLocale } from '@/shared/i18n/index.ts'
 import { SUPPORT_EMAIL } from '@/shared/lib/legal.ts'
@@ -13,6 +16,13 @@ import { ABOUT } from './content.ts'
 
 const { locale } = useI18n()
 const authStore = useAuthStore()
+const fundsStore = useFundsStore()
+
+// Цены Pro и Max приходят с сервера: их меняет админ платформы. Без ответа цена просто не показывается
+onMounted(() => {
+  fundsStore.fetchPlans().catch(() => {})
+})
+const planOption = (plan: Plan) => fundsStore.plans.find((option) => option.plan === plan)
 
 const c = computed(() => ABOUT[locale.value as AppLocale] ?? ABOUT.ru)
 const year = new Date().getFullYear()
@@ -139,7 +149,18 @@ const REGISTER = { path: '/login', query: { mode: 'register' } }
       <div class="grid grid--4">
         <article v-for="plan in c.plans.items" :key="plan.name" class="card plan">
           <h3>{{ plan.name }}</h3>
-          <div class="plan__price">{{ plan.price }}</div>
+          <div class="plan__price">
+            <template v-if="plan.price">{{ plan.price }}</template>
+            <template v-else-if="planOption(plan.plan)?.price_tjs">
+              <s v-if="planOption(plan.plan)?.sale" class="plan__old">{{ planOption(plan.plan)?.list_price_tjs }}</s>
+              {{ $t('plans.price', { price: planOption(plan.plan)?.price_tjs ?? 0 }) }}
+            </template>
+            <template v-else>—</template>
+          </div>
+          <div v-if="planOption(plan.plan)?.sale" class="plan__sale">
+            🏷 {{ planOption(plan.plan)?.sale?.title }} ·
+            {{ discountValueLabel(planOption(plan.plan)!.sale!, $t) }}
+          </div>
           <div class="plan__limit">{{ plan.limit }}</div>
           <p>{{ plan.note }}</p>
         </article>
@@ -523,6 +544,19 @@ const REGISTER = { path: '/login', query: { mode: 'register' } }
   &__price {
     font-size: 22px;
     font-weight: 800;
+  }
+
+  &__old {
+    font-size: 15px;
+    font-weight: 500;
+    color: $text-muted;
+  }
+
+  &__sale {
+    margin-top: 2px;
+    font-size: 12px;
+    font-weight: 600;
+    color: $success;
   }
 
   &__limit {

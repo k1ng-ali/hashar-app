@@ -13,13 +13,10 @@ from app.core.plans import (
     is_extension,
     lapse_state,
     member_limit,
-    plan_price,
 )
 from app.core.telegram import escape, notify_admin
 from app.enums import (
     COUNCIL_ROLES,
-    PLAN_MEMBER_LIMITS,
-    PLAN_PRICES_TJS,
     FundRoleEnum,
     LapseEnum,
     PlanEnum,
@@ -38,24 +35,27 @@ from app.schemas.plan import (
     FundOutAdmin,
     FundPlanSetIn,
     PlanApproveIn,
-    PlanOptionOut,
     PlanRequestIn,
     PlanRequestOut,
 )
+from app.schemas.pricing import PlanQuoteOut
+from app.services.pricing_service import PricingService
 
 
 def plan_request_out(request: PlanRequest) -> PlanRequestOut:
     preview = None
     if request.status == PlanRequestStatusEnum.pending.value:
-        new_price = plan_price(PlanEnum(request.plan))
-        if not is_extension(request.fund, PlanEnum(request.plan), new_price, datetime.now(timezone.utc)):
-            preview = carryover(request.fund, new_price)
+        if not is_extension(request.fund, PlanEnum(request.plan), request.price_tjs, datetime.now(timezone.utc)):
+            preview = carryover(request.fund, request.price_tjs)
     return PlanRequestOut(
         id=request.id,
         fund_id=request.fund_id,
         fund_name=request.fund.name,
         plan=request.plan,
         months=request.months,
+        list_price_tjs=request.list_price_tjs,
+        price_tjs=request.price_tjs,
+        discount_label=request.discount_label,
         status=request.status,
         contact=request.contact,
         comment=request.comment,
@@ -76,7 +76,7 @@ def plan_request_message(request: PlanRequest, now: datetime | None = None) -> s
     now = now or datetime.now(timezone.utc)
     fund = request.fund
     plan = PlanEnum(request.plan)
-    price = plan_price(plan)
+    price = request.price_tjs
 
     if fund.plan == plan.value:
         kind = "Продление тарифа"
@@ -101,6 +101,8 @@ def plan_request_message(request: PlanRequest, now: datetime | None = None) -> s
         f"Тариф: {plan.value.title()} × {request.months} мес. — {total}",
         f"Сейчас: {current}",
     ]
+    if request.discount_label:
+        lines.insert(3, f"Скидка: {escape(request.discount_label)} — {price} вместо {request.list_price_tjs} смн/мес")
     if not is_extension(fund, plan, price, now) and (rest := carryover(fund, price, now)):
         days = f" → +{round(rest.extra / DAY)} дн. нового" if rest.extra is not None else ""
         lines.append(f"Остаток текущего: {rest.value_tjs:g} смн{days}")
@@ -124,28 +126,24 @@ class PlanService:
         self.member_repo = MemberRepository(db=db)
         self.audit = AuditRepository(db=db)
         self.notices = NoticeRepository(db=db)
+        self.pricing = PricingService(db=db)
 
     # ─── Лимиты ────────────────────────────────────────────────────────────────
-
-    @staticmethod
-    def catalog() -> list[PlanOptionOut]:
-        return [
-            PlanOptionOut(plan=plan, member_limit=PLAN_MEMBER_LIMITS[plan], price_tjs=PLAN_PRICES_TJS[plan])
-            for plan in PlanEnum
-        ]
 
     async def info(self, fund: Fund, user_id: int | None = None, role: FundRoleEnum | None = None) -> PlanInfoOut:
         plan = effective_plan(fund)
         members_count = await self.member_repo.count_active(fund.id)
         lapse = lapse_state(fund)
         blocked = lapse == LapseEnum.lapsed and members_count > free_limit()
+        # Цена не записана только у тарифов, выставленных до появления plan_price
+        price = 0 if plan == PlanEnum.free else fund.plan_price or await self.pricing.list_price(plan)
         return PlanInfoOut(
             plan=fund.plan,
             effective_plan=plan,
             expires_at=fund.plan_expires_at,
             member_limit=member_limit(fund),
             members_count=members_count,
-            price_tjs=(fund.plan_price or plan_price(plan)) if plan != PlanEnum.free else 0,
+            price_tjs=price,
             remaining_tjs=remaining.value_tjs if (remaining := carryover(fund, None)) else None,
             lapse=lapse,
             blocks_at=blocks_at(fund) if lapse != LapseEnum.none else None,
@@ -181,6 +179,29 @@ class PlanService:
 
     # ─── Председатель ──────────────────────────────────────────────────────────
 
+    async def quote(self, fund_id: int, plan: PlanEnum, months: int, promo_code: str | None = None) -> PlanQuoteOut:
+        """Расчёт для формы заявки: цена со скидкой, продление или перенос остатка."""
+        fund = await self.fund_repo.get(fund_id)
+        if not fund:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fund not found")
+
+        resolved = await self.pricing.resolve(plan, fund_id, promo_code)
+        now = datetime.now(timezone.utc)
+        extension = is_extension(fund, plan, resolved.price, now)
+        rest = carryover(fund, resolved.price, now) if not extension else None
+        return PlanQuoteOut(
+            plan=plan,
+            months=months,
+            list_price_tjs=resolved.list_price,
+            price_tjs=resolved.price,
+            total_tjs=resolved.price * months if resolved.price else None,
+            discount_label=resolved.label,
+            promo_status=resolved.promo_status,
+            is_extension=extension,
+            carryover_tjs=rest.value_tjs if rest else None,
+            carryover_days=round(rest.extra / DAY) if rest and rest.extra is not None else None,
+        )
+
     async def create_request(
         self,
         fund_id: int,
@@ -192,12 +213,20 @@ class PlanService:
         if await self.repo.has_pending(fund_id):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Plan request is already pending")
 
+        resolved = await self.pricing.resolve(payload.plan, fund_id, payload.promo_code, for_update=True)
+        if payload.expected_price_tjs is not None and payload.expected_price_tjs != resolved.price:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Plan price has changed")
+
         request = await self.repo.create(
             fund_id=fund_id,
             plan=payload.plan.value,
             months=payload.months,
             contact=payload.contact.strip(),
             comment=payload.comment,
+            list_price_tjs=resolved.list_price,
+            price_tjs=resolved.price,
+            discount_id=resolved.discount.id if resolved.discount else None,
+            discount_label=resolved.label,
             requested_by_id=user_id,
         )
         await self.db.commit()
@@ -224,11 +253,14 @@ class PlanService:
         fund = await self.fund_repo.get(request.fund_id, for_update=True)
 
         new_plan = PlanEnum(request.plan)
-        new_price = self._price_for(new_plan, payload.monthly_price)
+        # Председателю обещана цена на момент заявки — смена прайса её не меняет
+        new_price = request.price_tjs or self._negotiated_price(payload.monthly_price)
         months = payload.months or request.months
         now = datetime.now(timezone.utc)
 
         details = {"request_id": request.id, "months": months}
+        if request.discount_label:
+            details.update(discount=request.discount_label, list_price=request.list_price_tjs)
         if is_extension(fund, new_plan, new_price, now):
             # Продление того же тарифа — от текущей даты окончания
             start = fund.plan_expires_at
@@ -283,9 +315,12 @@ class PlanService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fund not found")
 
         fund.plan = payload.plan.value
-        fund.plan_price = (
-            None if payload.plan == PlanEnum.free else self._price_for(payload.plan, payload.monthly_price)
-        )
+        if payload.plan == PlanEnum.free:
+            fund.plan_price = None
+        else:
+            fund.plan_price = await self.pricing.list_price(payload.plan) or self._negotiated_price(
+                payload.monthly_price
+            )
         fund.plan_expires_at = None if payload.plan == PlanEnum.free else payload.expires_at
         fund.member_limit = payload.member_limit if payload.plan == PlanEnum.individual else None
         self._audit_plan(fund, "plan.set", admin_id)
@@ -319,11 +354,8 @@ class PlanService:
         )
 
     @staticmethod
-    def _price_for(plan: PlanEnum, monthly_price: int | None) -> int:
-        """Цена тарифа за месяц: из каталога, у individual — договорная от админа."""
-        price = plan_price(plan)
-        if price is not None:
-            return price
+    def _negotiated_price(monthly_price: int | None) -> int:
+        """Договорная цена от админа — для тарифа без цены в прайсе (individual)."""
         if not monthly_price:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail="monthly_price is required for this plan"

@@ -6,7 +6,7 @@
 export const SUPPORT_EMAIL = 'support@hashar.app'
 
 /** Дата последней редакции документов — менять вместе с текстом. */
-export const LEGAL_UPDATED = '2026-10-17'
+export const LEGAL_UPDATED = '2026-11-01'
 
 export interface LegalSection {
   heading: string

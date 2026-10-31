@@ -4,24 +4,30 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useFundsStore } from '@/features/funds/store.ts'
 import { useAnalyticsStore } from '@/features/platformAdmin/analyticsStore.ts'
+import DiscountForm from '@/features/platformAdmin/components/DiscountForm.vue'
 import AuditPanel from '@/features/platformAdmin/components/AuditPanel.vue'
 import FundsHealthPanel from '@/features/platformAdmin/components/FundsHealthPanel.vue'
 import NoticeComposer from '@/features/platformAdmin/components/NoticeComposer.vue'
 import OverviewPanel from '@/features/platformAdmin/components/OverviewPanel.vue'
 import PlanRequestCard from '@/features/platformAdmin/components/PlanRequestCard.vue'
 import PlansPanel from '@/features/platformAdmin/components/PlansPanel.vue'
+import PricingPanel from '@/features/platformAdmin/components/PricingPanel.vue'
 import UsersPanel from '@/features/platformAdmin/components/UsersPanel.vue'
 import * as platformApi from '@/features/platformAdmin/api.ts'
 import { usePlatformAdminStore } from '@/features/platformAdmin/store.ts'
 import type { NoticeAdmin } from '@/features/notices/types.ts'
 import type {
+  DiscountPlan,
   FundCouncilMember,
   FundHealth,
   PlanApprove,
+  PlanDiscount,
+  PlanDiscountPayload,
   PlanRequest,
   PlatformTab,
   UserAdmin,
 } from '@/features/platformAdmin/types.ts'
+import BottomSheet from '@/shared/components/BottomSheet.vue'
 import CardSkeleton from '@/shared/components/CardSkeleton.vue'
 import EmptyState from '@/shared/components/EmptyState.vue'
 import PillTabs from '@/shared/components/PillTabs.vue'
@@ -39,12 +45,13 @@ const headerStore = useHeaderStore()
 const navStore = useNavStore()
 
 // ?tab=requests — ссылка из уведомления в Telegram о новой заявке
-const PLATFORM_TABS: PlatformTab[] = ['overview', 'plans', 'requests', 'funds', 'users', 'audit']
+const PLATFORM_TABS: PlatformTab[] = ['overview', 'plans', 'pricing', 'requests', 'funds', 'users', 'audit']
 const queryTab = route.query.tab as PlatformTab
 const view = ref<PlatformTab>(PLATFORM_TABS.includes(queryTab) ? queryTab : 'overview')
 const tabs = computed(() => [
   { value: 'overview' as PlatformTab, label: t('platform.tabs.overview') },
   { value: 'plans' as PlatformTab, label: t('platform.tabs.plans') },
+  { value: 'pricing' as PlatformTab, label: t('platform.tabs.pricing') },
   { value: 'requests' as PlatformTab, label: t('platform.tabs.requests'), badge: store.pendingRequests.length },
   { value: 'funds' as PlatformTab, label: t('platform.tabs.funds') },
   { value: 'users' as PlatformTab, label: t('platform.tabs.users') },
@@ -76,6 +83,7 @@ watch(view, (tab) => {
   if (tab === 'funds') void safely(analytics.fetchFunds)
   if (tab === 'users') void safely(analytics.fetchUsers)
   if (tab === 'audit') void safely(analytics.fetchAudit)
+  if (tab === 'pricing') void safely(store.fetchPricing)
 }, { immediate: true })
 
 async function safely(action: () => Promise<unknown>) {
@@ -105,6 +113,41 @@ async function handleReject(request: PlanRequest, comment: string) {
   } catch (error) {
     headerStore.showNotification(errorMessage(error), 'error')
   }
+}
+
+// ── Цены и скидки ────────────────────────────────────────────────────────
+const discountSheet = ref<{ discount: PlanDiscount | null; isPromo: boolean } | null>(null)
+
+async function changePricing(action: () => Promise<unknown>, successKey: string) {
+  try {
+    await action()
+    headerStore.showNotification(t(successKey))
+    return true
+  } catch (error) {
+    headerStore.showNotification(errorMessage(error), 'error')
+    return false
+  }
+}
+
+const savePrice = (plan: DiscountPlan, price: number) =>
+  changePricing(() => store.setPrice(plan, price), 'platform.pricing.priceSaved')
+
+async function saveDiscount(payload: PlanDiscountPayload) {
+  const sheet = discountSheet.value
+  if (!sheet) return
+  const saved = await changePricing(() => store.saveDiscount(sheet.discount, payload), 'platform.pricing.discountSaved')
+  if (saved) discountSheet.value = null
+}
+
+function toggleDiscount(discount: PlanDiscount) {
+  const { title, code, kind, value, plans, starts_at, ends_at, max_uses, is_active } = discount
+  const payload = { title, code, kind, value, plans, starts_at, ends_at, max_uses, is_active: !is_active }
+  return changePricing(() => store.saveDiscount(discount, payload), 'platform.pricing.discountSaved')
+}
+
+function deleteDiscount(discount: PlanDiscount) {
+  if (!window.confirm(t('common.confirmDelete'))) return
+  return changePricing(() => store.removeDiscount(discount.id), 'platform.pricing.discountDeleted')
 }
 
 function goTo(tab: PlatformTab) {
@@ -175,7 +218,24 @@ async function sendNotice(text: string) {
         </template>
       </section>
 
-      <!-- 3. Заявки на тарифы -->
+      <!-- 3. Цены, скидки и промокоды -->
+      <section v-else-if="view === 'pricing'" key="pricing" class="section">
+        <PricingPanel
+          v-if="store.pricing"
+          :pricing="store.pricing"
+          :is-submitting="store.isSubmitting"
+          @save-price="savePrice"
+          @create="(isPromo) => (discountSheet = { discount: null, isPromo })"
+          @edit="(discount) => (discountSheet = { discount, isPromo: !!discount.code })"
+          @toggle="toggleDiscount"
+          @delete="deleteDiscount"
+        />
+        <template v-else>
+          <CardSkeleton v-for="i in 3" :key="i" :lines="3" />
+        </template>
+      </section>
+
+      <!-- 4. Заявки на тарифы -->
       <section v-else-if="view === 'requests'" key="requests" class="section">
         <template v-if="store.isLoading && !store.requests.length">
           <CardSkeleton v-for="i in 2" :key="i" :lines="3" />
@@ -207,7 +267,7 @@ async function sendNotice(text: string) {
         </template>
       </section>
 
-      <!-- 4. Фонды: поиск и здоровье -->
+      <!-- 5. Фонды: поиск и здоровье -->
       <section v-else-if="view === 'funds'" key="funds" class="section">
         <FundsHealthPanel
           v-model:filters="analytics.fundFilters"
@@ -223,7 +283,7 @@ async function sendNotice(text: string) {
         />
       </section>
 
-      <!-- 5. Пользователи -->
+      <!-- 6. Пользователи -->
       <section v-else-if="view === 'users'" key="users" class="section">
         <UsersPanel
           v-model:query="analytics.userQuery"
@@ -240,7 +300,7 @@ async function sendNotice(text: string) {
         />
       </section>
 
-      <!-- 6. Журнал действий -->
+      <!-- 7. Журнал действий -->
       <section v-else key="audit" class="section">
         <AuditPanel
           v-model:filters="analytics.auditFilters"
@@ -253,6 +313,21 @@ async function sendNotice(text: string) {
         />
       </section>
     </Transition>
+
+    <BottomSheet
+      :open="!!discountSheet"
+      :title="discountSheet?.isPromo ? $t('platform.pricing.promoSheet') : $t('platform.pricing.saleSheet')"
+      @close="discountSheet = null"
+    >
+      <DiscountForm
+        v-if="discountSheet"
+        :key="discountSheet.discount?.id ?? 'new'"
+        :discount="discountSheet.discount"
+        :is-promo="discountSheet.isPromo"
+        :is-submitting="store.isSubmitting"
+        @submit="saveDiscount"
+      />
+    </BottomSheet>
 
     <NoticeComposer
       :open="!!notifyFund"

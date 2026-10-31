@@ -64,6 +64,17 @@ const API_ERRORS: Record<string, string> = {
   'Plan request is already pending': 'plans.pending',
   'Plan request already reviewed': 'apiErrors.alreadyReviewed',
   'monthly_price is required for this plan': 'apiErrors.priceRequired',
+  'Plan price has changed': 'plans.errors.priceChanged',
+  'Promo code not found': 'plans.errors.promoNotFound',
+  'Promo code is not active yet': 'plans.errors.promoNotActive',
+  'Promo code has expired': 'plans.errors.promoExpired',
+  'Promo code usage limit reached': 'plans.errors.promoLimit',
+  'Promo code is not valid for this plan': 'plans.errors.promoWrongPlan',
+  'Promo code was already used by this fund': 'plans.errors.promoUsed',
+  'Promo code already exists': 'platform.pricing.errors.codeExists',
+  'Discount was used, disable it instead': 'platform.pricing.errors.discountUsed',
+  'Discount not found': 'apiErrors.notFound',
+  'Plan price not found': 'apiErrors.notFound',
   'Too many attempts, try later': 'auth.tooManyAttempts',
 }
 

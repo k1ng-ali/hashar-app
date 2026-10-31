@@ -1,9 +1,10 @@
-import type { FundRole, MemberStatus, Plan } from '@/features/funds/types.ts'
+import type { DiscountKind, FundRole, MemberStatus, Plan } from '@/features/funds/types.ts'
 import type { Currency } from '@/shared/lib/currency.ts'
 
 export type { PlanRequest } from '@/features/admin/types.ts'
+export type { DiscountKind } from '@/features/funds/types.ts'
 
-export type PlatformTab = 'overview' | 'plans' | 'requests' | 'funds' | 'users' | 'audit'
+export type PlatformTab = 'overview' | 'plans' | 'pricing' | 'requests' | 'funds' | 'users' | 'audit'
 
 /** Председатель или администратор фонда с контактами. */
 export interface FundCouncilMember {
@@ -35,6 +36,42 @@ export interface PlanApprove {
   /** Договорная цена individual за месяц — обязательна для него. */
   monthly_price?: number | null
   admin_comment?: string | null
+}
+
+// ── Цены, скидки и промокоды ────────────────────────────────────────────
+
+export type DiscountPlan = 'pro' | 'max'
+export type DiscountState = 'active' | 'scheduled' | 'expired' | 'exhausted' | 'disabled'
+
+export interface PlanPrice {
+  plan: DiscountPlan
+  price_tjs: number
+  updated_at: string
+}
+
+export interface PlanDiscountPayload {
+  title: string
+  /** null — распродажа для всех, иначе промокод. */
+  code: string | null
+  kind: DiscountKind
+  value: number
+  plans: DiscountPlan[]
+  starts_at: string | null
+  ends_at: string | null
+  max_uses: number | null
+  is_active: boolean
+}
+
+export interface PlanDiscount extends PlanDiscountPayload {
+  id: number
+  uses: number
+  state: DiscountState
+  created_at: string
+}
+
+export interface Pricing {
+  prices: PlanPrice[]
+  discounts: PlanDiscount[]
 }
 
 // ── Аналитика платформы ─────────────────────────────────────────────────

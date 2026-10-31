@@ -7,6 +7,7 @@ import type { AuditEventAdmin, AuditFilters } from '../types.ts'
 
 // Типы записей журнала (AuditEvent.entity на бэкенде)
 const ENTITIES = [
+  'pricing',
   'fund',
   'member',
   'contribution',

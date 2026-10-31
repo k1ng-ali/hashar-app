@@ -48,10 +48,10 @@ export const TERMS: Record<AppLocale, LegalDocument> = {
       {
         heading: '5. Тарифы и оплата',
         items: [
-          'Тариф действует для фонда. Free — до 10 участников, бесплатно и без срока. Pro — до 100 участников, 199 сомони в месяц. Max — до 500 участников, 399 сомони в месяц. Индивидуальный — по договорённости.',
+          'Тариф действует для фонда. Free — до 10 участников, бесплатно и без срока. Pro — до 100 участников. Max — до 500 участников. Индивидуальный — по договорённости. Текущая цена и действующие скидки указаны на главной странице и в приложении при подключении тарифа.',
           'Платный тариф подключает председатель через заявку в приложении. Оплата проходит вне сервиса по договорённости с администратором платформы, после неё тариф включается на оплаченный срок.',
           'При смене тарифа неиспользованный остаток текущего тарифа пересчитывается в дни нового. После окончания срока фонд переходит на Free: участники и данные сохраняются, но новых участников сверх лимита принять нельзя.',
-          'Цены могут меняться; новая цена действует для следующих оплат, а не для уже оплаченного срока. Вопросы о возврате решаются индивидуально через поддержку.',
+          'Цены могут меняться; новая цена действует для следующих оплат, а не для уже оплаченного срока. Скидка или промокод действуют только на срок, оплаченный по ним, и не суммируются: применяется наибольшая. Вопросы о возврате решаются индивидуально через поддержку.',
         ],
       },
       {
@@ -135,7 +135,7 @@ export const TERMS: Record<AppLocale, LegalDocument> = {
       {
         heading: '5. Тарифҳо ва пардохт',
         items: [
-          'Тариф барои фонд амал мекунад. Free — то 10 иштирокчӣ, ройгон ва бе мӯҳлат. Pro — то 100 иштирокчӣ, 199 сомонӣ дар як моҳ. Max — то 500 иштирокчӣ, 399 сомонӣ дар як моҳ. Инфиродӣ — бо мувофиқа.',
+          'Тариф барои фонд амал мекунад. Free — то 10 иштирокчӣ, ройгон ва бе мӯҳлат. Pro — то 100 иштирокчӣ. Max — то 500 иштирокчӣ. Инфиродӣ — бо мувофиқа. Нархи ҷорӣ ва тахфифҳои амалкунанда дар саҳифаи асосӣ ва дар барнома ҳангоми пайваст кардани тариф нишон дода мешаванд.',
           'Тарифи пулакиро раис тавассути ариза дар барнома пайваст мекунад. Пардохт берун аз хизматрасонӣ бо мувофиқаи маъмури платформа сурат мегирад, пас аз он тариф ба мӯҳлати пардохтшуда фаъол мешавад.',
           'Ҳангоми иваз кардани тариф бақияи истифоданашудаи тарифи ҷорӣ ба рӯзҳои тарифи нав табдил дода мешавад. Пас аз анҷоми мӯҳлат фонд ба Free мегузарад: иштирокчиён ва маълумот нигоҳ дошта мешаванд, аммо иштирокчиёни навро аз ҳад зиёд қабул кардан мумкин нест.',
           'Нархҳо метавонанд тағйир ёбанд; нархи нав барои пардохтҳои оянда амал мекунад, на барои мӯҳлати аллакай пардохтшуда. Масъалаҳои баргардонидани пул ба таври инфиродӣ тавассути дастгирӣ ҳал карда мешаванд.',
@@ -222,7 +222,7 @@ export const TERMS: Record<AppLocale, LegalDocument> = {
       {
         heading: '5. Plans and payment',
         items: [
-          'A plan applies to a fund. Free — up to 10 members, free with no time limit. Pro — up to 100 members, 199 TJS per month. Max — up to 500 members, 399 TJS per month. Individual — by agreement.',
+          'A plan applies to a fund. Free — up to 10 members, free with no time limit. Pro — up to 100 members. Max — up to 500 members. Individual — by agreement. Current prices and active discounts are shown on the home page and in the app when you request a plan.',
           'The chairman enables a paid plan through a request in the app. Payment is made outside the service as agreed with the platform administrator, after which the plan is turned on for the paid period.',
           'When changing plans, the unused remainder of the current plan is converted into days of the new one. When the period ends, the fund moves to Free: members and data are kept, but no new members can join above the limit.',
           'Prices may change; a new price applies to future payments, not to a period already paid for. Refund questions are handled individually through support.',

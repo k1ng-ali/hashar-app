@@ -31,6 +31,7 @@ from app.api.council.announcements import router as council_announcements_router
 
 # ─── Admin (админ платформы) ──────────────────────────────────────────────────
 from app.api.admin.plans import router as admin_plans_router
+from app.api.admin.pricing import router as admin_pricing_router
 from app.api.admin.analytics import router as admin_analytics_router
 from app.api.admin.notices import router as admin_notices_router
 
@@ -62,5 +63,6 @@ api_router.include_router(council_notices_router, prefix="/council")
 api_router.include_router(council_announcements_router, prefix="/council")
 
 api_router.include_router(admin_plans_router, prefix="/admin")
+api_router.include_router(admin_pricing_router, prefix="/admin")
 api_router.include_router(admin_analytics_router, prefix="/admin")
 api_router.include_router(admin_notices_router, prefix="/admin")

@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import ProgressBar from '@/shared/components/ProgressBar.vue'
 import { formatDate } from '@/shared/lib/format.ts'
+import { discountValueLabel } from '../planSale.ts'
 import type { Plan, PlanInfo, PlanOption } from '../types.ts'
 
 const props = defineProps<{
@@ -27,6 +28,8 @@ const canRenew = computed(() => props.info.effective_plan !== 'free')
 const upgrades = computed(() =>
   props.options.filter((o) => ORDER.indexOf(o.plan) > ORDER.indexOf(props.info.effective_plan)),
 )
+// Распродажа на текущий тариф — повод продлить
+const currentSale = computed(() => props.options.find((o) => o.plan === props.info.effective_plan)?.sale ?? null)
 </script>
 
 <template>
@@ -60,6 +63,11 @@ const upgrades = computed(() =>
       🔄 {{ $t('plans.renew') }}
     </button>
 
+    <p v-if="canRenew && currentSale" class="sale">
+      🏷 {{ currentSale.title }} · {{ discountValueLabel(currentSale, $t) }}
+      <template v-if="currentSale.ends_at"> · {{ $t('plans.until', { date: formatDate(currentSale.ends_at) }) }}</template>
+    </p>
+
     <!-- Тарифы для повышения -->
     <div v-if="upgrades.length" class="options">
       <div v-for="option in upgrades" :key="option.plan" class="option">
@@ -68,9 +76,14 @@ const upgrades = computed(() =>
           <span>
             {{ option.member_limit ? $t('plans.upTo', { n: option.member_limit }) : $t('plans.unlimited') }}
           </span>
+          <span v-if="option.sale" class="sale">
+            🏷 {{ option.sale.title }} · {{ discountValueLabel(option.sale, $t) }}
+            <template v-if="option.sale.ends_at"> · {{ $t('plans.until', { date: formatDate(option.sale.ends_at) }) }}</template>
+          </span>
         </div>
         <div class="option-right">
           <span class="price">
+            <s v-if="option.sale && option.list_price_tjs" class="old-price">{{ option.list_price_tjs }}</s>
             {{ option.price_tjs ? $t('plans.price', { price: option.price_tjs }) : $t('plans.byAgreement') }}
           </span>
           <button
@@ -154,6 +167,7 @@ const upgrades = computed(() =>
 
 .option {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -179,6 +193,7 @@ const upgrades = computed(() =>
 .option-right {
   display: flex;
   align-items: center;
+  margin-left: auto;
   gap: 8px;
 }
 
@@ -186,6 +201,18 @@ const upgrades = computed(() =>
   font-size: 13px;
   font-weight: 700;
   color: $navy;
+}
+
+.old-price {
+  font-weight: 500;
+  color: $text-muted;
+}
+
+.sale {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: $success !important;
 }
 
 .request-btn {

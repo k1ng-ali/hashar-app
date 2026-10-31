@@ -128,6 +128,26 @@ export interface PlanRequestCreate {
   months: number
   contact: string
   comment: string | null
+  promo_code: string | null
+  /** Цена за месяц, которую видел председатель: изменилась — сервер вернёт 409. */
+  expected_price_tjs: number | null
+}
+
+export type PromoStatus = 'none' | 'applied' | 'not_better'
+
+/** Расчёт сервера для формы заявки — зеркало PlanQuoteOut. */
+export interface PlanQuote {
+  plan: Plan
+  months: number
+  list_price_tjs: number | null
+  price_tjs: number | null
+  total_tjs: number | null
+  discount_label: string | null
+  promo_status: PromoStatus
+  /** Тот же тариф по той же цене: срок добавится к дате окончания. */
+  is_extension: boolean
+  carryover_tjs: number | null
+  carryover_days: number | null
 }
 
 export interface PlanRequest {
@@ -136,6 +156,10 @@ export interface PlanRequest {
   fund_name: string
   plan: Plan
   months: number
+  /** Цена за месяц на момент заявки: без скидки и к оплате. null — individual. */
+  list_price_tjs: number | null
+  price_tjs: number | null
+  discount_label: string | null
   status: 'pending' | 'approved' | 'rejected'
   contact: string
   comment: string | null

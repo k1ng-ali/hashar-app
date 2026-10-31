@@ -39,10 +39,24 @@ export interface Rate {
   amount: number
 }
 
+export type DiscountKind = 'percent' | 'fixed'
+
+/** Распродажа на витрине тарифов. */
+export interface PlanSale {
+  title: string
+  kind: DiscountKind
+  value: number
+  ends_at: string | null
+}
+
 export interface PlanOption {
   plan: Plan
   member_limit: number | null
+  /** К оплате за месяц с учётом распродажи. null — по договорённости. */
   price_tjs: number | null
+  /** Без скидки. */
+  list_price_tjs: number | null
+  sale: PlanSale | null
 }
 
 /** Карточка фонда для участника — зеркало FundOut. */

@@ -60,10 +60,13 @@ const myContact = computed(() =>
         :options="fundsStore.plans"
         :is-renewal="flow.isRenewal.value"
         :expires-at="fundsStore.current?.plan.expires_at ?? null"
-        :remaining-tjs="fundsStore.current?.plan.remaining_tjs ?? null"
+        :quote="flow.planQuote.value"
+        :promo-code="flow.promoCode.value"
+        :promo-error="flow.promoError.value"
         :default-contact="myContact"
         :is-submitting="store.isSubmitting"
         @submit="flow.handlePlanRequest"
+        @apply-promo="flow.loadQuote"
       />
     </BottomSheet>
   </div>

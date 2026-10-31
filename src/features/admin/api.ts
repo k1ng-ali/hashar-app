@@ -2,7 +2,7 @@ import { http } from '@/shared/api/http.ts'
 import type { AccountTransfer } from '@/features/announcements/types.ts'
 import type { Contribution, ContributionStatus } from '@/features/contributions/types.ts'
 import type { Requisite } from '@/features/dashboard/types.ts'
-import type { Account, FundInfo, FundRole, MemberStatus } from '@/features/funds/types.ts'
+import type { Account, FundInfo, FundRole, MemberStatus, Plan } from '@/features/funds/types.ts'
 import type { TargetFund } from '@/features/targetFunds/types.ts'
 import type { Currency } from '@/shared/lib/currency.ts'
 import type { Expense } from '@/features/expenses/types.ts'
@@ -13,6 +13,7 @@ import type {
   HistoryFilters,
   Member,
   PlanRequest,
+  PlanQuote,
   PlanRequestCreate,
   RequisiteCreate,
   TargetFundCreate,
@@ -112,6 +113,11 @@ export const updateSettings = (fundId: number, payload: FundSettingsUpdate) =>
   http.patch<FundInfo>(`${council(fundId)}/settings`, payload)
 
 export const listPlanRequests = (fundId: number) => http.get<PlanRequest[]>(`${council(fundId)}/plan-requests/`)
+
+export const getPlanQuote = (fundId: number, plan: Plan, promoCode: string | null) =>
+  http.get<PlanQuote>(`${council(fundId)}/plan-requests/quote`, {
+    params: { plan, promo_code: promoCode ?? undefined },
+  })
 
 export const createPlanRequest = (fundId: number, payload: PlanRequestCreate) =>
   http.post<PlanRequest>(`${council(fundId)}/plan-requests/`, payload)

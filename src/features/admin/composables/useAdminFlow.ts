@@ -13,6 +13,7 @@ import type {
   ExpenseCreate,
   FundSettingsUpdate,
   Member,
+  PlanQuote,
   RequisiteCreate,
   TargetFundCreate,
   TransferCreate,
@@ -31,6 +32,9 @@ export function useAdminFlow() {
   const sheet = ref<AdminSheet>(null)
   const selectedContribution = ref<Contribution | null>(null)
   const selectedPlan = ref<Plan | null>(null)
+  const planQuote = ref<PlanQuote | null>(null)
+  const promoCode = ref<string | null>(null)
+  const promoError = ref('')
   // Участник, по которому совет решает о начислениях за период отсутствия
   const selectedMember = ref<Member | null>(null)
   // Продление текущего тарифа, а не переход на новый
@@ -67,7 +71,37 @@ export function useAdminFlow() {
   function openPlanRequest(plan: Plan, renewal = false) {
     selectedPlan.value = plan
     isRenewal.value = renewal
+    planQuote.value = null
+    promoCode.value = null
+    promoError.value = ''
     sheet.value = 'plan'
+    void loadQuote(null)
+  }
+
+  /** Цену считает только сервер. Неподошедший промокод не мешает заявке: остаётся цена без него. */
+  async function loadQuote(code: string | null) {
+    const plan = selectedPlan.value
+    if (!plan) return
+    try {
+      const { data } = await store.quotePlan(plan, code)
+      if (selectedPlan.value !== plan) return
+      planQuote.value = data
+      promoCode.value = code
+      promoError.value = ''
+    } catch (error) {
+      if (code) {
+        promoError.value = errorMessage(error)
+        promoCode.value = null
+        await loadQuoteSilently(plan)
+      } else {
+        headerStore.showNotification(errorMessage(error), 'error', 3500)
+      }
+    }
+  }
+
+  async function loadQuoteSilently(plan: Plan) {
+    const { data } = await store.quotePlan(plan, null)
+    if (selectedPlan.value === plan) planQuote.value = data
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────
@@ -190,20 +224,35 @@ export function useAdminFlow() {
     if (await copyText(value)) headerStore.showNotification(t('common.copied'))
   }
 
-  const handlePlanRequest = (months: number, contact: string, comment: string | null) => {
+  const handlePlanRequest = async (months: number, contact: string, comment: string | null) => {
     const plan = selectedPlan.value
-    if (!plan) return Promise.resolve(false)
-    return run(
-      () => store.requestPlan({ plan, months, contact, comment }),
+    if (!plan) return false
+    const sent = await run(
+      () =>
+        store.requestPlan({
+          plan,
+          months,
+          contact,
+          comment,
+          promo_code: promoCode.value,
+          expected_price_tjs: planQuote.value?.price_tjs ?? null,
+        }),
       isRenewal.value ? 'plans.renewRequested' : 'plans.requested',
       true,
     )
+    // Пока форма была открыта, цена или промокод могли измениться — показываем актуальный расчёт
+    if (!sent) await loadQuote(promoCode.value)
+    return sent
   }
 
   return {
     sheet,
     selectedContribution,
     selectedPlan,
+    planQuote,
+    promoCode,
+    promoError,
+    loadQuote,
     selectedMember,
     isRenewal,
     verificationView,

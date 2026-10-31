@@ -1,6 +1,7 @@
 // src/pages/AboutPage/content.ts
 // Публичная страница «О проекте» (главная сайта для гостей; её же видит проверка бренда Google).
-// Тарифы должны совпадать с backend/app/enums/plan.py, обещания о данных — с политикой конфиденциальности.
+// Лимиты тарифов должны совпадать с backend/app/enums/plan.py, цены Pro и Max приходят с сервера, обещания о данных — с политикой конфиденциальности.
+import type { Plan } from '@/features/funds/types.ts'
 import type { AppLocale } from '@/shared/i18n/index.ts'
 
 interface Card {
@@ -28,7 +29,8 @@ export interface AboutContent {
   plans: {
     title: string
     lead: string
-    items: { name: string; limit: string; price: string; note: string }[]
+    // price пуст у Pro и Max — их цену задаёт админ платформы, она приходит с сервера
+    items: { plan: Plan; name: string; limit: string; price?: string; note: string }[]
     payment: string
   }
   faq: { title: string; items: { q: string; a: string }[] }
@@ -104,10 +106,10 @@ export const ABOUT: Record<AppLocale, AboutContent> = {
       title: 'Тарифы',
       lead: 'Тариф выбирается для фонда, а не для каждого жителя. Участники ничего не платят платформе.',
       items: [
-        { name: 'Free', limit: 'до 10 участников', price: 'Бесплатно', note: 'Все функции, без ограничения по времени' },
-        { name: 'Pro', limit: 'до 100 участников', price: '199 смн / мес', note: 'Для дома или небольшой махалли' },
-        { name: 'Max', limit: 'до 500 участников', price: '399 смн / мес', note: 'Для крупных махалли и посёлков' },
-        { name: 'Индивидуальный', limit: 'свой лимит', price: 'По договорённости', note: 'Для больших сообществ и объединений' },
+        { plan: 'free', name: 'Free', limit: 'до 10 участников', price: 'Бесплатно', note: 'Все функции, без ограничения по времени' },
+        { plan: 'pro', name: 'Pro', limit: 'до 100 участников', note: 'Для дома или небольшой махалли' },
+        { plan: 'max', name: 'Max', limit: 'до 500 участников', note: 'Для крупных махалли и посёлков' },
+        { plan: 'individual', name: 'Индивидуальный', limit: 'свой лимит', price: 'По договорённости', note: 'Для больших сообществ и объединений' },
       ],
       payment:
         'Платный тариф подключает председатель: отправляет заявку в приложении, администратор связывается для оплаты и включает тариф. При смене тарифа оплаченный остаток не сгорает.',
@@ -197,10 +199,10 @@ export const ABOUT: Record<AppLocale, AboutContent> = {
       title: 'Тарифҳо',
       lead: 'Тариф барои фонд интихоб мешавад, на барои ҳар сокин. Иштирокчиён ба платформа чизе намепардозанд.',
       items: [
-        { name: 'Free', limit: 'то 10 иштирокчӣ', price: 'Ройгон', note: 'Ҳамаи имкониятҳо, бе маҳдудияти вақт' },
-        { name: 'Pro', limit: 'то 100 иштирокчӣ', price: '199 смн / моҳ', note: 'Барои бино ё маҳаллаи хурд' },
-        { name: 'Max', limit: 'то 500 иштирокчӣ', price: '399 смн / моҳ', note: 'Барои маҳаллаҳо ва деҳаҳои калон' },
-        { name: 'Инфиродӣ', limit: 'маҳдудияти худ', price: 'Бо мувофиқа', note: 'Барои ҷамъиятҳо ва иттиҳодияҳои калон' },
+        { plan: 'free', name: 'Free', limit: 'то 10 иштирокчӣ', price: 'Ройгон', note: 'Ҳамаи имкониятҳо, бе маҳдудияти вақт' },
+        { plan: 'pro', name: 'Pro', limit: 'то 100 иштирокчӣ', note: 'Барои бино ё маҳаллаи хурд' },
+        { plan: 'max', name: 'Max', limit: 'то 500 иштирокчӣ', note: 'Барои маҳаллаҳо ва деҳаҳои калон' },
+        { plan: 'individual', name: 'Инфиродӣ', limit: 'маҳдудияти худ', price: 'Бо мувофиқа', note: 'Барои ҷамъиятҳо ва иттиҳодияҳои калон' },
       ],
       payment:
         'Тарифи пулакиро раис пайваст мекунад: дар барнома ариза мефиристад, маъмур барои пардохт тамос мегирад ва тарифро фаъол мекунад. Ҳангоми иваз кардани тариф бақияи пардохтшуда нест намешавад.',
@@ -290,10 +292,10 @@ export const ABOUT: Record<AppLocale, AboutContent> = {
       title: 'Plans',
       lead: 'A plan is chosen for the fund, not for each resident. Members pay nothing to the platform.',
       items: [
-        { name: 'Free', limit: 'up to 10 members', price: 'Free', note: 'All features, no time limit' },
-        { name: 'Pro', limit: 'up to 100 members', price: '199 TJS / month', note: 'For a building or a small mahalla' },
-        { name: 'Max', limit: 'up to 500 members', price: '399 TJS / month', note: 'For large mahallas and villages' },
-        { name: 'Individual', limit: 'custom limit', price: 'By agreement', note: 'For large communities and associations' },
+        { plan: 'free', name: 'Free', limit: 'up to 10 members', price: 'Free', note: 'All features, no time limit' },
+        { plan: 'pro', name: 'Pro', limit: 'up to 100 members', note: 'For a building or a small mahalla' },
+        { plan: 'max', name: 'Max', limit: 'up to 500 members', note: 'For large mahallas and villages' },
+        { plan: 'individual', name: 'Individual', limit: 'custom limit', price: 'By agreement', note: 'For large communities and associations' },
       ],
       payment:
         'The chairman enables a paid plan: they send a request in the app, the administrator gets in touch about payment and turns the plan on. When changing plans, the paid remainder is not lost.',

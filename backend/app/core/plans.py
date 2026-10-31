@@ -15,13 +15,17 @@
 по новой цене. Например, осталось 15 дней Max (399 смн/мес) ≈ 199.5 смн →
 на Pro (199 смн/мес) это ≈ 30 дней. Продление того же тарифа по той же цене —
 просто добавление месяцев к текущей дате окончания.
+
+Цены живут в БД (plan_prices) и меняются админом платформы; fund.plan_price — сколько
+фонд реально платит за месяц с учётом скидки, поэтому остаток считается по фактической оплате.
 """
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from app.enums import PLAN_MEMBER_LIMITS, PLAN_PRICES_TJS, LapseEnum, PlanEnum
+from app.enums import PLAN_MEMBER_LIMITS, DiscountKindEnum, DiscountStateEnum, LapseEnum, PlanEnum
 from app.models.fund import Fund
+from app.models.plan_pricing import PlanDiscount
 
 # Длина оплаченного месяца тарифа
 PLAN_MONTH = timedelta(days=30)
@@ -58,8 +62,26 @@ def member_limit(fund: Fund, now: datetime | None = None) -> int | None:
     return PLAN_MEMBER_LIMITS[plan]
 
 
-def plan_price(plan: PlanEnum) -> int | None:
-    return PLAN_PRICES_TJS[plan]
+def discounted_price(price: int, kind: str, value: int) -> int:
+    """Цена за месяц после скидки: целые смн и не ниже 1 — бесплатный месяц только вручную админом."""
+    if kind == DiscountKindEnum.percent.value:
+        discounted = round(price * (100 - value) / 100)
+    else:
+        discounted = price - value
+    return max(discounted, 1)
+
+
+def discount_state(discount: PlanDiscount, uses: int, now: datetime | None = None) -> DiscountStateEnum:
+    now = now or datetime.now(timezone.utc)
+    if not discount.is_active:
+        return DiscountStateEnum.disabled
+    if discount.ends_at is not None and discount.ends_at <= now:
+        return DiscountStateEnum.expired
+    if discount.starts_at is not None and discount.starts_at > now:
+        return DiscountStateEnum.scheduled
+    if discount.max_uses is not None and uses >= discount.max_uses:
+        return DiscountStateEnum.exhausted
+    return DiscountStateEnum.active
 
 
 def is_extension(fund: Fund, new_plan: PlanEnum, new_price: int | None, now: datetime) -> bool:

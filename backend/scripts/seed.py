@@ -473,6 +473,8 @@ async def seed() -> None:
                 fund_id=dacha.id,
                 plan="pro",
                 months=3,
+                list_price_tjs=199,
+                price_tjs=199,
                 contact="+79255678901, Telegram @sergey_varzob",
                 comment="Посёлок растёт, нужно больше 10 участников",
                 requested_by_id=sergey.id,

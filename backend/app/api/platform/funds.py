@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends, Query, status
 
 from app.deps.auth import get_current_user
 from app.deps.fund import get_fund_context
-from app.deps.services import get_fund_service, get_plan_service
+from app.deps.services import get_fund_service, get_pricing_service
 from app.schemas.fund import FundCreateIn, FundOut, FundPublicOut, MyFundOut
 from app.schemas.member import FundContext, JoinIn, MemberOut
-from app.schemas.plan import PlanOptionOut
+from app.schemas.pricing import PlanOptionOut
 from app.schemas.user import CurrentUser
 from app.services.fund_service import FundService
-from app.services.plan_service import PlanService
+from app.services.pricing_service import PricingService
 
 router = APIRouter(prefix="/funds", tags=["Platform • Funds"])
 
@@ -49,11 +49,9 @@ async def get_fund_by_code(
 
 
 @router.get("/plans", response_model=list[PlanOptionOut])
-async def list_plans(
-    user: CurrentUser = Depends(get_current_user),
-    service: PlanService = Depends(get_plan_service),
-):
-    return service.catalog()
+async def list_plans(service: PricingService = Depends(get_pricing_service)):
+    """Публичный каталог: цены видны и гостям на главной странице."""
+    return await service.catalog()
 
 
 # ─── Вступление ───────────────────────────────────────────────────────────────

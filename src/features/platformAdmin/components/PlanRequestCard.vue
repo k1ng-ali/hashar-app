@@ -26,6 +26,8 @@ const carryoverDays = computed(() => {
 })
 const canApprove = computed(() => !isIndividual.value || !!monthlyPrice.value)
 const comment = ref('')
+// Цена зафиксирована при подаче заявки; срок админ может поправить — итог пересчитывается
+const total = computed(() => (props.request.price_tjs ? props.request.price_tjs * (months.value || 0) : null))
 </script>
 
 <template>
@@ -39,6 +41,12 @@ const comment = ref('')
     </div>
     <p class="contact">📞 {{ $t('platform.contact') }}: <b>{{ request.contact || '—' }}</b></p>
     <p v-if="request.comment" class="comment">«{{ request.comment }}»</p>
+    <p v-if="request.price_tjs" class="price-line">
+      💰 {{ $t('plans.price', { price: request.price_tjs }) }}
+      <s v-if="request.discount_label">{{ request.list_price_tjs }}</s>
+      <b v-if="total"> · {{ $t('plans.total', { price: total }) }}</b>
+      <span v-if="request.discount_label" class="discount"> · 🏷 {{ request.discount_label }}</span>
+    </p>
     <p v-if="request.status === 'pending' && request.carryover_tjs" class="carryover">
       🔁 {{ $t('platform.carryover', { amount: request.carryover_tjs }) }}
       <b v-if="carryoverDays !== null">{{ $t('platform.carryoverDays', { n: carryoverDays }) }}</b>
@@ -96,6 +104,26 @@ const comment = ref('')
 
 <style scoped lang="scss">
 @use '@/shared/styles/mixins' as *;
+
+.price-line {
+  margin: 0;
+  font-size: 13px;
+  color: $text-secondary;
+  overflow-wrap: anywhere;
+
+  b {
+    color: $navy;
+  }
+
+  s {
+    color: $text-muted;
+  }
+
+  .discount {
+    font-weight: 600;
+    color: $success;
+  }
+}
 
 .carryover {
   margin: 0;

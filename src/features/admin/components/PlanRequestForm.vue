@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import type { PlanQuote } from '@/features/admin/types.ts'
 import type { Plan, PlanOption } from '@/features/funds/types.ts'
 import { formatDate } from '@/shared/lib/format.ts'
 
@@ -8,14 +9,17 @@ const props = defineProps<{
   options: PlanOption[]
   isRenewal: boolean
   expiresAt: string | null
-  /** Стоимость неиспользованного остатка текущего тарифа (null — нечего переносить). */
-  remainingTjs: number | null
+  /** Расчёт сервера: цена со скидкой, продление или перенос остатка. null — ещё считается. */
+  quote: PlanQuote | null
+  promoCode: string | null
+  promoError: string
   defaultContact: string
   isSubmitting: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'submit', months: number, contact: string, comment: string | null): void
+  (e: 'apply-promo', code: string | null): void
 }>()
 
 const MONTHS = [1, 3, 6, 12]
@@ -28,13 +32,20 @@ const comment = ref('')
 const isValid = computed(() => contact.value.trim().length >= MIN_CONTACT)
 
 const option = computed(() => props.options.find((o) => o.plan === props.plan) ?? null)
-const total = computed(() => (option.value?.price_tjs ? option.value.price_tjs * months.value : null))
-// Месяц тарифа — 30 дней: остаток в деньгах докупает дни нового тарифа по его цене
-const carryoverDays = computed(() =>
-  props.remainingTjs && option.value?.price_tjs
-    ? Math.round((props.remainingTjs / option.value.price_tjs) * 30)
-    : null,
-)
+const total = computed(() => (props.quote?.price_tjs ? props.quote.price_tjs * months.value : null))
+const listTotal = computed(() => (props.quote?.list_price_tjs ? props.quote.list_price_tjs * months.value : null))
+const hasDiscount = computed(() => !!total.value && !!listTotal.value && total.value < listTotal.value)
+
+const promoInput = ref('')
+const hasPromo = computed(() => props.plan !== 'individual')
+function applyPromo() {
+  const code = promoInput.value.trim().toUpperCase()
+  if (code) emit('apply-promo', code)
+}
+function clearPromo() {
+  promoInput.value = ''
+  emit('apply-promo', null)
+}
 </script>
 
 <template>
@@ -46,16 +57,16 @@ const carryoverDays = computed(() =>
       </span>
     </div>
 
-    <p v-if="isRenewal" class="renewal">
+    <p v-if="quote?.is_extension" class="renewal">
       🔄 {{ expiresAt ? $t('plans.renewHint', { date: formatDate(expiresAt) }) : $t('plans.renewHintNoDate') }}
     </p>
 
-    <p v-if="!isRenewal && remainingTjs" class="renewal">
+    <p v-if="quote?.carryover_tjs" class="renewal">
       🔁
       {{
-        carryoverDays !== null
-          ? $t('plans.carryoverHint', { amount: remainingTjs, n: carryoverDays })
-          : $t('plans.carryoverHintIndividual', { amount: remainingTjs })
+        quote.carryover_days !== null
+          ? $t('plans.carryoverHint', { amount: quote.carryover_tjs, n: quote.carryover_days })
+          : $t('plans.carryoverHintIndividual', { amount: quote.carryover_tjs })
       }}
     </p>
 
@@ -73,7 +84,35 @@ const carryoverDays = computed(() =>
           {{ value }}
         </button>
       </div>
-      <p v-if="total" class="total">{{ $t('plans.total', { price: total }) }}</p>
+      <p v-if="total" class="total">
+        {{ $t('plans.total', { price: total }) }}
+        <s v-if="hasDiscount" class="old-price">{{ listTotal }}</s>
+      </p>
+      <p v-if="hasDiscount && quote?.discount_label" class="discount">
+        🏷 {{ $t('plans.discountApplied', { name: quote.discount_label, price: quote.price_tjs }) }}
+      </p>
+    </div>
+
+    <div v-if="hasPromo">
+      <span class="label">{{ $t('plans.promo') }} · {{ $t('common.optional') }}</span>
+      <div v-if="promoCode && quote?.promo_status === 'applied'" class="promo-applied">
+        <span>✅ {{ promoCode }}</span>
+        <button type="button" class="link-btn" @click="clearPromo">{{ $t('plans.promoRemove') }}</button>
+      </div>
+      <div v-else class="promo-row">
+        <input
+          v-model="promoInput"
+          class="promo-input"
+          maxlength="30"
+          :placeholder="$t('plans.promoPlaceholder')"
+          @keydown.enter.prevent="applyPromo"
+        />
+        <button type="button" class="promo-btn" :disabled="!promoInput.trim()" @click="applyPromo">
+          {{ $t('plans.promoApply') }}
+        </button>
+      </div>
+      <p v-if="promoError" class="promo-error">{{ promoError }}</p>
+      <p v-else-if="quote?.promo_status === 'not_better'" class="field-hint">{{ $t('plans.promoNotBetter') }}</p>
     </div>
 
     <label>
@@ -89,7 +128,7 @@ const carryoverDays = computed(() =>
 
     <p class="hint">{{ $t('plans.paymentNote') }}</p>
 
-    <button type="submit" class="submit-btn" :disabled="isSubmitting || !isValid">
+    <button type="submit" class="submit-btn" :disabled="isSubmitting || !isValid || !quote">
       {{ isRenewal ? $t('plans.renew') : $t('plans.request') }}
     </button>
   </form>
@@ -151,6 +190,63 @@ textarea {
   font-size: 14px;
   font-weight: 700;
   color: $navy;
+}
+
+.old-price {
+  margin-left: 6px;
+  font-weight: 500;
+  color: $text-muted;
+}
+
+.discount {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: $success;
+}
+
+.promo-row {
+  display: flex;
+  gap: 8px;
+}
+
+.promo-input {
+  flex: 1;
+  min-width: 0;
+  text-transform: uppercase;
+}
+
+.promo-btn {
+  @include ghost-button;
+  flex-shrink: 0;
+}
+
+.promo-applied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(22, 163, 74, 0.1);
+  color: $success;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.link-btn {
+  border: none;
+  background: none;
+  color: $text-secondary;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.promo-error {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: $danger;
 }
 
 .hint {

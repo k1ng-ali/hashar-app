@@ -10,6 +10,7 @@ from app.models.fund import Fund, FundAccount
 from app.models.fund_notice import FundNotice
 from app.models.fund_rate import FundRate
 from app.models.member import FundMember
+from app.models.plan_pricing import PlanDiscount, PlanPrice
 from app.models.plan_request import PlanRequest
 from app.models.requisite import PaymentRequisite
 from app.models.target_fund import TargetFund
@@ -35,6 +36,8 @@ __all__ = [
     "MemberAccrualPause",
     "FundMember",
     "PaymentRequisite",
+    "PlanDiscount",
+    "PlanPrice",
     "PlanRequest",
     "TargetFund",
     "TrustedDevice",

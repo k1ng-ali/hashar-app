@@ -15,6 +15,7 @@ from app.services.fund_service import FundService
 from app.services.member_service import MemberService
 from app.services.notice_service import NoticeService
 from app.services.plan_service import PlanService
+from app.services.pricing_service import PricingService
 from app.services.report_service import ReportService
 from app.services.target_fund_service import TargetFundService
 
@@ -53,6 +54,10 @@ async def get_notice_service(db: AsyncSession = Depends(get_db)) -> NoticeServic
 
 async def get_plan_service(db: AsyncSession = Depends(get_db)) -> PlanService:
     return PlanService(db=db)
+
+
+async def get_pricing_service(db: AsyncSession = Depends(get_db)) -> PricingService:
+    return PricingService(db=db)
 
 
 async def get_contribution_service(db: AsyncSession = Depends(get_db)) -> ContributionService:

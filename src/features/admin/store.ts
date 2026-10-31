@@ -6,7 +6,7 @@ import type { Contribution } from '@/features/contributions/types.ts'
 import { useDashboardStore } from '@/features/dashboard/store.ts'
 import type { Requisite } from '@/features/dashboard/types.ts'
 import { useFundsStore } from '@/features/funds/store.ts'
-import type { FundRole, MemberStatus } from '@/features/funds/types.ts'
+import type { FundRole, MemberStatus, Plan } from '@/features/funds/types.ts'
 import { useTargetFundsStore } from '@/features/targetFunds/store.ts'
 import type { Currency } from '@/shared/lib/currency.ts'
 import * as api from './api.ts'
@@ -284,6 +284,8 @@ export const useAdminStore = defineStore('admin', () => {
     })
   }
 
+  const quotePlan = (plan: Plan, promoCode: string | null) => api.getPlanQuote(funds.fundId, plan, promoCode)
+
   function requestPlan(payload: PlanRequestCreate) {
     return withSubmitting(async () => {
       const { data } = await api.createPlanRequest(funds.fundId, payload)
@@ -339,6 +341,7 @@ export const useAdminStore = defineStore('admin', () => {
     toggleRequisite,
     removeRequisite,
     saveSettings,
+    quotePlan,
     requestPlan,
   }
 })
