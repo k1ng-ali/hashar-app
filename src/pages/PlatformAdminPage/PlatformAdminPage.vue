@@ -140,8 +140,8 @@ async function saveDiscount(payload: PlanDiscountPayload) {
 }
 
 function toggleDiscount(discount: PlanDiscount) {
-  const { title, code, kind, value, plans, starts_at, ends_at, max_uses, is_active } = discount
-  const payload = { title, code, kind, value, plans, starts_at, ends_at, max_uses, is_active: !is_active }
+  const { title, code, kind, value, plans, starts_at, ends_at, max_months, max_uses, is_active } = discount
+  const payload = { title, code, kind, value, plans, starts_at, ends_at, max_months, max_uses, is_active: !is_active }
   return changePricing(() => store.saveDiscount(discount, payload), 'platform.pricing.discountSaved')
 }
 

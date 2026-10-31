@@ -86,6 +86,7 @@ const groups = computed(() => [
           · {{ item.plans.map((plan) => $t(`plans.${plan}`)).join(', ') }}
           <template v-if="item.starts_at"> · {{ $t('platform.pricing.from', { date: formatDate(item.starts_at) }) }}</template>
           <template v-if="item.ends_at"> · {{ $t('plans.until', { date: formatDate(item.ends_at) }) }}</template>
+          <template v-if="item.max_months"> · {{ $t('platform.pricing.forMonths', { n: item.max_months }) }}</template>
           <template v-if="item.code">
             · {{ $t('platform.pricing.uses', { n: item.uses }) }}<template v-if="item.max_uses"> / {{ item.max_uses }}</template>
           </template>

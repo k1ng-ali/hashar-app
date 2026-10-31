@@ -67,6 +67,7 @@ const myContact = computed(() =>
         :is-submitting="store.isSubmitting"
         @submit="flow.handlePlanRequest"
         @apply-promo="flow.loadQuote"
+        @change-months="flow.changePlanMonths"
       />
     </BottomSheet>
   </div>

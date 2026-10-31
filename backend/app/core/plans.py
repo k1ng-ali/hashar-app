@@ -12,9 +12,13 @@
 
 Смена тарифа не сжигает оплаченное: неиспользованный остаток текущего тарифа
 переводится в деньги по его цене (fund.plan_price) и докупает дни нового тарифа
-по новой цене. Например, осталось 15 дней Max (399 смн/мес) ≈ 199.5 смн →
-на Pro (199 смн/мес) это ≈ 30 дней. Продление того же тарифа по той же цене —
-просто добавление месяцев к текущей дате окончания.
+по его цене без скидки — скидка не должна умножать уже оплаченные дни. Например,
+осталось 15 дней Max (399 смн/мес) ≈ 199.5 смн → на Pro (199 смн/мес) это ≈ 30 дней.
+Продление действующего тарифа — всегда добавление месяцев к дате окончания,
+оплаченный остаток при этом не пересчитывается.
+
+Скидка действует только на месяцы, которые начинаются до её окончания, и не больше
+discount.max_months: при продлении срок считается от текущей даты окончания тарифа.
 
 Цены живут в БД (plan_prices) и меняются админом платформы; fund.plan_price — сколько
 фонд реально платит за месяц с учётом скидки, поэтому остаток считается по фактической оплате.
@@ -22,6 +26,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from math import ceil
 
 from app.enums import PLAN_MEMBER_LIMITS, DiscountKindEnum, DiscountStateEnum, LapseEnum, PlanEnum
 from app.models.fund import Fund
@@ -84,14 +89,25 @@ def discount_state(discount: PlanDiscount, uses: int, now: datetime | None = Non
     return DiscountStateEnum.active
 
 
-def is_extension(fund: Fund, new_plan: PlanEnum, new_price: int | None, now: datetime) -> bool:
-    """Тот же действующий тариф по той же цене — продление от даты окончания."""
-    return (
-        fund.plan == new_plan.value
-        and fund.plan_price == new_price
-        and fund.plan_expires_at is not None
-        and fund.plan_expires_at > now
-    )
+def is_extension(fund: Fund, new_plan: PlanEnum, now: datetime) -> bool:
+    """Тот же действующий тариф — продление от даты окончания при любой цене."""
+    return fund.plan == new_plan.value and fund.plan_expires_at is not None and fund.plan_expires_at > now
+
+
+def discount_months_for(discount: PlanDiscount, months: int, start: datetime) -> int:
+    """Сколько из оплачиваемых месяцев со скидкой: начавшиеся до её окончания, но не больше max_months."""
+    covered = months
+    if discount.ends_at is not None:
+        covered = min(covered, max(ceil((discount.ends_at - start) / PLAN_MONTH), 0))
+    if discount.max_months is not None:
+        covered = min(covered, discount.max_months)
+    return covered
+
+
+def plan_total(list_price: int, price: int, discount_months: int, months: int) -> int:
+    """Сумма за срок: часть месяцев по цене со скидкой, остальные по цене без скидки."""
+    discounted = min(discount_months, months)
+    return price * discounted + list_price * (months - discounted)
 
 
 def carryover(fund: Fund, new_price: int | None, now: datetime | None = None) -> Carryover | None:

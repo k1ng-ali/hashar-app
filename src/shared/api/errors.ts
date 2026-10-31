@@ -68,6 +68,7 @@ const API_ERRORS: Record<string, string> = {
   'Promo code not found': 'plans.errors.promoNotFound',
   'Promo code is not active yet': 'plans.errors.promoNotActive',
   'Promo code has expired': 'plans.errors.promoExpired',
+  'Promo code ends before the paid period': 'plans.errors.promoEndsBefore',
   'Promo code usage limit reached': 'plans.errors.promoLimit',
   'Promo code is not valid for this plan': 'plans.errors.promoWrongPlan',
   'Promo code was already used by this fund': 'plans.errors.promoUsed',

@@ -47,8 +47,10 @@ class PlanQuoteOut(BaseModel):
     price_tjs: int | None = None
     total_tjs: int | None = None
     discount_label: str | None = None
+    # Сколько месяцев по price_tjs, остальные — по list_price_tjs
+    discount_months: int = 0
     promo_status: PromoStatusEnum = PromoStatusEnum.none
-    # True — тот же тариф по той же цене: срок добавится к дате окончания
+    # True — тот же действующий тариф: срок добавится к дате окончания
     is_extension: bool = False
     carryover_tjs: float | None = None
     carryover_days: int | None = None
@@ -78,6 +80,7 @@ class PlanDiscountIn(BaseModel):
     plans: list[PricedPlan] = Field(min_length=1)
     starts_at: datetime | None = None
     ends_at: datetime | None = None
+    max_months: int | None = Field(None, ge=1, le=36)
     max_uses: int | None = Field(None, ge=1)
     is_active: bool = True
 
@@ -116,6 +119,7 @@ class PlanDiscountOut(BaseModel):
     plans: list[PlanEnum]
     starts_at: datetime | None = None
     ends_at: datetime | None = None
+    max_months: int | None = None
     max_uses: int | None = None
     uses: int
     is_active: bool

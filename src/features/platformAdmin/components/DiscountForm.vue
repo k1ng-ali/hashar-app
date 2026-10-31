@@ -31,6 +31,7 @@ const value = ref<number | null>(props.discount?.value ?? null)
 const plans = ref<DiscountPlan[]>((props.discount?.plans as DiscountPlan[] | undefined) ?? [...PLANS])
 const startsOn = ref(toDateInput(props.discount?.starts_at))
 const endsOn = ref(toDateInput(props.discount?.ends_at))
+const maxMonths = ref<number | null>(props.discount?.max_months ?? null)
 const maxUses = ref<number | null>(props.discount?.max_uses ?? null)
 
 function togglePlan(plan: DiscountPlan) {
@@ -56,6 +57,7 @@ function submit() {
     // Срок — полные дни по местному времени: с начала первого до конца последнего
     starts_at: startsOn.value ? new Date(`${startsOn.value}T00:00:00`).toISOString() : null,
     ends_at: endsOn.value ? new Date(`${endsOn.value}T23:59:59`).toISOString() : null,
+    max_months: maxMonths.value || null,
     max_uses: props.isPromo ? maxUses.value || null : null,
     is_active: props.discount?.is_active ?? true,
   })
@@ -124,6 +126,12 @@ function submit() {
         <input v-model="endsOn" type="date" />
       </label>
     </div>
+
+    <label>
+      <span class="label">{{ $t('platform.pricing.maxMonths') }} · {{ $t('common.optional') }}</span>
+      <input v-model.number="maxMonths" type="number" min="1" max="36" />
+      <span class="field-hint">{{ $t('platform.pricing.maxMonthsHint') }}</span>
+    </label>
 
     <label v-if="isPromo">
       <span class="label">{{ $t('platform.pricing.maxUses') }} · {{ $t('common.optional') }}</span>

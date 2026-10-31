@@ -128,7 +128,7 @@ def plan_request(fund, status="pending"):
     return SimpleNamespace(
         id=1, fund_id=fund.id, fund=fund, plan="max", months=3, status=status, contact="+992", comment=None,
         admin_comment=None, requested_by=None, reviewed_at=None, created_at=NOW,
-        list_price_tjs=399, price_tjs=399, discount_id=None, discount_label=None,
+        list_price_tjs=399, price_tjs=399, discount_id=None, discount_label=None, discount_months=0,
     )  # fmt: skip
 
 

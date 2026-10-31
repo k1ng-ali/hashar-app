@@ -48,6 +48,7 @@ def make_request(fund, plan="pro", months=1, **extra):
         price_tjs={"pro": 199, "max": 399}.get(plan),
         discount_id=None,
         discount_label=None,
+        discount_months=0,
     )
     fields.update(extra)
     return SimpleNamespace(**fields)
@@ -70,12 +71,12 @@ def test_message_for_extension():
 
 
 def test_message_shows_discount():
-    request = make_request(make_fund(), price_tjs=99, discount_label="SALE<50>")
+    request = make_request(make_fund(), price_tjs=99, discount_label="SALE<50>", discount_months=1)
 
     text = plan_request_message(request, now=NOW)
 
     assert "Pro × 1 мес. — 99 смн" in text
-    assert "Скидка: SALE&lt;50&gt; — 99 вместо 199 смн/мес" in text
+    assert "Скидка: SALE&lt;50&gt; — 99 вместо 199 смн/мес, мес. со скидкой: 1" in text
 
 
 def test_message_for_plan_change_shows_carryover():
@@ -120,6 +121,7 @@ async def test_create_request_notifies_admin_after_response():
     service = PlanService(db=make_db())
     service.repo.has_pending = AsyncMock(return_value=False)
     service.repo.create = AsyncMock(return_value=make_request(make_fund(name="Дом 12")))
+    service.fund_repo.get = AsyncMock(return_value=make_fund())
     service.pricing.resolve = AsyncMock(return_value=ResolvedPrice(list_price=199, price=199))
     tasks = BackgroundTasks()
 

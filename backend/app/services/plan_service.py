@@ -13,6 +13,7 @@ from app.core.plans import (
     is_extension,
     lapse_state,
     member_limit,
+    plan_total,
 )
 from app.core.telegram import escape, notify_admin
 from app.enums import (
@@ -42,11 +43,18 @@ from app.schemas.pricing import PlanQuoteOut
 from app.services.pricing_service import PricingService
 
 
+def request_total(request: PlanRequest, months: int) -> int | None:
+    """Сумма по заявке за срок; у individual цены в заявке нет."""
+    if request.price_tjs is None:
+        return None
+    return plan_total(request.list_price_tjs, request.price_tjs, request.discount_months, months)
+
+
 def plan_request_out(request: PlanRequest) -> PlanRequestOut:
     preview = None
     if request.status == PlanRequestStatusEnum.pending.value:
-        if not is_extension(request.fund, PlanEnum(request.plan), request.price_tjs, datetime.now(timezone.utc)):
-            preview = carryover(request.fund, request.price_tjs)
+        if not is_extension(request.fund, PlanEnum(request.plan), datetime.now(timezone.utc)):
+            preview = carryover(request.fund, request.list_price_tjs)
     return PlanRequestOut(
         id=request.id,
         fund_id=request.fund_id,
@@ -56,6 +64,8 @@ def plan_request_out(request: PlanRequest) -> PlanRequestOut:
         list_price_tjs=request.list_price_tjs,
         price_tjs=request.price_tjs,
         discount_label=request.discount_label,
+        discount_months=request.discount_months,
+        total_tjs=request_total(request, request.months),
         status=request.status,
         contact=request.contact,
         comment=request.comment,
@@ -94,7 +104,8 @@ def plan_request_message(request: PlanRequest, now: datetime | None = None) -> s
     else:
         current = f"{fund.plan.title()}, истёк {fund.plan_expires_at:%d.%m.%Y}"
 
-    total = f"{price * request.months} смн" if price else "цена по договорённости"
+    total_tjs = request_total(request, request.months)
+    total = f"{total_tjs} смн" if total_tjs else "цена по договорённости"
     lines = [
         f"🆕 <b>{kind}</b>",
         f"Фонд: <b>{escape(fund.name)}</b> · #{fund.id}",
@@ -102,8 +113,12 @@ def plan_request_message(request: PlanRequest, now: datetime | None = None) -> s
         f"Сейчас: {current}",
     ]
     if request.discount_label:
-        lines.insert(3, f"Скидка: {escape(request.discount_label)} — {price} вместо {request.list_price_tjs} смн/мес")
-    if not is_extension(fund, plan, price, now) and (rest := carryover(fund, price, now)):
+        lines.insert(
+            3,
+            f"Скидка: {escape(request.discount_label)} — {price} вместо {request.list_price_tjs} смн/мес, "
+            f"мес. со скидкой: {min(request.discount_months, request.months)}",
+        )
+    if not is_extension(fund, plan, now) and (rest := carryover(fund, request.list_price_tjs, now)):
         days = f" → +{round(rest.extra / DAY)} дн. нового" if rest.extra is not None else ""
         lines.append(f"Остаток текущего: {rest.value_tjs:g} смн{days}")
     if request.requested_by:
@@ -185,17 +200,18 @@ class PlanService:
         if not fund:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fund not found")
 
-        resolved = await self.pricing.resolve(plan, fund_id, promo_code)
+        resolved = await self.pricing.resolve(plan, fund, months, promo_code)
         now = datetime.now(timezone.utc)
-        extension = is_extension(fund, plan, resolved.price, now)
-        rest = carryover(fund, resolved.price, now) if not extension else None
+        extension = is_extension(fund, plan, now)
+        rest = carryover(fund, resolved.list_price, now) if not extension else None
         return PlanQuoteOut(
             plan=plan,
             months=months,
             list_price_tjs=resolved.list_price,
             price_tjs=resolved.price,
-            total_tjs=resolved.price * months if resolved.price else None,
+            total_tjs=resolved.total,
             discount_label=resolved.label,
+            discount_months=resolved.discount_months,
             promo_status=resolved.promo_status,
             is_extension=extension,
             carryover_tjs=rest.value_tjs if rest else None,
@@ -213,8 +229,12 @@ class PlanService:
         if await self.repo.has_pending(fund_id):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Plan request is already pending")
 
-        resolved = await self.pricing.resolve(payload.plan, fund_id, payload.promo_code, for_update=True)
-        if payload.expected_price_tjs is not None and payload.expected_price_tjs != resolved.price:
+        fund = await self.fund_repo.get(fund_id)
+        if not fund:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fund not found")
+
+        resolved = await self.pricing.resolve(payload.plan, fund, payload.months, payload.promo_code, for_update=True)
+        if payload.expected_total_tjs is not None and payload.expected_total_tjs != resolved.total:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Plan price has changed")
 
         request = await self.repo.create(
@@ -227,6 +247,7 @@ class PlanService:
             price_tjs=resolved.price,
             discount_id=resolved.discount.id if resolved.discount else None,
             discount_label=resolved.label,
+            discount_months=resolved.discount_months,
             requested_by_id=user_id,
         )
         await self.db.commit()
@@ -254,25 +275,34 @@ class PlanService:
 
         new_plan = PlanEnum(request.plan)
         # Председателю обещана цена на момент заявки — смена прайса её не меняет
-        new_price = request.price_tjs or self._negotiated_price(payload.monthly_price)
         months = payload.months or request.months
+        total = request_total(request, months)
+        if total is None:
+            total = self._negotiated_price(payload.monthly_price) * months
+        # Остаток пересчитывается по цене без скидки: скидка не умножает уже оплаченные дни
+        new_price = request.list_price_tjs or round(total / months)
         now = datetime.now(timezone.utc)
 
-        details = {"request_id": request.id, "months": months}
+        details = {"request_id": request.id, "months": months, "total": total}
         if request.discount_label:
             details.update(discount=request.discount_label, list_price=request.list_price_tjs)
-        if is_extension(fund, new_plan, new_price, now):
-            # Продление того же тарифа — от текущей даты окончания
+        if is_extension(fund, new_plan, now):
+            # Продление того же тарифа — от текущей даты окончания, остаток не пересчитывается
             start = fund.plan_expires_at
+            carried = (start - now) / PLAN_MONTH
+            carried_value = carried * (fund.plan_price or new_price)
         else:
             # Другой тариф: оплаченный остаток не сгорает, а докупает дни нового по его цене
             rest = carryover(fund, new_price, now)
             start = now + rest.extra if rest else now
+            carried = (start - now) / PLAN_MONTH
+            carried_value = rest.value_tjs if rest else 0
             if rest:
                 details.update(carryover_tjs=rest.value_tjs, carryover_days=round(rest.extra / DAY, 1))
 
         fund.plan = new_plan.value
-        fund.plan_price = new_price
+        # Фактическая цена месяца с учётом остатка и скидки — по ней считается MRR и будущий перенос
+        fund.plan_price = max(round((carried_value + total) / (carried + months)), 1)
         fund.plan_expires_at = start + PLAN_MONTH * months
         if new_plan == PlanEnum.individual:
             fund.member_limit = payload.member_limit

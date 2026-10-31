@@ -20,6 +20,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'submit', months: number, contact: string, comment: string | null): void
   (e: 'apply-promo', code: string | null): void
+  (e: 'change-months', months: number): void
 }>()
 
 const MONTHS = [1, 3, 6, 12]
@@ -32,7 +33,16 @@ const comment = ref('')
 const isValid = computed(() => contact.value.trim().length >= MIN_CONTACT)
 
 const option = computed(() => props.options.find((o) => o.plan === props.plan) ?? null)
-const total = computed(() => (props.quote?.price_tjs ? props.quote.price_tjs * months.value : null))
+function selectMonths(value: number) {
+  months.value = value
+  emit('change-months', value)
+}
+// Сумму считает сервер; пока расчёт на другой срок не пришёл, отправить заявку нельзя
+const isQuoteReady = computed(() => props.quote?.months === months.value)
+const total = computed(() => (isQuoteReady.value ? (props.quote?.total_tjs ?? null) : null))
+const isPartialDiscount = computed(
+  () => hasDiscount.value && !!props.quote && props.quote.discount_months < months.value,
+)
 const listTotal = computed(() => (props.quote?.list_price_tjs ? props.quote.list_price_tjs * months.value : null))
 const hasDiscount = computed(() => !!total.value && !!listTotal.value && total.value < listTotal.value)
 
@@ -79,7 +89,7 @@ function clearPromo() {
           type="button"
           class="chip"
           :class="{ 'chip--active': months === value }"
-          @click="months = value"
+          @click="selectMonths(value)"
         >
           {{ value }}
         </button>
@@ -90,6 +100,9 @@ function clearPromo() {
       </p>
       <p v-if="hasDiscount && quote?.discount_label" class="discount">
         🏷 {{ $t('plans.discountApplied', { name: quote.discount_label, price: quote.price_tjs }) }}
+      </p>
+      <p v-if="isPartialDiscount && quote" class="field-hint">
+        {{ $t('plans.discountPartial', { n: quote.discount_months, price: quote.list_price_tjs }) }}
       </p>
     </div>
 
@@ -128,7 +141,7 @@ function clearPromo() {
 
     <p class="hint">{{ $t('plans.paymentNote') }}</p>
 
-    <button type="submit" class="submit-btn" :disabled="isSubmitting || !isValid || !quote">
+    <button type="submit" class="submit-btn" :disabled="isSubmitting || !isValid || !isQuoteReady">
       {{ isRenewal ? $t('plans.renew') : $t('plans.request') }}
     </button>
   </form>

@@ -29,6 +29,7 @@ def make_discount(id: int = 1, code: str | None = None, kind: str = "percent", v
         plans=["pro", "max"],
         starts_at=None,
         ends_at=None,
+        max_months=None,
         max_uses=None,
         is_active=True,
         created_at=NOW,
@@ -84,7 +85,7 @@ def test_discount_state(extra, uses, expected):
 
 
 async def test_resolve_without_discounts_uses_current_price():
-    resolved = await pricing_service(price=250).resolve(PlanEnum.pro, fund_id=1)
+    resolved = await pricing_service(price=250).resolve(PlanEnum.pro, make_fund(), 1)
 
     assert (resolved.list_price, resolved.price, resolved.discount) == (250, 250, None)
 
@@ -96,7 +97,7 @@ async def test_resolve_picks_best_sale_for_plan():
         make_discount(id=3, value=90, plans=["max"]),  # на другой тариф
     ]
 
-    resolved = await pricing_service(sales=sales).resolve(PlanEnum.pro, fund_id=1)
+    resolved = await pricing_service(sales=sales).resolve(PlanEnum.pro, make_fund(), 1)
 
     assert resolved.discount.id == 2 and resolved.price == 139
 
@@ -105,7 +106,7 @@ async def test_better_promo_beats_sale():
     promo = make_discount(id=5, code="HALF", value=50)
     service = pricing_service(sales=[make_discount(id=1, value=10)], promo=promo)
 
-    resolved = await service.resolve(PlanEnum.pro, fund_id=1, promo_code=" half ")
+    resolved = await service.resolve(PlanEnum.pro, make_fund(), 1, " half ")
 
     service.repo.get_by_code.assert_awaited_once_with("HALF", for_update=False)
     assert resolved.discount is promo and resolved.price == 100
@@ -117,7 +118,7 @@ async def test_weaker_promo_is_not_consumed():
     sale = make_discount(id=1, value=50, title="Весна")
     service = pricing_service(sales=[sale], promo=make_discount(id=5, code="TEN", value=10))
 
-    resolved = await service.resolve(PlanEnum.pro, fund_id=1, promo_code="TEN")
+    resolved = await service.resolve(PlanEnum.pro, make_fund(), 1, promo_code="TEN")
 
     assert resolved.discount is sale and resolved.price == 100
     assert resolved.promo_status == PromoStatusEnum.not_better
@@ -140,7 +141,7 @@ async def test_invalid_promo_rejected(promo, uses, fund_uses, code, detail):
     service = pricing_service(promo=promo, uses=uses, fund_uses=fund_uses)
 
     with pytest.raises(HTTPException) as exc:
-        await service.resolve(PlanEnum.pro, fund_id=1, promo_code="X")
+        await service.resolve(PlanEnum.pro, make_fund(), 1, promo_code="X")
 
     assert exc.value.status_code == code and exc.value.detail == detail
 
@@ -149,7 +150,7 @@ async def test_promo_not_valid_for_individual():
     service = pricing_service(price=None, promo=make_discount(code="X"))
 
     with pytest.raises(HTTPException) as exc:
-        await service.resolve(PlanEnum.individual, fund_id=1, promo_code="X")
+        await service.resolve(PlanEnum.individual, make_fund(), 1, promo_code="X")
 
     assert exc.value.status_code == 409
 
@@ -185,6 +186,7 @@ def plan_service_for_create(resolved: ResolvedPrice):
             created_at=NOW, **fields,
         )
     )  # fmt: skip
+    service.fund_repo.get = AsyncMock(return_value=make_fund())
     service.pricing.resolve = AsyncMock(return_value=resolved)
     return service
 
@@ -192,16 +194,21 @@ def plan_service_for_create(resolved: ResolvedPrice):
 async def test_create_request_saves_price_snapshot():
     promo = make_discount(id=5, code="HALF")
     service = plan_service_for_create(
-        ResolvedPrice(list_price=199, price=100, discount=promo, promo_status=PromoStatusEnum.applied)
+        ResolvedPrice(
+            list_price=199, price=100, months=1, discount=promo, discount_months=1,
+            promo_status=PromoStatusEnum.applied,
+        )
     )
 
     out = await service.create_request(
         fund_id=1,
         user_id=3,
-        payload=PlanRequestIn(plan=PlanEnum.pro, contact="@chairman", promo_code="half", expected_price_tjs=100),
+        payload=PlanRequestIn(plan=PlanEnum.pro, contact="@chairman", promo_code="half", expected_total_tjs=100),
     )
 
-    service.pricing.resolve.assert_awaited_once_with(PlanEnum.pro, 1, "half", for_update=True)
+    service.pricing.resolve.assert_awaited_once_with(
+        PlanEnum.pro, service.fund_repo.get.return_value, 1, "half", for_update=True
+    )
     kwargs = service.repo.create.call_args.kwargs
     assert (kwargs["list_price_tjs"], kwargs["price_tjs"], kwargs["discount_id"]) == (199, 100, 5)
     assert out.discount_label == "HALF" and out.price_tjs == 100
@@ -214,7 +221,7 @@ async def test_create_request_rejects_stale_price():
         await service.create_request(
             fund_id=1,
             user_id=3,
-            payload=PlanRequestIn(plan=PlanEnum.pro, contact="@chairman", expected_price_tjs=199),
+            payload=PlanRequestIn(plan=PlanEnum.pro, contact="@chairman", expected_total_tjs=199),
         )
 
     assert exc.value.detail == "Plan price has changed"
@@ -227,7 +234,7 @@ async def test_approve_keeps_requested_price_after_price_change():
     request = SimpleNamespace(
         id=1, fund_id=fund.id, fund=fund, plan="pro", months=2, status="pending", contact="+992", comment=None,
         admin_comment=None, requested_by=None, reviewed_at=None, created_at=NOW,
-        list_price_tjs=199, price_tjs=100, discount_id=5, discount_label="HALF",
+        list_price_tjs=199, price_tjs=100, discount_id=5, discount_label="HALF", discount_months=2,
     )  # fmt: skip
     service = PlanService(db=make_db())
     service.repo.get = AsyncMock(return_value=request)
@@ -241,29 +248,106 @@ async def test_approve_keeps_requested_price_after_price_change():
     assert audit.details["price"] == 100 and audit.details["discount"] == "HALF"
 
 
-async def test_quote_price_change_is_not_extension():
-    # Тот же тариф, но цена выросла: остаток пересчитывается, а не просто добавляются месяцы
+async def test_quote_extension_ignores_price_change():
+    # Цена выросла: оплаченный срок не пересчитывается, новые месяцы по новой цене
     fund = make_fund(plan="pro", plan_price=199, plan_expires_at=datetime.now(timezone.utc) + timedelta(days=30))
     service = PlanService(db=make_db())
     service.fund_repo.get = AsyncMock(return_value=fund)
-    service.pricing.resolve = AsyncMock(return_value=ResolvedPrice(list_price=398, price=398))
+    service.pricing.resolve = AsyncMock(return_value=ResolvedPrice(list_price=398, price=398, months=3))
 
     quote = await service.quote(fund_id=1, plan=PlanEnum.pro, months=3)
 
-    assert quote.is_extension is False
+    assert quote.is_extension is True and quote.carryover_tjs is None
     assert quote.total_tjs == 1194
-    assert quote.carryover_days == 15
 
 
-async def test_quote_same_price_is_extension():
-    fund = make_fund(plan="pro", plan_price=199, plan_expires_at=datetime.now(timezone.utc) + timedelta(days=30))
+async def test_quote_switch_converts_remainder_at_list_price():
+    # Скидка на Max не должна умножать оплаченные дни Pro
+    fund = make_fund(plan="pro", plan_price=200, plan_expires_at=datetime.now(timezone.utc) + timedelta(days=30))
     service = PlanService(db=make_db())
     service.fund_repo.get = AsyncMock(return_value=fund)
-    service.pricing.resolve = AsyncMock(return_value=ResolvedPrice(list_price=199, price=199))
+    service.pricing.resolve = AsyncMock(
+        return_value=ResolvedPrice(list_price=400, price=200, months=1, discount_months=1)
+    )
 
-    quote = await service.quote(fund_id=1, plan=PlanEnum.pro, months=1)
+    quote = await service.quote(fund_id=1, plan=PlanEnum.max, months=1)
 
-    assert quote.is_extension is True and quote.carryover_tjs is None
+    assert quote.total_tjs == 200 and quote.carryover_days == 15
+
+
+# ─── Срок действия скидки ─────────────────────────────────────────────────────
+
+
+async def test_extension_after_sale_end_pays_full_price():
+    # Тариф оплачен дальше окончания распродажи: продлеваемые месяцы скидки не получают
+    fund = make_fund(plan="max", plan_price=200, plan_expires_at=NOW + timedelta(days=90))
+    sale = make_discount(kind="fixed", value=199, ends_at=NOW + timedelta(days=60))
+
+    resolved = await pricing_service(price=399, sales=[sale]).resolve(PlanEnum.max, fund, 1)
+
+    assert resolved.discount is None and resolved.total == 399
+
+
+async def test_long_term_gets_discount_only_within_sale():
+    # Распродажа ещё 45 дней: со скидкой 2 начатых месяца, остальные по полной цене
+    sale = make_discount(kind="percent", value=50, ends_at=NOW + timedelta(days=45))
+
+    resolved = await pricing_service(price=200, sales=[sale]).resolve(PlanEnum.pro, make_fund(), 12)
+
+    assert resolved.discount_months == 2 and resolved.total == 100 * 2 + 200 * 10
+
+
+async def test_max_months_limits_discount():
+    sale = make_discount(kind="percent", value=50, max_months=1)
+
+    resolved = await pricing_service(price=200, sales=[sale]).resolve(PlanEnum.pro, make_fund(), 3)
+
+    assert resolved.discount_months == 1 and resolved.total == 100 + 200 * 2
+
+
+async def test_promo_ending_before_period_rejected():
+    fund = make_fund(plan="pro", plan_price=199, plan_expires_at=NOW + timedelta(days=90))
+    promo = make_discount(code="X", ends_at=NOW + timedelta(days=10))
+
+    with pytest.raises(HTTPException) as exc:
+        await pricing_service(promo=promo).resolve(PlanEnum.pro, fund, 1, "X")
+
+    assert exc.value.detail == "Promo code ends before the paid period"
+
+
+async def test_approve_extension_keeps_paid_days_and_blends_price():
+    expires = datetime.now(timezone.utc) + timedelta(days=30)
+    fund = make_fund(plan="max", plan_price=200, plan_expires_at=expires)
+    request = SimpleNamespace(
+        id=1, fund_id=fund.id, fund=fund, plan="max", months=1, status="pending", contact="+992", comment=None,
+        admin_comment=None, requested_by=None, reviewed_at=None, created_at=NOW,
+        list_price_tjs=400, price_tjs=400, discount_id=None, discount_label=None, discount_months=0,
+    )  # fmt: skip
+    service = PlanService(db=make_db())
+    service.repo.get = AsyncMock(return_value=request)
+    service.fund_repo.get = AsyncMock(return_value=fund)
+
+    await service.approve(request_id=1, admin_id=1, payload=PlanApproveIn())
+
+    assert fund.plan_expires_at == expires + PLAN_MONTH
+    assert fund.plan_price == 300
+
+
+async def test_admin_adding_months_charges_full_price_for_them():
+    fund = make_fund(plan="free")
+    request = SimpleNamespace(
+        id=1, fund_id=fund.id, fund=fund, plan="pro", months=1, status="pending", contact="+992", comment=None,
+        admin_comment=None, requested_by=None, reviewed_at=None, created_at=NOW,
+        list_price_tjs=200, price_tjs=100, discount_id=5, discount_label="HALF", discount_months=1,
+    )  # fmt: skip
+    service = PlanService(db=make_db())
+    service.repo.get = AsyncMock(return_value=request)
+    service.fund_repo.get = AsyncMock(return_value=fund)
+
+    await service.approve(request_id=1, admin_id=1, payload=PlanApproveIn(months=3))
+
+    audit = service.db.add.call_args_list[0].args[0]
+    assert audit.details["total"] == 100 + 200 * 2
 
 
 # ─── Админ платформы ──────────────────────────────────────────────────────────

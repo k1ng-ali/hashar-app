@@ -200,10 +200,10 @@ class AnalyticsRepository(BaseRepository):
 
     @staticmethod
     def _payment_tjs() -> ColumnElement[int]:
-        """Оплата по одобренной заявке: цена за месяц × месяцы из снимка в журнале (plan.approve)."""
+        """Оплата по заявке из снимка в журнале (plan.approve); в старых записях нет total — цена × месяцы."""
         price = func.coalesce(AuditEvent.details["price"].astext.cast(Integer), 0)
         months = func.coalesce(AuditEvent.details["months"].astext.cast(Integer), 0)
-        return price * months
+        return func.coalesce(AuditEvent.details["total"].astext.cast(Integer), price * months)
 
     async def revenue_by_month(self, since: datetime) -> dict[str, tuple[int, int]]:
         """Месяц → (выручка TJS, число одобренных заявок)."""

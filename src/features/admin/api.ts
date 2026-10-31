@@ -114,9 +114,9 @@ export const updateSettings = (fundId: number, payload: FundSettingsUpdate) =>
 
 export const listPlanRequests = (fundId: number) => http.get<PlanRequest[]>(`${council(fundId)}/plan-requests/`)
 
-export const getPlanQuote = (fundId: number, plan: Plan, promoCode: string | null) =>
+export const getPlanQuote = (fundId: number, plan: Plan, months: number, promoCode: string | null) =>
   http.get<PlanQuote>(`${council(fundId)}/plan-requests/quote`, {
-    params: { plan, promo_code: promoCode ?? undefined },
+    params: { plan, months, promo_code: promoCode ?? undefined },
   })
 
 export const createPlanRequest = (fundId: number, payload: PlanRequestCreate) =>

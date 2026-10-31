@@ -32,7 +32,7 @@ def make_request(plan: str, fund, months: int = 1, status: str = "pending"):
     return SimpleNamespace(
         id=1, fund_id=fund.id, fund=fund, plan=plan, months=months, status=status, contact="+992", comment=None,
         admin_comment=None, requested_by=None, reviewed_at=None, created_at=NOW,
-        list_price_tjs={"pro": 199, "max": 399}.get(plan), price_tjs={"pro": 199, "max": 399}.get(plan), discount_id=None, discount_label=None,
+        list_price_tjs={"pro": 199, "max": 399}.get(plan), price_tjs={"pro": 199, "max": 399}.get(plan), discount_id=None, discount_label=None, discount_months=0,
     )  # fmt: skip
 
 

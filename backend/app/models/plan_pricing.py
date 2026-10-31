@@ -11,6 +11,8 @@ PlanDiscount — скидка на месяц тарифа:
 - kind / value: percent — процент, fixed — смн с месяца (итог не ниже 1 смн)
 - plans: на какие тарифы действует
 - starts_at / ends_at: срок действия (пусто — без ограничения)
+- max_months: на сколько оплаченных месяцев действует (пусто — на все в пределах срока);
+  месяцы, начинающиеся после ends_at, скидки не получают в любом случае
 - max_uses: сколько фондов может применить промокод (пусто — без ограничения)
 """
 
@@ -57,6 +59,7 @@ class PlanDiscount(Base):
     plans = Column(JSONB, nullable=False)
     starts_at = Column(TIMESTAMP(timezone=True), nullable=True)
     ends_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    max_months = Column(Integer, nullable=True)
     max_uses = Column(Integer, nullable=True)
     is_active = Column(Boolean, nullable=False, default=True, server_default=true())
     created_by_id = Column(BigInteger, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)

@@ -284,7 +284,8 @@ export const useAdminStore = defineStore('admin', () => {
     })
   }
 
-  const quotePlan = (plan: Plan, promoCode: string | null) => api.getPlanQuote(funds.fundId, plan, promoCode)
+  const quotePlan = (plan: Plan, months: number, promoCode: string | null) =>
+    api.getPlanQuote(funds.fundId, plan, months, promoCode)
 
   function requestPlan(payload: PlanRequestCreate) {
     return withSubmitting(async () => {

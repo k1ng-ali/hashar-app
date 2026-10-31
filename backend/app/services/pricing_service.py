@@ -4,8 +4,9 @@ from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.plans import discount_state, discounted_price
+from app.core.plans import discount_months_for, discount_state, discounted_price, is_extension, plan_total
 from app.enums import PLAN_MEMBER_LIMITS, DiscountStateEnum, PlanEnum, PromoStatusEnum
+from app.models.fund import Fund
 from app.models.plan_pricing import PlanDiscount
 from app.repositories.audit_repo import AuditRepository
 from app.repositories.pricing_repo import PricingRepository
@@ -26,8 +27,16 @@ class ResolvedPrice:
 
     list_price: int | None
     price: int | None
+    months: int = 1
     discount: PlanDiscount | None = None
+    discount_months: int = 0
     promo_status: PromoStatusEnum = PromoStatusEnum.none
+
+    @property
+    def total(self) -> int | None:
+        if self.price is None:
+            return None
+        return plan_total(self.list_price, self.price, self.discount_months, self.months)
 
     @property
     def label(self) -> str | None:
@@ -46,6 +55,7 @@ def _discount_out(discount: PlanDiscount, uses: int) -> PlanDiscountOut:
         plans=discount.plans,
         starts_at=discount.starts_at,
         ends_at=discount.ends_at,
+        max_months=discount.max_months,
         max_uses=discount.max_uses,
         uses=uses,
         is_active=discount.is_active,
@@ -96,33 +106,49 @@ class PricingService:
     # ─── Расчёт цены заявки ────────────────────────────────────────────────────
 
     async def resolve(
-        self, plan: PlanEnum, fund_id: int, promo_code: str | None = None, for_update: bool = False
+        self, plan: PlanEnum, fund: Fund, months: int, promo_code: str | None = None, for_update: bool = False
     ) -> ResolvedPrice:
         """
-        Цена для заявки фонда: лучшая из распродажи и промокода, скидки не суммируются.
+        Цена для заявки фонда: лучшая по сумме за срок из распродажи и промокода, скидки не суммируются.
 
         for_update — при создании заявки: блокирует промокод, чтобы два фонда
         одновременно не заняли последнее применение.
         """
+        now = datetime.now(timezone.utc)
+        # Продление оплачивает месяцы после текущей даты окончания
+        start = fund.plan_expires_at if is_extension(fund, plan, now) else now
         code = normalize_code(promo_code) if promo_code else None
         list_price = await self.list_price(plan)
-        promo = await self._valid_promo(code, plan, fund_id, for_update) if code else None
+        promo = await self._valid_promo(code, plan, fund.id, for_update) if code else None
         if list_price is None:
-            return ResolvedPrice(list_price=None, price=None)
+            return ResolvedPrice(list_price=None, price=None, months=months)
 
-        now = datetime.now(timezone.utc)
-        sale = self._best_sale(plan, list_price, await self.repo.list_running_sales(now))
-        sale_price = discounted_price(list_price, sale.kind, sale.value) if sale else list_price
+        best = ResolvedPrice(list_price=list_price, price=list_price, months=months)
+        for sale in await self.repo.list_running_sales(now):
+            if plan.value in sale.plans:
+                option = self._with_discount(best, sale, start)
+                if option.total < best.total:
+                    best = option
         if promo is None:
-            return ResolvedPrice(list_price=list_price, price=sale_price, discount=sale)
+            return best
 
-        promo_price = discounted_price(list_price, promo.kind, promo.value)
-        if promo_price < sale_price:
-            return ResolvedPrice(
-                list_price=list_price, price=promo_price, discount=promo, promo_status=PromoStatusEnum.applied
-            )
+        option = self._with_discount(best, promo, start)
+        if not option.discount_months:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Promo code ends before the paid period")
+        if option.total < best.total:
+            option.promo_status = PromoStatusEnum.applied
+            return option
+        best.promo_status = PromoStatusEnum.not_better
+        return best
+
+    @staticmethod
+    def _with_discount(base: ResolvedPrice, discount: PlanDiscount, start: datetime) -> ResolvedPrice:
         return ResolvedPrice(
-            list_price=list_price, price=sale_price, discount=sale, promo_status=PromoStatusEnum.not_better
+            list_price=base.list_price,
+            price=discounted_price(base.list_price, discount.kind, discount.value),
+            months=base.months,
+            discount=discount,
+            discount_months=discount_months_for(discount, base.months, start),
         )
 
     async def _valid_promo(self, code: str, plan: PlanEnum, fund_id: int, for_update: bool) -> PlanDiscount:
@@ -223,6 +249,7 @@ class PricingService:
             "code": discount.code,
             "kind": discount.kind,
             "value": discount.value,
+            "max_months": discount.max_months,
             "plans": discount.plans,
             "is_active": discount.is_active,
         }

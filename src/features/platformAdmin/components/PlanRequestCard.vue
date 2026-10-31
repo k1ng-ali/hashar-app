@@ -27,7 +27,13 @@ const carryoverDays = computed(() => {
 const canApprove = computed(() => !isIndividual.value || !!monthlyPrice.value)
 const comment = ref('')
 // Цена зафиксирована при подаче заявки; срок админ может поправить — итог пересчитывается
-const total = computed(() => (props.request.price_tjs ? props.request.price_tjs * (months.value || 0) : null))
+const total = computed(() => {
+  const { price_tjs: price, list_price_tjs: list, discount_months: discounted } = props.request
+  if (!price || !list) return null
+  const count = months.value || 0
+  const withDiscount = Math.min(discounted, count)
+  return price * withDiscount + list * (count - withDiscount)
+})
 </script>
 
 <template>
@@ -45,7 +51,9 @@ const total = computed(() => (props.request.price_tjs ? props.request.price_tjs 
       💰 {{ $t('plans.price', { price: request.price_tjs }) }}
       <s v-if="request.discount_label">{{ request.list_price_tjs }}</s>
       <b v-if="total"> · {{ $t('plans.total', { price: total }) }}</b>
-      <span v-if="request.discount_label" class="discount"> · 🏷 {{ request.discount_label }}</span>
+      <span v-if="request.discount_label" class="discount">
+        · 🏷 {{ request.discount_label }} · {{ $t('platform.pricing.forMonths', { n: request.discount_months }) }}
+      </span>
     </p>
     <p v-if="request.status === 'pending' && request.carryover_tjs" class="carryover">
       🔁 {{ $t('platform.carryover', { amount: request.carryover_tjs }) }}

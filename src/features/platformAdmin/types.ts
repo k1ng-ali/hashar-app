@@ -58,6 +58,8 @@ export interface PlanDiscountPayload {
   plans: DiscountPlan[]
   starts_at: string | null
   ends_at: string | null
+  /** На сколько оплаченных месяцев действует. null — на все в пределах срока. */
+  max_months: number | null
   max_uses: number | null
   is_active: boolean
 }

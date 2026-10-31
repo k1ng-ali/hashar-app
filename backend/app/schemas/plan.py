@@ -13,8 +13,8 @@ class PlanRequestIn(BaseModel):
     contact: str = Field(min_length=3, max_length=150)
     comment: str | None = Field(None, max_length=1000)
     promo_code: str | None = Field(None, max_length=30)
-    # Цена за месяц, которую видел председатель: разошлась с текущей — заявка не создаётся
-    expected_price_tjs: int | None = None
+    # Сумма, которую видел председатель: разошлась с текущей — заявка не создаётся
+    expected_total_tjs: int | None = None
 
 
 class PlanRequestOut(BaseModel):
@@ -27,6 +27,9 @@ class PlanRequestOut(BaseModel):
     list_price_tjs: int | None = None
     price_tjs: int | None = None
     discount_label: str | None = None
+    # Сколько месяцев по price_tjs, остальные — по list_price_tjs
+    discount_months: int = 0
+    total_tjs: int | None = None
     status: PlanRequestStatusEnum
     contact: str
     comment: str | None = None
